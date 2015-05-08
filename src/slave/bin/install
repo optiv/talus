@@ -1,0 +1,14 @@
+#!/bin/bash
+
+sudo apt-get install -y \
+	libvirt-bin \
+	qemu-kvm \
+	virtinst \
+	python-libvirt \
+	qemu-utils \
+	build-essential \
+	python-pip \
+	python-dev \
+	wget
+
+pip install xmltodict mongoengine mock pymongo==2.8.0 sh pika netifaces twisted

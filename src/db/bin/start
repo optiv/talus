@@ -1,0 +1,19 @@
+#!/bin/bash
+
+echo "running a temporary db container (talus_db)"
+
+DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+
+$DIR/stop
+
+sudo mkdir -p /talus/data
+
+sudo docker run \
+	--rm \
+	-v /var/log/talus:/talus/logs \
+	-v /talus/data:/talus/data \
+	--name talus_db \
+	--hostname talus_db \
+	-it \
+	-p 27017:27017 \
+	$@ talus_db

@@ -1,0 +1,37 @@
+#!/bin/bash
+
+DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+
+"$DIR"/stop
+
+mkdir -p /tmp/talus/tmp
+sudo chmod o+rwx /tmp/talus/tmp
+mkdir -p /var/log/talus/apache2
+
+if [ "$1" = "dev" ] ; then
+	shift
+	sudo docker run \
+		-it \
+		--rm \
+		--link talus_db:talus_db \
+		-p 80:80 \
+		-p 8001:8001 \
+		-v /var/lib/libvirt/images:/images:r \
+		-v $PWD/app:/web \
+		-v /var/log/talus:/logs \
+		-v /tmp/talus/tmp:/tmp \
+		--name talus_web \
+		$@ talus_web
+else
+	sudo docker run \
+		-it \
+		--rm \
+		--link talus_db:talus_db \
+		-p 80:80 \
+		-p 8001:8001 \
+		-v /var/lib/libvirt/images:/images:r \
+		-v /var/log/talus:/logs \
+		-v /tmp/talus/tmp:/tmp \
+		--name talus_web \
+		$@ talus_web
+fi

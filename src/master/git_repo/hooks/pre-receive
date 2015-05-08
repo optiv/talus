@@ -1,0 +1,516 @@
+#!/usr/bin/env python
+# encoding: utf-8
+
+import ast
+import datetime
+import docutils.nodes
+import docutils.examples
+import logging
+import os
+import pymongo
+import random
+from sh import git as git_
+git = git_.bake(_tty_out=False)
+import re
+import sys
+import traceback
+
+logging.basicConfig()
+
+CONN = pymongo.MongoClient("localhost", 27017)
+
+ERRORS = ["""
+         ▌─────────────────────────▐█─────▐
+         ▌────▄──────────────────▄█▓█▌────▐
+         ▌───▐██▄───────────────▄▓░░▓▓────▐
+         ▌───▐█░██▓────────────▓▓░░░▓▌────▐
+         ▌───▐█▌░▓██──────────█▓░░░░▓─────▐
+         ▌────▓█▌░░▓█▄███████▄███▓░▓█─────▐
+         ▌────▓██▌░▓██░░░░░░░░░░▓█░▓▌─────▐
+         ▌─────▓█████░░░░░░░░░░░░▓██──────▐
+         ▌─────▓██▓░░░░░░░░░░░░░░░▓█──────▐
+         ▌─────▐█▓░░░░░░█▓░░▓█░░░░▓█▌─────▐
+         ▌─────▓█▌░▓█▓▓██▓░█▓▓▓▓▓░▓█▌─────▐
+         ▌─────▓▓░▓██████▓░▓███▓▓▌░█▓─────▐
+         ▌────▐▓▓░█▄▐▓▌█▓░░▓█▐▓▌▄▓░██─────▐
+         ▌────▓█▓░▓█▄▄▄█▓░░▓█▄▄▄█▓░██▌────▐
+         ▌────▓█▌░▓█████▓░░░▓███▓▀░▓█▓────▐
+         ▌───▐▓█░░░▀▓██▀░░░░░─▀▓▀░░▓█▓────▐
+         ▌───▓██░░░░░░░░▀▄▄▄▄▀░░░░░░▓▓────▐
+         ▌───▓█▌░░░░░░░░░░▐▌░░░░░░░░▓▓▌───▐
+         ▌───▓█░░░░░░░░░▄▀▀▀▀▄░░░░░░░█▓───▐
+         ▌──▐█▌░░░░░░░░▀░░░░░░▀░░░░░░█▓▌──▐
+         ▌──▓█░░░░░░░░░░░░░░░░░░░░░░░██▓──▐
+         ▌──▓█░░░░░░░░░░░░░░░░░░░░░░░▓█▓──▐
+         ▌──██░░░░░░░░░░░░░░░░░░░░░░░░█▓──▐
+         ▌──█▌░░░░░░░░░░░░░░░░░░░░░░░░▐▓▌─▐
+         ▌─▐▓░░░░░░░░░░░░░░░░░░░░░░░░░░█▓─▐
+         ▌─█▓░░░░░░░░░░░░░░░░░░░░░░░░░░▓▓─▐
+         ▌─█▓░░░░░░░░░░░░░░░░░░░░░░░░░░▓▓▌▐
+         ▌▐█▓░░░░░░░░░░░░░░░░░░░░░░░░░░░██▐
+         ▌█▓▌░░░░░░░░░░░░░░░░░░░░░░░░░░░▓█▐
+         ██████████████████████████████████
+         █░▀░░░░▀█▀░░░░░░▀█░░░░░░▀█▀░░░░░▀█
+         █░░▐█▌░░█░░░██░░░█░░██░░░█░░░██░░█
+         █░░▐█▌░░█░░░██░░░█░░██░░░█░░░██░░█
+         █░░▐█▌░░█░░░██░░░█░░░░░░▄█░░▄▄▄▄▄█
+         █░░▐█▌░░█░░░██░░░█░░░░████░░░░░░░█
+         █░░░█░░░█▄░░░░░░▄█░░░░████▄░░░░░▄█
+         ██████████████████████████████████
+""",
+"""
+       ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
+       ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
+       ▓▓▓▓██▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
+       ▓▓▓▓████▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
+       ▓▓▓▓█████▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
+       ▓▓▓▓█▓████▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
+       ▓▓▓▓█▓█████▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
+       ▓▓▓▓█▓▓█████▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓████▓
+       ▓▓▓▓█▓██████▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓███████▓
+       ▓▓▓▓█▓████▓▒░░░░─░░░░▒▒▓▓▓▓▓▓▓███████▓█▓
+       ▓▓▓▓████▒░──░░░░░░░░░───░▒▓▓████████▓▓█▓
+       ▓▓▓▓██▒───░░░░░░░░░░░░░░░░─░▓███████▓█▓▓
+       ▓▓▓▓▓░────░─░▒░░░░░─░░░░░░░──░█████▓██▓▓
+       ▓▓▓▓░▓█▓▒░░▓▓█▒░░─░▓▒──░░░░░░──██████▓▓▓
+       ▓▓▒▓██████▓▓██▓─░░██░▓▒░──░░░░──▓████▓▓▓
+       ▓▓▒▓█▒▓███████▒─░▓█▓██▓▒░░░░──░──███▓▓▓▓
+       ▓▓░▓█▒▒███████──▒███████████▓░─░─░██▓▓▓▓
+       ▓▓░▓█▓▒▓██▓▒█▒──▓█▓▓▓█████████▒─░─▓█▓▓▓▓
+       ▓▓▒░██▓▒▒▒▒▓█░──▒█▓░▒▓████▓▓▓██▓──▒▓▓▓▓▓
+       ▓▓▒░████▓███▒───▓██▒▒▓███▓▒▒░▓██──░▓▓▓▓▓
+       ▓▓▓░▓█████▓▒▒▓░─███▓▒▒▓▓▓▓▓▒▓███░─▒▓▓▓▓▓
+       ▓▓▓░░██▓────▓▓░─▓███▓▒▒▒▒▒▒▓███░─░▒▓▓▓▓▓
+       ▓▓▓▓─▒▒─▓▓▓▓▓▓───▓████▓▓▓▓████▒─░─▒▓▓▓▓▓
+       ▓▓▓▓░░─▓▓────▓▓───██▓████████▓─░░░▒▓▓▓▓▓
+       ▓▓█▒░░─▓──────▓▓──▒████████▓▒─░░░░▓▓▓▓▓▓
+       ▓▓█░─▒───░░──░─▓▓──▓▓███▓▓▒──░░░░▒█▓▓▓▓▓
+       ▓█▓─░░░─░░▒░────▓──░──░────░░░░░▒▒█▓▓▓▓▓
+       ▓█▒─░░░░░░░▒░░──░──▒░░░░░░░░░░░░░▒█▓▓▓▓▓
+       ▓▓░░░░░░░░░░░░░░──░▒░░░░░░░░░░░░─▒█▓▓▓▓▓
+       ▓▓─░░░░░░░░░░░░░░░▒░░░░░░░░░░░░░─▓█▓▓▓▓▓
+""",
+"""
+FFFFFFFFFFFFFFFFFFFFFF                    AAA                    IIIIIIIIII     LLLLLLLLLLL             
+F::::::::::::::::::::F                   A:::A                   I::::::::I     L:::::::::L             
+F::::::::::::::::::::F                  A:::::A                  I::::::::I     L:::::::::L             
+FF::::::FFFFFFFFF::::F                 A:::::::A                 II::::::II     LL:::::::LL             
+  F:::::F       FFFFFF                A:::::::::A                  I::::I         L:::::L               
+  F:::::F                            A:::::A:::::A                 I::::I         L:::::L               
+  F::::::FFFFFFFFFF                 A:::::A A:::::A                I::::I         L:::::L               
+  F:::::::::::::::F                A:::::A   A:::::A               I::::I         L:::::L               
+  F:::::::::::::::F               A:::::A     A:::::A              I::::I         L:::::L               
+  F::::::FFFFFFFFFF              A:::::AAAAAAAAA:::::A             I::::I         L:::::L               
+  F:::::F                       A:::::::::::::::::::::A            I::::I         L:::::L               
+  F:::::F                      A:::::AAAAAAAAAAAAA:::::A           I::::I         L:::::L         LLLLLL
+FF:::::::FF                   A:::::A             A:::::A        II::::::II     LL:::::::LLLLLLLLL:::::L
+F::::::::FF                  A:::::A               A:::::A       I::::::::I     L::::::::::::::::::::::L
+F::::::::FF                 A:::::A                 A:::::A      I::::::::I     L::::::::::::::::::::::L
+FFFFFFFFFFF                AAAAAAA                   AAAAAAA     IIIIIIIIII     LLLLLLLLLLLLLLLLLLLLLLLL                                                                   
+"""]
+
+class TalusError(Exception): pass
+
+class PyFuncTypeComponent(object):
+	def __init__(self, raw):
+		self.raw = raw
+		self.type = "component"
+		
+		match = re.match(r'^Component\(([a-zA-Z0-9_]+)\)$', raw)
+		if match is None:
+			raise TalusError("Could not determine the component name from: {!r}".format(raw))
+		self.name = match.group(1)
+
+class PyFuncTypeNative(object):
+	def __init__(self, native_type):
+		self.type = "native"
+		if native_type not in ["str", "list", "tuple", "dict", "int", "unicode"]:
+			raise TalusError("Unsupported native type specified for parameter: {!r}".format(native_type))
+		self.name = native_type
+
+class PyFuncParam(object):
+	def __init__(self, unparsed_name, desc):
+		self.desc = desc
+		self.type, self.name = self.get_type_and_name(unparsed_name)
+	
+	def get_type_and_name(self, data):
+		parts = data.split()
+		if len(parts) != 3:
+			raise TalusError("Error! Param declarations need to be of the form" +
+				"\n\n\t:param <type> <param-name>: <desc>" +
+				"\n\nBut you gave:\n\n\t{}".format(data))
+
+		param,type,name = parts
+
+		if type.startswith("Component"):
+			type = PyFuncTypeComponent(type)
+		else:
+			type = PyFuncTypeNative(type)
+
+		return type,name
+
+class PyFunc(object):
+	def __init__(self, log, filename, func_node):
+		self.filename = filename
+		self.node = func_node
+		self.name = func_node.name
+		self._log = log.getChild(self.name)
+
+		self.doc = ""
+		if hasattr(func_node.body[0], "value") and isinstance(func_node.body[0].value, ast.Str):
+			self.doc = func_node.body[0].value.s
+
+		try:
+			self.params = self.get_params(self.doc)
+		except TalusError as e:
+			raise TalusError(e.message + "\n\nError at {}:{}".format(self.filename, self.node.lineno))
+	
+	def get_params(self, docstring):
+		self._log.debug("determining params")
+		# these need to be IN ORDER!!!!
+		params = []
+		doc,_ = docutils.examples.internals(unicode(docstring))
+		if len(doc.children) == 0:
+			return params
+
+		for quote in doc.children:
+			if not isinstance(quote, docutils.nodes.block_quote):
+				continue
+			for field in quote:
+				if not isinstance(field, docutils.nodes.field_list):
+					continue
+				for f in field:
+					name = str(f[0][0])
+					desc = str(f[1][0][0])
+
+					# simple test to avoid :returns: and such
+					if "param" in name:
+						params.append(PyFuncParam(name, desc))
+
+		return params
+
+class PyClass(object):
+	def __init__(self, log, filename, cls_node):
+		self.filename = filename
+		self._log = log.getChild(cls_node.name)
+
+		if "components" in self.filename:
+			self.type = "component"
+		elif "tools" in self.filename:
+			self.type = "tool"
+
+		self.node = cls_node
+		self.desc = ""
+		self.name = cls_node.name
+		self.bases = self.get_bases()
+		self.methods = {}
+		for idx,node in enumerate(cls_node.body):
+			if idx == 0 and isinstance(node, ast.Expr) and isinstance(node.value, ast.Str):
+				self.desc = node.value.s
+			elif isinstance(node, ast.FunctionDef):
+				method = PyFunc(self._log, filename, node)
+				self.methods[method.name] = method
+	
+	def get_bases(self):
+		res = []
+		for x in self.node.bases:
+			if isinstance(x, ast.Attribute):
+				res.append(x.attr)
+			elif isinstance(x, ast.Name):
+				res.append(x.id)
+		return res
+	
+	def get_run_params(self, query_func):
+		self._log.debug("getting run params")
+		params = []
+		if "run" in self.methods:
+			for param in self.methods["run"].params:
+				self._log.debug("  param: {} ({} - {})".format(param.name, param.type.type, param.type.name))
+				if param.type.type == "component" and not query_func(param.type.name):
+					raise TalusError("Invalid component specified ({}) in {}:{}".format(
+						param.type.name,
+						self.filename,
+						self.name
+					))
+
+				params.append(dict(
+					name	= param.name,
+					type	= dict(
+						type	= param.type.type, # native or component
+						name	= param.type.name  # str/list/etc or component name
+					),
+					desc	= param.desc
+				))
+		else:
+			self._log.debug("no run method was specified?")
+		return params
+
+class ChangeHandler(object):
+
+	"""Handles a set of oldrev/newrev/revname"""
+
+	def __init__(self, oldrev, newrev, revname):
+		"""Handle a changeset
+
+		:oldrev: The old revision
+		:newrev: The new revision
+		:revname: The revname
+
+		"""
+		self._log = logging.getLogger("ChangeHandler")
+		self._log.setLevel(logging.DEBUG)
+		self._oldrev = oldrev
+		self._newrev = newrev
+		self._revname = revname
+
+		self._added_classes = {}
+		self._modified_classes = {}
+		self._deleted_classes = {}
+
+	def handle(self):
+		changes = self.get_changes()
+
+		switch = {
+			"A": self.handle_fileadd,
+			"M": self.handle_filemod,
+			"D": self.handle_filedel
+		}
+		success = True
+		for filename,op in changes.iteritems():
+			# we only care about tools in the talus/{components,tools} directories,
+			# and the __init__.py two levels deep:
+			#
+			# The main Tool and Component definitions are only going
+			# to be defined in the __init__.py file of the module,
+			# e.g.
+			# 
+			#	tools/
+			#		browser_fuzzer/
+			#			__init__.py <--- contains the BrowserFuzzer class
+			#			... supporting files ...
+			#
+			match = re.match(r'^talus/(tools|components)/(\w+)/__init__.py', filename)
+			if match is None:
+				continue
+
+			if op in switch:
+				res = switch[op](filename, match.group(2))
+				if not res:
+					success = False
+			else:
+				self._log.warn("unknown operation type {} for file {}".format(op, filename))
+
+		self.update_code_defs()
+		
+		return success
+	
+	# ------------------------------------
+
+	def handle_fileadd(self, filename, mod_name):
+		self._log.info("handling a new file: {}".format(filename))
+		source = self.get_source(filename)
+		try:
+			cls = self.get_class(mod_name, filename, source)
+		except SyntaxError as e:
+			self._log.error("Could not parse source file!\n{}".format(
+				traceback.format_exc(0)
+			))
+			return False
+
+		if cls is not None:
+			self._added_classes[cls.name] = cls
+
+		return True
+
+	def handle_filemod(self, filename, mod_name):
+		self._log.info("handling a modified file: {}".format(filename))
+		source = self.get_source(filename)
+		try:
+			cls = self.get_class(mod_name, filename, source)
+		except SyntaxError as e:
+			self._log.error("Could not parse source file!\n{}".format(
+				traceback.format_exc(0)
+			))
+			return False
+
+		if cls is not None:
+			self._modified_classes[cls.name] = cls
+
+		return True
+
+	def handle_filedel(self, filename, mod_name):
+		self._log.info("handling a deleted file: {}".format(filename))
+		source = self.get_source(filename, old=True)
+		try:
+			cls = self.get_class(mod_name, filename, source)
+		except SyntaxError as e:
+			self._log.error("Could not parse source file!\n{}".format(
+				traceback.format_exc(0)
+			))
+			return False
+
+		if cls is not None:
+			self._deleted_classes[cls.name] = cls
+
+		return True
+	
+	# ----------------------
+
+	def update_code_defs(self):
+		self._log.debug("updating code defs")
+		# cancel out any classes that have been redefined
+		# in a different file (file deleted, added elsewhere, usw.)
+		for k in self._deleted_classes.keys():
+			if k in self._modified_classes or k in self._added_classes:
+				del self._deleted_classes[k]
+
+		self.delete_code_defs()
+		self.add_code_defs()
+		self.modify_code_defs()
+	
+	def delete_code_defs(self):
+		for clsname, cls in self._deleted_classes.iteritems():
+			self._log.debug("deleting code def for {} {}".format(cls.type, cls.name))
+			CONN.talus.code.remove(dict(
+				name	= cls.name,
+				type	= cls.type
+			))
+	
+	def add_code_defs(self):
+		for clsname, cls in self._added_classes.iteritems():
+			self._log.debug("adding code def for {} {}".format(cls.type, cls.name))
+
+			all_bases = self.get_all_bases(cls)
+			params = cls.get_run_params(self.check_if_component_exists)
+
+			CONN.talus.code.insert(dict(
+				name	= cls.name,
+				type	= cls.type,
+				params	= params,
+				bases	= all_bases,
+				desc	= cls.desc,
+				timestamps	= {"created": datetime.datetime.now()}
+			))
+
+	def modify_code_defs(self):
+		for clsname, cls in self._modified_classes.iteritems():
+			self._log.debug("modifying code def for {} {}".format(cls.type, cls.name))
+
+			params	= cls.get_run_params(self.check_if_component_exists)
+			all_bases = self.get_all_bases(cls)
+
+			CONN.talus.code.update(dict(
+				name	= cls.name,
+				type	= cls.type
+			), {
+				"$set": {
+					"name":		cls.name,
+					"type":		cls.type,
+					"params":	params,
+					"bases":	all_bases,
+					"desc":		cls.desc,
+					# UPDATE the subfield in the timestamps dict, don't wipe it out!
+					"timestamps.updated": datetime.datetime.now()
+				}
+			}, upsert=True)
+
+	# --------------------
+
+	def get_all_bases(self, cls):
+		all_bases = []
+
+		for base in cls.bases:
+			# just in case someone fully-qualifies their basename, e.g.
+			# class Blah(talus.tools.Tool)
+			base = base.rsplit(".", 1)[-1]
+
+			if base in self._added_classes:
+				all_bases.append(base)
+				all_bases += self.get_all_bases(self._added_classes[base])
+				continue
+			if base in self._modified_classes:
+				all_bases.append(base)
+				all_bases += self.get_all_bases(self._modified_classes[base])
+				continue
+
+			# we don't care about the base Tool/Component classes
+			#if (type == "tool" and base == "Tool") or (type == "component" and base == "Component"):
+			#	continue
+
+			found = CONN.talus.code.find_one(dict(
+				type	= cls.type,
+				name	= base
+			))
+			if found is not None:
+				all_bases.append(base)
+				all_bases += found["bases"]
+
+		self._log.debug("all bases for class '{}': {}".format(cls.name, all_bases))
+
+		return all_bases
+
+	def check_if_component_exists(self, name):
+		if name in self._added_classes and self._added_classes[name].type == "component":
+			return True
+		if name in self._modified_classes and self._modified_classes[name].type == "component":
+			return True
+
+		obj = CONN.talus.code.find_one({"name": name, "type": "component"})
+		if obj is not None:
+			return True
+
+		return False
+
+	def mod_name_to_class_name(self, mod_name):
+		cls_name = "".join([x.capitalize() for x in mod_name.split("_")])
+		return cls_name
+
+	def get_class(self, mod_name, filename, source):
+		#ClassDef.name
+		#ClassDef.bases[0].id
+		mod = ast.parse(source)
+		looking_for = self.mod_name_to_class_name(mod_name)
+		for node in mod.body:
+			if isinstance(node,ast.ClassDef):
+				cls = PyClass(self._log, filename, node)
+				if cls.name == looking_for:
+					return cls
+		return None
+
+	def get_changes(self):
+		changes = git.diff("--name-status", self._oldrev + ".." + self._newrev).split("\n")
+		res = {}
+		for change in changes:
+			if change == "":
+				continue
+			op,filename = change.split()
+			res[filename] = op
+		return res
+
+	def get_source(self, filename, old=False):
+		rev = self._newrev
+		if old:
+			rev = self._oldrev
+		return str(git.show(rev + ":" + filename))
+
+def do_error(msg):
+	print("\n\n")
+	print(random.choice(ERRORS))
+	print(msg)
+	print("\n\n")
+	exit(1)
+
+if __name__ == "__main__":
+	try:
+		errored = False
+		for line in sys.stdin.readlines():
+			oldrev, newrev, revname = line.split()
+			handler = ChangeHandler(oldrev, newrev, revname)
+			if not handler.handle():
+				errored = True
+				continue
+	except TalusError as e:
+		do_error(e.message)
+
+	if errored:
+		do_error("ERROR!")

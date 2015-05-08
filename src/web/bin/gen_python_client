@@ -1,0 +1,12 @@
+#!/bin/bash
+
+echo -e "Though ideal, full Swagger support does not exist in plugins for django and mongodb.\nRevisit this at some other time"
+
+host="$1"
+output="$2"
+
+java -jar ~/tools/swagger-codegen/modules/swagger-codegen-cli/target/swagger-codegen-cli.jar generate \
+	-i "$host/docs/api-docs/" \
+	-l python \
+	-o "$output" \
+	-v

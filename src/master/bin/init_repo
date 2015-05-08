@@ -1,0 +1,40 @@
+#!/bin/bash
+
+DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+REPO_DIR=/talus/talus_code.git
+
+# setup the git repo
+mkdir -p $REPO_DIR
+cd $REPO_DIR
+useradd talus -g talus || true
+chown talus:talus $REPO_DIR
+
+git init --bare --shared=group
+git config --global user.name "talus"
+git config --global user.email "talus@localhost"
+sudo chmod -R g+ws .
+sudo chgrp -R talus .
+git config core.sharedRepository true
+
+# init the repo
+git clone $REPO_DIR /tmp/talus_repo_init
+cd /tmp/talus_repo_init
+cp -r $DIR/../git_repo/template/* .
+find . -name "*.py" -exec git add {} +
+git commit -m "initial commit"
+git push origin master
+cd $DIR
+rm -rf /tmp/talus_repo_init
+
+# install the pre-receive hook
+cp $DIR/../git_repo/hooks/pre-receive $REPO_DIR/hooks/pre-receive
+chmod g+x $REPO_DIR/hooks/pre-receive
+
+echo
+echo "-------------------------------------------------------"
+echo "add any users who will be using this to the talus group"
+echo " E.g.      usermod -a -G talus <USER>"
+echo " You may have to make the user logout and log back in"
+echo " for group changes to take affect"
+echo "-------------------------------------------------------"
+echo

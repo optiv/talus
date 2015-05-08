@@ -1,0 +1,35 @@
+#!/bin/bash
+
+sudo mkdir -p /talus/data /var/log/talus/{apache2}
+
+mkdir -p /tmp/talus/tmp
+chown -R o+rws /tmp/talus/tmp
+
+DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+
+sudo apt-get install -y \
+	libvirt-bin \
+	qemu-kvm \
+	virtinst \
+	python-libvirt \
+	qemu-utils \
+	libxslt-dev \
+	libxml2-dev \
+	libvirt-dev \
+	libffi-dev \
+	build-essential \
+	ruby-dev \
+	python-pip \
+	python-dev \
+	wget
+
+mkdir -p /tmp/vagrant_install \
+	&& cd /tmp/vagrant_install \
+	&& wget https://dl.bintray.com/mitchellh/vagrant/vagrant_1.7.2_x86_64.deb \
+	&& dpkg -i vagrant*.deb \
+	&& rm -rf /tmp/vagrant_install
+
+vagrant plugin install vagrant-libvirt
+sudo pip install xmltodict mongoengine mock pymongo==2.8.0 sh pika docutils netifaces
+
+$DIR/init_repo

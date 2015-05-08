@@ -1,0 +1,41 @@
+#!/bin/bash
+
+DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+
+echo "running a temporary master container (talus_master)"
+
+mkdir -p /tmp/talus/{data/master,logs/master,tmp}
+
+if [ "$1" = "dev" ] ; then
+	shift
+	sudo docker run \
+		--rm \
+		--privileged \
+		--lxc-conf="lxc.aa_profile=unconfined" \
+		--net=host \
+		-v /tmp/talus/logs:/talus/logs \
+		-v /tmp/talus/data:/talus/data \
+		-v "$DIR/../":/master \
+		-v /tmp/talus/tmp:/tmp \
+		-e TALUS_DB_PORT_27017_TCP=tcp://$(sudo docker inspect --format '{{ .NetworkSettings.IPAddress }}' talus_db):27017 \
+		-e TALUS_AMQP_PORT_5672_TCP=tcp://$(sudo docker inspect --format '{{ .NetworkSettings.IPAddress }}' talus_amqp):5672 \
+		--name talus_master \
+		-it \
+		$@ talus_master
+else
+	sudo docker run \
+		--rm \
+		--privileged \
+		--lxc-conf="lxc.aa_profile=unconfined" \
+		--net=host \
+		-v /proc/modules:/proc/modules \
+		-v /var/lib/libvirt:/var/lib/libvirt \
+		-v /sys/fs/cgroup:/sys/fs/cgroup:rw \
+		-v /tmp/talus/logs:/talus/logs \
+		-v /tmp/talus/data:/talus/data \
+		-v /tmp/talus/tmp:/tmp \
+		-e TALUS_DB_PORT_27017_TCP=tcp://$(sudo docker inspect --format '{{ .NetworkSettings.IPAddress }}' talus_db):27017 \
+		-e TALUS_AMQP_PORT_5672_TCP=tcp://$(sudo docker inspect --format '{{ .NetworkSettings.IPAddress }}' talus_amqp):5672 \
+		-it \
+		$@ talus_master
+fi

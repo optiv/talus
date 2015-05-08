@@ -1,0 +1,19 @@
+#!/bin/bash
+
+echo "running a temporary amqp container (talus_amqp)"
+
+DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+
+$DIR/stop
+
+mkdir -p /talus/data
+
+sudo docker run \
+	--rm \
+	-v /var/log/talus:/talus/logs \
+	-v /talus/data:/talus/data \
+	--name talus_amqp \
+	--hostname talus_amqp \
+	-it \
+	-p 5672:5672 \
+	$@ talus_amqp

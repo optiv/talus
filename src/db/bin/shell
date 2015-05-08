@@ -1,0 +1,15 @@
+#!/bin/bash
+
+echo "running a temporary db container (talus_db) for a mongo shell"
+
+sudo docker kill talus_db_shell
+sudo docker rm talus_db_shell
+
+sudo docker run \
+	--rm \
+	-v /tmp/talus/logs:/talus/logs \
+	-v /tmp/talus/data:/talus/data \
+	--link talus_db:talus_db \
+	--name talus_db_shell \
+	-it \
+	--entrypoint bash talus_db

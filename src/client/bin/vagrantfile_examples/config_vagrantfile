@@ -1,0 +1,11 @@
+Vagrant.configure("2") do |config|
+	config.vm.box = "blah"
+
+	script = <<SCRIPT
+		echo TALUS >> C:\\Users\\user\\Desktop\\CONFIGURED1.txt
+		echo TALUS >> C:\\Users\\user\\Desktop\\CONFIGURED2.txt
+		echo TALUS >> C:\\Users\\user\\Desktop\\CONFIGURED3.txt
+SCRIPT
+
+	config.vm.provision "shell", inline: script
+end

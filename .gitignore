@@ -1,0 +1,7 @@
+*.pyc
+docs/build
+*.pyc
+*.*.swp
+*.*.sw*
+docs/source/gend
+docs/source/generated
