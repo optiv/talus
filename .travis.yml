@@ -1,5 +1,9 @@
 language: python
 script: bin/build_docs
+
+install:
+    pip install -r docs/requirements.txt
+
 branches:
   only:
     - master
