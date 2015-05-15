@@ -2,10 +2,14 @@
 # encoding: utf-8
 
 import bson
+import logging
 import os
 from sh import md5sum
 import sys
+import time
 import uuid
+
+logging.getLogger("sh").setLevel(logging.WARN)
 
 import master.models
 from master.lib.vm.manage import VMManager
@@ -186,7 +190,7 @@ class VMWatcher(WatcherBase):
 		image.status = {"name": "ready"}
 		md5,_ = md5sum("/var/lib/libvirt/images/{}_vagrant_box_image_0.img".format(
 			str(image.id)
-		))
+		)).split()
 		image.md5 = md5
 		image.timestamps["modified"] = time.time()
 		image.save()

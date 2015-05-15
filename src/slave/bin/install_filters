@@ -1,0 +1,10 @@
+#!/bin/bash
+
+DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+
+echo "installing filters"
+
+for file in $DIR/../network_filters/*.xml; do
+	echo "installing filter $file"
+	sudo virsh nwfilter-define $file
+done

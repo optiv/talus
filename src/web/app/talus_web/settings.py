@@ -21,8 +21,15 @@ NO_CONNECT = ("NO_CONNECT" in os.environ)
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = '0tg-fe$rac1mqzp7l#@4!e!)g0zymr-u^4ii$#yo_35ph$gk!w'
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+base = os.path.dirname("__file__").split(os.path.sep)[0]
+
+if base == "/web":
+	print("DEBUG IS FALSE")
+	DEBUG = True
+else:
+	print("DEBUG IS TRUE")
+	# SECURITY WARNING: don't run with debug turned on in production!
+	DEBUG = True
 
 TEMPLATE_DEBUG = True
 

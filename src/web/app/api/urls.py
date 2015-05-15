@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# encoding: utf-8
+
 from django.conf.urls import url, include
 from rest_framework import routers
 from api import views
@@ -9,6 +12,9 @@ OBJ_ID = r'[0-9a-fA-F\-]+'
 urlpatterns = [
 	# for temporary files
 	url(r"^upload/$", views.TmpFileUpload.as_view()),
+
+	url(r'^result/$', views.ResultList.as_view()),
+	url(r'^result/(?P<id>' + OBJ_ID + ")/$", views.ResultDetails.as_view()),
 
 	url(r'^slave/$', views.SlaveList.as_view()),
 	url(r'^slave/(?P<id>' + OBJ_ID + ")/$", views.SlaveDetails.as_view()),

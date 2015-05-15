@@ -1,0 +1,5 @@
+language: python
+script: bin/build_docs
+branches:
+  only:
+    - master

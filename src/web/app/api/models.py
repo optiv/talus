@@ -7,6 +7,13 @@ import talus_web.settings
 if not talus_web.settings.NO_CONNECT:
 	connect("talus", host="talus_db", port=27017, read_preference=pymongo.ReadPreference.NEAREST, slaveOk=True)
 
+class Result(Document):
+	job			= ReferenceField("Job", required=True)
+	type		= StringField(required=True)
+	tool		= StringField(required=True)
+	data		= DictField()
+	created		= DateTimeField(default=datetime.datetime.now)
+
 class Code(Document):
 	name		= StringField(unique_with="type")
 	type		= StringField()
@@ -35,6 +42,7 @@ class Job(Document):
 	limit		= IntField(default=1)
 	progress	= IntField(default=0)
 	image		= ReferenceField("Image", required=True)
+	network		= StringField()
 
 class TmpFile(Document):
 	path		= StringField(unique=True)
@@ -64,3 +72,4 @@ class Slave(Document):
 	max_vms			= IntField(default=1)
 	running_vms		= IntField(default=0)
 	total_jobs_run	= IntField(default=0)
+	vms				= ListField(DictField())

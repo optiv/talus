@@ -301,7 +301,8 @@ class Job(TalusModel):
 		"queue": Field(""),
 		"limit": Field(1),
 		"progress": Field(),
-		"image": RefField()
+		"image": RefField(),
+		"network": Field("whitelist"),
 	}
 
 class Code(TalusModel):
@@ -338,7 +339,19 @@ class Image(TalusModel):
 		"username": Field(details=True),
 		"password": Field(details=True),
 		"base_image": RefField(),
-		"timestamps": Field({}, details=True)
+		"timestamps": Field({}, details=True),
+		"md5": Field("")
+	}
+
+class Result(TalusModel):
+	"""The model for Result objects"""
+	api_path = "api/result"
+	fields = {
+		"job": RefField(),
+		"type": Field(""),
+		"tool": Field(""),
+		"data": Field({}),
+		"created": Field(),
 	}
 
 class Slave(TalusModel):
@@ -350,5 +363,6 @@ class Slave(TalusModel):
 		"ip": Field(""),
 		"max_vms": Field(1),
 		"running_vms": Field(0),
-		"total_jobs_run": Field(0)
+		"total_jobs_run": Field(0),
+		"vms": Field([])
 	}

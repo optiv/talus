@@ -1,5 +1,10 @@
-from api.models import Image,OS,Code,Task,Job,Slave
+from api.models import Image,OS,Code,Task,Job,Slave,Result
 from rest_framework_mongoengine.serializers import DocumentSerializer
+
+class ResultSerializer(DocumentSerializer):
+	class Meta:
+		model = Result
+		depth = 2
 
 class TaskSerializer(DocumentSerializer):
 	class Meta:

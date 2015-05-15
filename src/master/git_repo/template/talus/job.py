@@ -3,14 +3,17 @@
 
 import ast
 import docutils
+import docutils.examples
 import inspect
 import os
+import re
 import sys
-import sh
 
 import logging
 
 logging.basicConfig(level=logging.DEBUG)
+
+class TalusError(Exception): pass
 
 class PyFuncTypeComponent(object):
 	def __init__(self, raw):
@@ -97,8 +100,10 @@ class PyClass(object):
 
 		if "components" in self.filename:
 			self.type = "component"
+			self.param_method = "init"
 		elif "tools" in self.filename:
 			self.type = "tool"
+			self.param_method = "run"
 
 		self.node = cls_node
 		self.desc = ""
@@ -123,9 +128,10 @@ class PyClass(object):
 	
 	def get_run_params(self, query_func):
 		self._log.debug("getting run params")
-		params = []
-		if "run" in self.methods:
-			for param in self.methods["run"].params:
+		params = {}
+
+		if self.param_method in self.methods:
+			for param in self.methods[self.param_method].params:
 				self._log.debug("  param: {} ({} - {})".format(param.name, param.type.type, param.type.name))
 				if param.type.type == "component" and not query_func(param.type.name):
 					raise TalusError("Invalid component specified ({}) in {}:{}".format(
@@ -134,16 +140,16 @@ class PyClass(object):
 						self.name
 					))
 
-				params.append(dict(
+				params[param.name] = dict(
 					name	= param.name,
 					type	= dict(
 						type	= param.type.type, # native or component
 						name	= param.type.name  # str/list/etc or component name
 					),
 					desc	= param.desc
-				))
+				)
 		else:
-			self._log.debug("no run method was specified?")
+			self._log.debug("no {} method was specified?".format(self.param_method))
 		return params
 
 class Job(object):
@@ -161,7 +167,6 @@ class Job(object):
 		self._id = id
 		self._idx = idx
 		self._params = params
-		self._param_types = param_types
 		self._tool = tool
 		self._progress_callback = progress_callback
 		self._results_callback = results_callback
@@ -169,13 +174,18 @@ class Job(object):
 		self._log = logging.getLogger("JOB:{}".format(self._id))
 	
 	def run(self):
-		tool_cls = self._get_tool_cls()
-		real_params = self._convert_params(self._params, tool_cls)
-		tool = tool_cls(self._idx, self._progress_callback, self._results_callback, self._log)
+		self._log.debug("preparing to run job")
 
-		self._log.debug("RUNNING TOOL")
+		try:
+			tool_cls = self._get_tool_cls()
+			real_params = self._convert_params(self._params, tool_cls)
+			tool = tool_cls(self._idx, self._progress_callback, self._results_callback, self._log)
 
-		tool.run(**real_params)
+			self._log.debug("RUNNING TOOL")
+
+			tool.run(**real_params)
+		except TalusError as e:
+			self._log.error(e.message)
 
 		self._log.debug("FINISHED RUNNING TOOL")
 	
@@ -184,24 +194,28 @@ class Job(object):
 		return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
 	
 	def _get_tool_cls(self):
-		mod_name = self._camel_to_under(self.tool)
-		mod_base = __import__("talus.tools", globals(), locals(), fromlist=[mod_name])
-		mod = getattr(mod_base, mod_name)
+		mod_name = self._camel_to_under(self._tool)
+		mod = __import__("talus.tools." + mod_name, globals(), locals(), fromlist=[str(self._tool)])
 		return getattr(mod, self._tool)
 
 	def _get_component_cls(self, cls_name):
 		mod_name = self._camel_to_under(cls_name)
-		mod_base = __import("talus.components", globals(), locals(), fromlist=[mod_name])
+		mod_base = __import__("talus.components", globals(), locals(), fromlist=[mod_name])
 		mod = getattr(mod_base, mod_name)
 		return getattr(mod, cls_name)
 	
 	def _convert_params(self, params, code_cls):
 		filename = inspect.getfile(code_cls)
 		param_types = self._get_param_types(code_cls)
-		real_params =  {}
+		real_params = {}
 
 		for name,val in params.iteritems():
-			real_params[name] = self._convert_val(param_types[name], val)
+			if name not in param_types:
+				raise TalusError("unmapped argument: {!r}".format(name))
+
+			real_params[name] = self._convert_val(param_types[name]["type"], val)
+		
+		return real_params
 	
 	def _convert_val(self, param_type, val):
 		if param_type["type"] == "native":
@@ -212,13 +226,14 @@ class Job(object):
 				"dict"	: lambda x: dict(x),
 				"int"	: lambda x: int(x),
 				"unicode"	: lambda x: unicode(x)
-			)
+			}
 			return switch[param_type["name"]](val)
 
 		elif param_type["type"] == "component":
 			component_cls = self._get_component_cls(param_type["name"])
 			component_args = self._convert_params(val, component_cls)
-			val = component_cls(**component_args)
+			val = component_cls(parent_log = self._log)
+			val.init(**component_args)
 			return val
 	
 	def _get_param_types(self, cls):

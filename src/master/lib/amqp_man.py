@@ -10,6 +10,41 @@ import pika
 pika_logger = logging.getLogger('pika')
 pika_logger.setLevel(logging.CRITICAL)
 
+class AmqpQueueHandler(threading.Thread):
+	def __init__(self, callback, queue_name, channel, lock, no_ack, running):
+		super(AmqpQueueHandler, self).__init__()
+
+		self.lock = lock
+		self.channel = channel
+		self.queue_name = queue_name
+		self.callback = callback
+		self.no_ack = no_ack
+		self._running = running
+
+		self._log = logging.getLogger("AmqpMan").getChild(self.queue_name)
+	
+	def run(self):
+		self._running.set()
+		self._log.debug("monitoring")
+
+		while self._running.is_set():
+			with self.lock:
+				method, props, body = self.channel.basic_get(
+					self.queue_name,
+					no_ack=self.no_ack
+				)
+			if method is None:
+				time.sleep(0.1)
+				continue
+			self._log.debug("recieved message")
+			self.callback(self.channel, method, props, body)
+
+		self._log.debug("finished")
+	
+	def stop(self):
+		self._log.debug("stopping")
+		self._running.clear()
+
 class AmqpManager(threading.Thread):
 	"""A class to manage jobs (starting/stopping/cancelling/etc)"""
 
@@ -40,6 +75,8 @@ class AmqpManager(threading.Thread):
 		self._amqp_consume_thread = None
 		self._log = logging.getLogger("AmqpMan")
 
+		self._cached_exchange_declares = []
+		self._cached_bind_queues = []
 		self._cached_queue_declares = []
 		self._cached_queue_consumes = []
 
@@ -64,8 +101,12 @@ class AmqpManager(threading.Thread):
 
 		self._amqp_connect()
 
+		for exchange_name, type in self._cached_exchange_declares:
+			self.declare_exchange(exchange_name, type)
 		for queue_name, props in self._cached_queue_declares:
 			self.declare_queue(queue_name, **props)
+		for exchange_name, queue in self._cached_bind_queues:
+			self.bind_queue(exchange_name, queue)
 		for queue_name, callback, no_ack in self._cached_queue_consumes:
 			self.consume_queue(queue_name, callback, no_ack=no_ack)
 
@@ -106,6 +147,29 @@ class AmqpManager(threading.Thread):
 		res = method.method.message_count
 		return res
 	
+	def declare_exchange(self, name, type):
+		"""Declare an exchange named ``name`` and of type ``type``
+		"""
+		self._log.info("declaring exchange {}, type {}".format(name, type))
+		if self._amqp_channel is None:
+			self._cached_exchange_declares.append((name, type))
+		else:
+			self._amqp_channel.exchange_declare(
+				exchange=name,
+				type=type
+			)
+	
+	def bind_queue(self, exchange, queue):
+		"""Bind the queue ``queue`` to the exchange ``exchange``
+		"""
+		self._log.info("binding queue {!r} to exchange {!r}".format(queue, exchange))
+		if self._amqp_channel is None:
+			self._cached_bind_queues.append((exchange, queue))
+		else:
+			self._amqp_channel.queue_bind( exchange=exchange,
+				queue=queue
+			)
+	
 	def declare_queue(self, queue_name, **props):
 		"""Declare the queue ``queue_name`` with properties defined in
 		``**props`` kwargs. Popular properties to set:
@@ -134,7 +198,16 @@ class AmqpManager(threading.Thread):
 			self._cached_queue_consumes.append((queue_name, callback, no_ack))
 		else:
 			with self._handlers_lock:
-				self._queue_handlers[queue_name] = (callback, no_ack)
+				handler = AmqpQueueHandler(
+					callback,
+					queue_name,
+					self._amqp_channel,
+					self._amqp_lock,
+					no_ack,
+					self._running
+				)
+				self._queue_handlers[queue_name] = handler
+				handler.start()
 	
 	def wait_for_ready(self, timeout=2**31):
 		"""Wait until the AMQP manager is connected and ready to go
@@ -145,17 +218,22 @@ class AmqpManager(threading.Thread):
 		time.sleep(3)
 		self._log.info("connected!")
 	
-	def queue_msg(self, msg, queue_name):
+	def queue_msg(self, msg, queue_name, **props):
 		"""Queue the message ``msg`` in  the queue ``queue_name``
 
 		:param str msg: The message to send (str or unicode)
 		:param str queue_name: The queue to put the message in
+		:param dict **props: Any additional props (exchange, etc)
 		"""
+		default_props = dict(
+			exchange	= ""
+		)
+		default_props.update(props)
 		with self._amqp_lock:
 			self._amqp_channel.basic_publish(
-				"", # default exchange
 				routing_key=queue_name,
-				body=msg
+				body=msg,
+				**default_props
 			)
 	
 	def ack_method(self, method):
@@ -174,19 +252,6 @@ class AmqpManager(threading.Thread):
 		"""
 		"""
 		while self._running.is_set():
-			with self._handlers_lock:
-				items = self._queue_handlers.items()
-			for queue_name,handler_info in items:
-				handler,no_ack = handler_info
-				if self.get_message_count(queue_name, **self._queue_props[queue_name]) == 0:
-					continue
-				self._log.debug("received a message on queue {}".format(queue_name))
-				with self._amqp_lock:
-					method, props, body = self._amqp_channel.basic_get(
-						queue_name,
-						no_ack=no_ack
-					)
-				handler(self._amqp_channel, method, props, body)
 			time.sleep(0.1)
 
 	def _amqp_connect(self):

@@ -5,21 +5,28 @@ import datetime
 from mongoengine import *
 import os
 
-# this is to be set by whatever starts the master docker container
-talus_env = os.environ["TALUS_DB_PORT_27017_TCP"].replace("tcp://", "")
-talus_host,talus_port = talus_env.split(":")
-talus_port = int(talus_port)
+def do_connect():
+	# this is to be set by whatever starts the master docker container
+	talus_env = os.environ["TALUS_DB_PORT_27017_TCP"].replace("tcp://", "")
+	talus_host,talus_port = talus_env.split(":")
+	talus_port = int(talus_port)
 
-connect("talus", host=talus_host, port=talus_port)
+	connect("talus", host=talus_host, port=talus_port)
 
 class Task(Document):
 	name		= StringField(unique_with="tool")
 	tool		= ReferenceField("Code", required=True)
 	params		= DictField()
 	version		= StringField() # intended to be used for git versioning
-	status		= DictField()
 	limit		= IntField(default=1)
 	timestamps	= DictField()
+
+class Result(Document):
+	job			= ReferenceField("Job", required=True)
+	type		= StringField(required=True)
+	tool		= StringField(required=True)
+	data		= DictField()
+	created		= DateTimeField(default=datetime.datetime.now)
 
 class Job(Document):
 	name		= StringField()
@@ -32,6 +39,7 @@ class Job(Document):
 	limit		= IntField(default=1)
 	progress	= IntField(default=0)
 	image		= ReferenceField("Image", required=True)
+	network		= StringField()
 
 class Code(Document):
 	name		= StringField(unique_with="type")
@@ -69,3 +77,4 @@ class Slave(Document):
 	max_vms			= IntField(default=1)
 	running_vms		= IntField(default=0)
 	total_jobs_run	= IntField(default=0)
+	vms				= ListField(DictField())

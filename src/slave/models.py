@@ -8,6 +8,11 @@ import os
 def do_connect(host):
 	connect("talus", host=host, port=27017)
 
+class Result(Document):
+	job			= ReferenceField("Job", required=True)
+	timestamps	= DictField()
+	data		= StringField()
+
 class Task(Document):
 	name		= StringField(unique_with="tool")
 	tool		= ReferenceField("Code", required=True)
@@ -27,6 +32,7 @@ class Job(Document):
 	limit		= IntField(default=1)
 	progress	= IntField(default=0)
 	image		= ReferenceField("Image", required=True)
+	network		= StringField()
 
 class Code(Document):
 	name		= StringField(unique_with="type")

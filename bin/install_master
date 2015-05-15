@@ -1,0 +1,36 @@
+#!/bin/bash
+
+DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+
+cd $DIR/..
+
+echo "installing db"
+src/db/bin/install
+
+echo "installing amqp"
+src/amqp/bin/install
+
+echo "installing web"
+src/web/bin/install
+
+echo "installing master"
+src/master/bin/install
+
+echo "Everything *should* be installed and upstart scripts should be in place"
+echo "Upstart scripts:"
+echo "    /etc/init/talus_db.conf"
+echo "    /etc/init/talus_amqp.conf"
+echo "    /etc/init/talus_web.conf"
+echo "    /etc/init/talus_master.conf"
+echo ""
+echo "logs can either be found in /var/log/talus/, or /var/log/upstart/talus_*.log"
+echo ""
+echo "starting upstart jobs now"
+
+sudo start talus_db
+sudo start talus_amqp
+sudo start talus_web
+sudo start talus_master
+
+echo "done installing, things should be running. The web API should be available at http://localhost/api"
+echo "now"

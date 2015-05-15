@@ -33,7 +33,7 @@ The ``virtio`` drivers must be installed.
 Vagrant Requirements
 """"""""""""""""""""
 
-Vagrant will use ``WinRM`` (windows remote management).to configure the VM. This must be explicitly
+Talus will use ``WinRM`` (windows remote management).to configure the VM. This must be explicitly
 turned on inside the VM before uploading. Below are the steps you should take to configure a windows
 VM for working with Vagrant (mostly taken from "here":https://github.com/WinRb/vagrant-windows#winrm-configuration): ::
 
@@ -43,6 +43,13 @@ VM for working with Vagrant (mostly taken from "here":https://github.com/WinRb/v
     winrm set winrm/config/service @{AllowUnencrypted="true"}
     winrm set winrm/config/service/auth @{Basic="true"}
     sc config WinRM start= auto
+
+Also note that all created networks in the VM must be set the "Work" network. This can be set to be the
+default action by going to: ::
+
+    Open "gpedit.msc" -> Go to Computer Configration –> Windows Settings –> Security Settings –> Network list manager
+
+and setting the appropriate options
 
 The above commands must be run in an Administrator shell. Also, the network must not be set to public (use Work/Private/whatev)
 

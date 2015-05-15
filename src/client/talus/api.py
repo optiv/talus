@@ -213,6 +213,22 @@ class TalusClient(object):
 	
 	def code_find(self, name_or_id, **search):
 		return self._name_or_id(Code, name_or_id, **search)
+	
+	def code_create(self, code_name, code_type):
+		"""Create the code, and return the results"""
+		data = {
+			"name": code_name,
+			"type": code_type
+		}
+		e = MultipartEncoder(fields=data)
+		res = requests.post(self._api_base + "/api/code/create/",
+			data	= e,
+			headers	= {"Content-Type": e.content_type}
+		)
+		if res.status_code // 100 != 2:
+			raise errors.TalusApiError("Could not create code!", error=res.text)
+
+		return res.text
 
 	# -------------------------
 	# task handling
@@ -260,6 +276,18 @@ class TalusClient(object):
 		task.delete()
 		
 	# -------------------------
+	# result handling
+	# -------------------------
+
+	def result_iter(self, **search):
+		"""Iterate through result matching the search criteria
+
+		:search: optional search parameters
+		"""
+		for result in Result.objects(api_base=self._api_base, **search):
+			yield result
+		
+	# -------------------------
 	# slave handling
 	# -------------------------
 
@@ -283,7 +311,7 @@ class TalusClient(object):
 		for job in Job.objects(api_base=self._api_base, **search):
 			yield job
 	
-	def job_create(self, task_name_or_id, image, name=None, params=None, priority=50, queue="jobs", limit=1):
+	def job_create(self, task_name_or_id, image, name=None, params=None, priority=50, queue="jobs", limit=1, network="whitelist"):
 		"""Create a new job (run a task)"""
 		task = self._name_or_id(Task, task_name_or_id)
 		if task is None:
@@ -293,6 +321,13 @@ class TalusClient(object):
 		if image_obj is None:
 			raise errors.TalusApiError("could not locate image with id/name {!r}".format(image))
 		image = image_obj
+
+		if image.status["name"] != "ready":
+			raise errors.TalusApiError("image '{}' ({}) is not in ready state (state is {})".format(
+				image.name,
+				image.id,
+				image.status["name"]
+			))
 
 		if name is None:
 			name = task.name + " " + str(datetime.datetime.now())
@@ -315,7 +350,24 @@ class TalusClient(object):
 		job.priority = priority
 		job.queue = queue
 		job.limit = limit
+		job.network = network
 		job.save()
+		
+		return job
+	
+	def job_cancel(self, job_name_or_id):
+		"""Cancel the job ``job_name_or_id`` in talus
+
+		:job_name_or_id: The job name or id to cancel
+		"""
+		job = self._name_or_id(Job, job_name_or_id)
+		if job is None:
+			raise errors.TalusApiError("could not locate job with name or id {!r}".format(job_name_or_id))
+
+		job.status = {"name": "cancel"}
+		job.save()
+
+		return job
 		
 	# -------------------------
 	# utility

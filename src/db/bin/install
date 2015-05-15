@@ -1,0 +1,22 @@
+#!/bin/bash
+
+sudo mkdir -p /talus/data /var/log/talus/{apache2}
+
+DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+
+$DIR/build
+
+cat << EOF > /tmp/talus_db.conf
+description "Talus DB"
+author		"Optiv Labs"
+
+start on (starting talus_web or starting talus_master)
+stop on shutdown
+respawn
+
+script
+   $(readlink -f $DIR)/start
+end script
+EOF
+
+sudo mv /tmp/talus_db.conf /etc/init/

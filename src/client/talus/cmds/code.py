@@ -11,7 +11,7 @@ import textwrap
 
 from talus.cmds import TalusCmdBase
 import talus.api
-import talus.errors
+import talus.errors as errors
 from talus.models import *
 
 class CodeCmd(TalusCmdBase):
@@ -53,6 +53,38 @@ class CodeCmd(TalusCmdBase):
 				type_ = "component"
 
 		print(tabulate(self._talus_client.code_iter(type_=type_), headers=Code.headers()))
+	
+	def do_create(self, args):
+		"""Create new code in the repository. This will create the code in the talus
+		repository, as well as in the database.
+
+		code create NAME -t or -c
+
+		     -t,--tool    Create a tool
+		-c,--component    Create a component
+		"""
+		parser = argparse.ArgumentParser()
+		parser.add_argument("name")
+		parser.add_argument("--tool", "-t", default=False, action="store_true")
+		parser.add_argument("--component", "-c", default=False, action="store_true")
+
+		args = parser.parse_args(shlex.split(args))
+
+		if not args.tool and not args.component:
+			raise errors.TalusApiError("must specify either a tool or a component, non specified")
+
+		if args.tool and args.component:
+			raise errors.TalusApiError("must specify either a tool or a component, non both")
+
+		if args.tool:
+			code_type = "tool"
+		else:
+			code_type == "component"
+
+		res = self._talus_client.code_create(
+			code_name	= args.name,
+			code_type	= code_type
+		)
 	
 	def do_info(self, args):
 		"""List the details of a code item (tool or component).

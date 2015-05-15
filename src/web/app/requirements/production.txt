@@ -4,3 +4,4 @@ git+git://github.com/marcgibbons/django-rest-swagger.git@master
 django-rest-framework-mongoengine>=2.0
 mongoengine
 pymongo==2.8.0
+sh

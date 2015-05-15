@@ -1,0 +1,64 @@
+<filter name='talus-whitelist'>
+	<uuid>8918d48d-4359-4280-aa4f-1abb23af83fb</uuid>
+
+	<!--
+	referencing the $IP variable lets domain xml reference this network filter
+	and provide a list of $IP addresses that are to be whitelisted. E.g. domain xml:
+
+		...
+			<interface ...>
+				<mac .../>
+				<filterref filter='talus-whitelist'>
+					<parameter name='WHITELIST' value='1.2.3.4' />
+					<parameter name='WHITELIST' value='1.2.3.5' />
+					<parameter name='WHITELIST' value='1.2.3.6' />
+					<parameter name='WHITELIST' value='1.2.3.7' />
+				</filterref>
+			</interface>
+		...
+	-->
+	
+	<rule action='accept' direction='in'>
+		<tcp srcipaddr='$WHITELIST' />
+	</rule>
+	<rule action='accept' direction='in'>
+		<udp srcipaddr='$WHITELIST' />
+	</rule>
+	<rule action='accept' direction='in'>
+		<icmp srcipaddr='$WHITELIST' />
+	</rule>
+	<rule action='accept' direction='in'>
+		<ip srcipaddr='$WHITELIST' />
+	</rule>
+
+
+	<rule action='accept' direction='out'>
+		<tcp dstipaddr='$WHITELIST' />
+	</rule>
+	<rule action='accept' direction='out'>
+		<udp dstipaddr='$WHITELIST' />
+	</rule>
+	<rule action='accept' direction='out'>
+		<icmp dstipaddr='$WHITELIST' />
+	</rule>
+	<rule action='accept' direction='out'>
+		<ip dstipaddr='$WHITELIST' />
+	</rule>
+
+
+	<rule action='drop' direction='inout'>
+		<tcp />
+	</rule>
+	<rule action='drop' direction='inout'>
+		<udp />
+	</rule>
+	<rule action='drop' direction='inout'>
+		<icmp />
+	</rule>
+	<rule action='drop' direction='inout'>
+		<ip />
+	</rule>
+
+	<filterref filter='clean-traffic' />
+
+</filter>

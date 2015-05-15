@@ -196,8 +196,10 @@ class PyClass(object):
 
 		if "components" in self.filename:
 			self.type = "component"
+			self.param_method = "init"
 		elif "tools" in self.filename:
 			self.type = "tool"
+			self.param_method = "run"
 
 		self.node = cls_node
 		self.desc = ""
@@ -223,8 +225,9 @@ class PyClass(object):
 	def get_run_params(self, query_func):
 		self._log.debug("getting run params")
 		params = []
-		if "run" in self.methods:
-			for param in self.methods["run"].params:
+
+		if self.param_method in self.methods:
+			for param in self.methods[self.param_method].params:
 				self._log.debug("  param: {} ({} - {})".format(param.name, param.type.type, param.type.name))
 				if param.type.type == "component" and not query_func(param.type.name):
 					raise TalusError("Invalid component specified ({}) in {}:{}".format(
@@ -242,7 +245,7 @@ class PyClass(object):
 					desc	= param.desc
 				))
 		else:
-			self._log.debug("no run method was specified?")
+			self._log.debug("no {} method was specified?".format(self.param_method))
 		return params
 
 class ChangeHandler(object):

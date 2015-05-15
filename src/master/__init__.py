@@ -16,6 +16,7 @@ import signal
 import sys
 import threading
 
+import master.models
 from master.models import *
 from master.lib.mongo_oplog_watcher import OplogWatcher, OplogPrinter
 from master.lib.amqp_man import AmqpManager
@@ -139,6 +140,7 @@ class Master(object):
 	"""The master class watches the database for changes, queues and handles amqp messages,
 	and handles VM image conversions"""
 
+	AMQP_BROADCAST_XCHG = "broadcast"
 	AMQP_SLAVE_QUEUE = "slaves"
 	AMQP_SLAVE_STATUS_QUEUE = "slave_status"
 
@@ -227,6 +229,10 @@ class Master(object):
 	def _amqp_listen_for_slaves(self):
 		"""Setup amqp queues to listen/respond to slaves
 		"""
+		self._amqp_man.declare_exchange(
+			self.AMQP_BROADCAST_XCHG,
+			"fanout"
+		)
 		self._amqp_man.declare_queue(self.AMQP_SLAVE_QUEUE,
 			durable		= True,
 			auto_delete	= False,
@@ -244,6 +250,8 @@ class Master(object):
 		will also send an initial connection message via this queue
 		in order to get configuration details and report basic stats
 		"""
+		self._amqp_man.ack_method(method)
+
 		data = json.loads(body)
 		switch = dict(
 			new			= self._handle_slave_new,
@@ -255,8 +263,6 @@ class Master(object):
 			self._log.warn("recieved slave data is in the wrong format")
 		else:
 			switch[data["type"]](data)
-
-		self._amqp_man.ack_method(method)
 	
 	def _handle_slave_status(self, data):
 		"""Handle slave status messages"""
@@ -280,6 +286,9 @@ class Master(object):
 		if "total_jobs_run" in data:
 			slave.total_jobs_run = data["total_jobs_run"]
 
+		if "vms" in data:
+			slave.vms = data["vms"]
+
 		slave.save()
 	
 	def _handle_slave_new(self, data):
@@ -302,7 +311,13 @@ class Master(object):
 			json.dumps(dict(
 				type		= "config",
 				db			= self._ip,
-				code		= "ssh://{}/talus/talus_code.git".format(self._ip),
+				code		= dict(
+					loc		= "http://{}/code_cache".format(self._ip),
+
+					# TODO put these in a config file
+					username	= "talus_job",
+					password	= "Monkeys eat bananas and poop all day."
+				),
 				image_url	= "http://{}/images/".format(self._ip)
 			)),
 			self.AMQP_SLAVE_QUEUE + "_" + slave.uuid
@@ -347,8 +362,10 @@ class Master(object):
 def main():
 	_install_sig_handlers()
 
-	master = Master.instance()
-	master.run()
+	master.models.do_connect()
+
+	m = Master.instance()
+	m.run()
 
 if __name__ == "__main__":
 	main()

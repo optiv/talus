@@ -1,0 +1,4 @@
+<filter name='talus-all' chain='ipv4'>
+	<uuid>8974d9d3-8ec6-47b6-80d5-720b8f678cda</uuid>
+	<filterref filter="clean-traffic"/>
+</filter>

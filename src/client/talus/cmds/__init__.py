@@ -11,6 +11,7 @@ import textwrap
 import types
 
 import talus.api
+import talus.errors
 
 ENABLED_COMMANDS = []
 
@@ -49,6 +50,12 @@ class TalusCmdBase(object,cmd.Cmd):
 	def do_quit(self, args):
 		"""Quit the program"""
 		exit()
+	
+	def onecmd(self, *args, **kwargs):
+		try:
+			cmd.Cmd.onecmd(self, *args, **kwargs)
+		except talus.errors.TalusApiError as e:
+			sys.stderr.write(e.message + "\n")
 	
 	@classmethod
 	def get_command_helps(cls):

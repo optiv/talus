@@ -1,5 +1,14 @@
 #!/bin/bash
 
+if [[ "$#" -ne 2 ]] ; then
+	echo "USAGE: $0 <TALUS_MASTER_HOST> <MAX_VMS>"
+	exit
+fi
+
+DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+
+sudo mkdir -p /var/log/talus
+
 sudo apt-get install -y \
 	libvirt-bin \
 	qemu-kvm \
@@ -9,6 +18,39 @@ sudo apt-get install -y \
 	build-essential \
 	python-pip \
 	python-dev \
+	apparmor-utils \
 	wget
 
-pip install xmltodict mongoengine mock pymongo==2.8.0 sh pika netifaces twisted
+pip install \
+	mongoengine \
+	mock \
+	netifaces \
+	paramiko \
+	pika \
+	pymongo==2.8.0 \
+	pywinrm \
+	sh \
+	twisted \
+	xmltodict \
+
+# TODO - figure out what's up with this?
+# libvirt network filters weren't working until I did
+# this....
+sudo aa-complain /usr/sbin/libvirtd
+
+$DIR/install_filters
+
+cat << EOF > /tmp/talus_slave.conf
+description "Talus Slave Daemon"
+author		"Optiv Labs"
+
+start on filesystem or runlevel [2345]
+stop on shutdown
+respawn
+
+script
+	$(readlink -f $DIR)/start_raw $1 $2 2>&1 >> /var/log/talus/slave.log
+end script
+EOF
+
+sudo mv /tmp/talus_slave.conf /etc/init/

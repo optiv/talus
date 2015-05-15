@@ -4,16 +4,10 @@
 from talus import TalusCodeBase
 
 class Component(TalusCodeBase):
-
 	"""This is the baseclass for all Components"""
 
-	def __init__(self):
+	def __init__(self, parent_log):
 		"""Initialize the component """
 		TalusCodeBase.__init__(self)
 
-	def run(self):
-		"""Run the component
-		:returns: TODO
-
-		"""
-		raise NotImplemented
+		self.log = parent_log.getChild(self.__class__.__name__)

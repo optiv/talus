@@ -15,6 +15,7 @@
 import sys
 import os
 import shlex
+import sphinx_rtd_theme
 
 # mock out some dependencies when we build the docs
 
@@ -24,14 +25,45 @@ class Mock(MagicMock):
 	@classmethod
 	def __getattr__(cls, name):
 		return Mock()
+	
+	@classmethod
+	def __getitem__(cls, name):
+		return Mock()
+Mock.__all__ = [
+	"Document",
+	"StringField",
+	"IntField",
+	"DateTimeField",
+	"DictField",
+	"ListField",
+	"ReferenceField"
+]
 
-MOCK_MODULES = ["libvirt", "xmltodict", "mongoengine", "requests", "requests_toolbelt"]
+MOCK_MODULES = [
+	"arrow",
+	"bson",
+	"libvirt",
+	"mongoengine",
+	"netifaces",
+	"requests",
+	"requests.auth",
+	"requests_toolbelt",
+	"requests_toolbelt.multipart",
+	"requests_toolbelt.multipart.encoder",
+	"sh",
+	"Document",
+	"paramiko",
+	"pika",
+	"pymongo",
+	"pymongo.errors",
+	"tabulate",
+	"winrm",
+	"xmltodict",
+]
 
-sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
-
-sys.modules["pymongo"] = pymongo = Mock()
-sys.modules["pymongo.errors"] = pymongo.errors
-sys.modules["pymongo.errors.AutoReconnect"] = pymongo.errors.AutoReconnect
+os.environ["TALUS_DB_PORT_27017_TCP"] = ":"
+for mod_name in MOCK_MODULES:
+	sys.modules[mod_name] = Mock()
 
 # relative path to
 sys.path.insert(0, str(os.path.join(os.path.dirname(__file__), "..", "..", "src")))
@@ -134,7 +166,7 @@ todo_include_todos = True
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-html_theme = 'alabaster'
+html_theme = 'sphinx_rtd_theme'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -142,7 +174,7 @@ html_theme = 'alabaster'
 #html_theme_options = {}
 
 # Add any paths that contain custom themes here, relative to this directory.
-#html_theme_path = []
+html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".

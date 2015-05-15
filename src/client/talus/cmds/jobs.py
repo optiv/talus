@@ -43,13 +43,29 @@ class JobCmd(TalusCmdBase):
 			])
 		print(tabulate(fields, headers=headers))
 	
+	def do_cancel(self, args):
+		"""Cancel the job by name or ID in talus
+
+		job cancel JOB_NAME_OR_ID
+
+		"""
+		job_name_or_id = shlex.split(args)[0]
+
+		job = self._talus_client.job_cancel(job_name_or_id)
+
+		print("stopped")
+	
 	def do_create(self, args):
 		"""Create a new job in Talus
 
-		job create TASK_NAME_OR_ID -i IMAGE [-n NAME] [-p PARAMS] [-q QUEUE] [--priority (0-100)]
+		job create TASK_NAME_OR_ID -i IMAGE [-n NAME] [-p PARAMS] [-q QUEUE] [--priority (0-100)] [--network]
 
 		       -n,--name    The name of the job (defaults to name of the task + timestamp)
 		      --priority    The priority for the job (0-100, defaults to 50)
+			   --network    The network for the image ('all' or 'whitelist'). Whitelist values may
+			                also be a 'whitelist:<domain_or_ip>,<domain_or_ip>' to add domains
+							to the whitelist. Not specifying additional whitelist hosts results
+							in a host-only network filter, plus talus-essential hosts.
 			  -q,--queue    The queue the job should be inserted into (default: jobs)
 			  -i,--image    The image the job should run in (name or id)
 		      -l,--limit    The limit for the task. What the limit means is defined by how the tool
@@ -67,14 +83,18 @@ class JobCmd(TalusCmdBase):
 		parser = argparse.ArgumentParser()
 		parser.add_argument("task_name_or_id")
 		parser.add_argument("--name", "-n", default=None)
+		parser.add_argument("--network", default="whitelist")
 		parser.add_argument("--priority", default=50)
 		parser.add_argument("--limit", "-l", default=None)
-		parser.add_argument("--image", "-i")
+		parser.add_argument("--image", "-i", default=None)
 		parser.add_argument("--queue", "-q", default="jobs")
 		parser.add_argument("--params", "-p", default=None)
 		parser.add_argument("--params-file", "-f", default=None)
 
 		args = parser.parse_args(shlex.split(args))
+
+		if args.image is None:
+			raise talus.errors.TalusApiError("you MUST specify an image to use!")
 
 		params = args.params
 		if args.params_file is not None:
@@ -96,7 +116,8 @@ class JobCmd(TalusCmdBase):
 			params			= params,
 			priority		= args.priority,
 			limit			= args.limit,
-			queue			= args.queue
+			queue			= args.queue,
+			network			= args.network
 		)
 
 		print("created")

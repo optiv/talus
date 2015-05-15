@@ -1,0 +1,17 @@
+#!/bin/bash
+
+while read oldrev newrev ref
+do
+	if [[ $ref =~ .*/master$ ]];
+	then
+		echo "master ref received. updating talus code cache"
+		code_cache="/talus/talus_code_cache/code"
+		if [ ! -d "$code_cache" ]; then
+			echo "code hasn't been checked out yet, performing initial git clone"
+			git clone /talus/talus_code.git "$code_cache"
+		fi
+
+		GIT="git --git-dir $code_cache/.git --work-tree $code_cache"
+		$GIT pull --all
+	fi
+done

@@ -9,6 +9,8 @@ import uuid
 import master.models
 from master.lib.jobs import JobManager
 from master.watchers import WatcherBase
+from master.lib.amqp_man import AmqpManager
+from master import Master
 
 class JobWatcher(WatcherBase):
 	collection = "talus.job"
@@ -76,9 +78,9 @@ class JobWatcher(WatcherBase):
 		"""
 		self._log.info("handling job cancellation")
 
-		self._job_man.cancel_job(job)
-
 		job.status = {
 			"name": "cancelling"
 		}
 		job.save()
+
+		self._job_man.cancel_job(job)

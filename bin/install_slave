@@ -1,0 +1,31 @@
+#!/bin/bash
+
+if [[ "$#" -ne 2 ]] ; then
+	echo "USAGE: $0 <TALUS_MASTER_HOST> <MAX_VMS>"
+	echo ""
+	echo "This should be run ON THE SLAVE machine. Pass in the"
+	echo "talus master host and the max vms for this slave"
+	exit
+fi
+
+master_host="$1"
+max_vms="$2"
+
+DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+
+cd $DIR/..
+
+echo "installing slave"
+src/slave/bin/install "$1" "$2"
+
+echo "The slave should be ready to go now"
+echo "Upstart scripts:"
+echo "    /etc/init/talus_slave.conf"
+echo ""
+echo "logs can be found in /etc/upstart/talus_slave.log"
+echo ""
+echo "starting upstart jobs now"
+
+sudo start talus_slave
+
+echo "done installing, things *should* be running."

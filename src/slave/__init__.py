@@ -10,10 +10,12 @@ import pymongo
 import sh
 import signal
 import socket
+import struct
 import sys
 import threading
 import twisted
 from twisted.internet import protocol, reactor, endpoints
+from twisted.protocols import basic
 import time
 import uuid
 
@@ -23,12 +25,7 @@ import slave.models
 
 logging.basicConfig(level=logging.DEBUG)
 
-logging.getLogger("sh").setLevel(logging.INFO)
-logging.getLogger("sh.stream_bufferer").setLevel(logging.INFO)
-logging.getLogger("sh.command").setLevel(logging.INFO)
-logging.getLogger("sh.command.process").setLevel(logging.INFO)
-logging.getLogger("sh.command.process.stream_writer").setLevel(logging.INFO)
-logging.getLogger("sh.config.process").setLevel(logging.INFO)
+logging.getLogger("sh").setLevel(logging.WARN)
 
 def _signal_handler(signum, frame):
 	"""Shut down the running Master worker
@@ -48,18 +45,30 @@ def _install_sig_handlers():
 	signal.signal(signal.SIGINT, _signal_handler)
 	signal.signal(signal.SIGTERM, _signal_handler)
 
-class GuestComms(object):
+class GuestComms(basic.LineReceiver):
 	"""Communicates with the guest hosts as they start running"""
-	def dataReceived(self, data):
-		data = json.loads(data)
-		res = Slave.instance().handle_guest_comms(data)
-		self.transport.write(res)
+	def connectionMade(self):
+		self.setRawMode()
+
+	def rawDataReceived(self, data):
+		print("RECEIVED SOME DATA!!! {}".format(data))
+
+		while len(data) > 0:
+			data_len = struct.unpack(">L", data[0:4])[0]
+			part = data[4:4+data_len]
+			data = data[4+data_len:]
+
+			part_data = json.loads(part)
+			res = Slave.instance().handle_guest_comms(part_data)
+
+			if res is not None:
+				self.transport.write(res)
 
 class GuestCommsFactory(protocol.Factory):
 	def buildProtocol(self, addr):
 		return GuestComms()
 
-class Slave(object):
+class Slave(threading.Thread):
 	"""The slave handler"""
 
 	AMQP_JOB_QUEUE = "jobs"
@@ -70,12 +79,18 @@ class Slave(object):
 		exclusive	= False
 	)
 
+	AMQP_BROADCAST_XCHG = "broadcast"
 	AMQP_SLAVE_QUEUE = "slaves"
 	AMQP_SLAVE_STATUS_QUEUE = "slave_status"
 	AMQP_SLAVE_PROPS = dict(
 		durable		= True,
 		auto_delete = False,
-		exclusive	= False
+		exclusive	= False,
+	)
+	AMQP_SLAVE_STATUS_PROPS = dict(
+		durable		= True,
+		auto_delete = False,
+		exclusive	= False,
 	)
 
 	_INSTANCE = None
@@ -87,6 +102,9 @@ class Slave(object):
 
 	def __init__(self, amqp_host, max_vms):
 		"""Init the slave"""
+
+		super(Slave, self).__init__()
+
 		self._max_vms_lock = threading.Semaphore(max_vms)
 
 		self._amqp_host = amqp_host
@@ -110,18 +128,28 @@ class Slave(object):
 		self._already_consuming = False
 
 		self._handlers = []
+		self._handlers_lock = threading.Lock()
 		self._total_jobs_run = 0
 
 	def run(self):
 		self._running.set()
 		self._log.info("running")
 
+		self._amqp_man.declare_exchange(self.AMQP_BROADCAST_XCHG, "fanout")
+
 		self._amqp_man.declare_queue(self.AMQP_JOB_QUEUE, **self.AMQP_JOB_PROPS)
 		self._amqp_man.declare_queue(self.AMQP_JOB_STATUS_QUEUE, **self.AMQP_JOB_PROPS)
 
 		self._amqp_man.declare_queue(self.AMQP_SLAVE_QUEUE, **self.AMQP_SLAVE_PROPS)
-		self._amqp_man.declare_queue(self.AMQP_SLAVE_STATUS_QUEUE, **self.AMQP_SLAVE_PROPS)
-		self._amqp_man.declare_queue(self.AMQP_SLAVE_QUEUE + "_" + self._uuid, **self.AMQP_SLAVE_PROPS)
+		self._amqp_man.declare_queue(self.AMQP_SLAVE_STATUS_QUEUE, **self.AMQP_SLAVE_STATUS_PROPS)
+		self._amqp_man.declare_queue(
+			self.AMQP_SLAVE_QUEUE + "_" + self._uuid,
+			exclusive	= True
+		)
+		self._amqp_man.bind_queue(
+			exchange	= self.AMQP_BROADCAST_XCHG,
+			queue		= self.AMQP_SLAVE_QUEUE + "_" + self._uuid
+		)
 		self._amqp_man.do_start()
 		self._amqp_man.wait_for_ready()
 
@@ -156,22 +184,82 @@ class Slave(object):
 		for handler in self._handlers:
 			handler.stop()
 	
+	def cancel_job(self, job):
+		"""
+		Cancel the job with job id ``job``
+
+		:job: The job id to cancel
+		"""
+		for handler in self._handlers:
+			if handler.job == job:
+				self._log.debug("cancelling handler for job {}".format(job))
+				handler.stop()
+				return
+		self._log.warn("could not find handler for job {} to cancel".format(job))
+	
 	# -----------------------
 	# guest comms
 	# -----------------------
 
 	def handle_guest_comms(self, data):
+		self._log.info("recieved guest comms! {}".format(str(data)[:100]))
+
 		if "type" not in data:
 			self._log.warn("type not found in guest comms data: {}".format(data))
 			return "{}"
 
-		if "mac" not in data:
-			self._log.warn("guest comms did not define a mac address")
-			return "{}"
+		switch = dict(
+			progress	= self._handle_job_progress,
+			result		= self._handle_job_result,
+			finished	= self._handle_job_finished,
+		)
 
-		handler = self._handler_macs[data["mac"]]
-		return handler.handle_comms(data)
+		if data["type"] not in switch:
+			self._log.warn("unhandled guest comms type: {}".format(data["type"]))
+			return
+
+		return switch[data["type"]](data)
 	
+	def _handle_job_finished(self, data):
+		self._log.debug("handling finished job part: {}:{}".format(data["job"], data["idx"]))
+
+		found_hander = None
+		with self._handlers_lock:
+			for handler in self._handlers:
+				if handler.job == data["job"] and handler.idx == data["idx"]:
+					found_handler = handler
+
+		if found_handler is not None:
+			found_handler.stop()
+		else:
+			self._log.warn("cannot find the handler for data: {}".format(data))
+	
+	def _handle_job_progress(self, data):
+		self._log.debug("handling job progress: {}:{}".format(data["job"], data["idx"]))
+		self._amqp_man.queue_msg(
+			json.dumps(dict(
+				type		= "progress",
+				job			= data["job"],
+				idx			= data["idx"],
+				amt			= data["data"], # it's expected to just be a number
+			)),
+			self.AMQP_JOB_STATUS_QUEUE
+		)
+	
+	def _handle_job_result(self, data):
+		self._log.debug("handling job result: {}:{}".format(data["job"], data["idx"]))
+
+		self._amqp_man.queue_msg(
+			json.dumps(dict(
+				type		= "result",
+				tool		= data["tool"],
+				idx			= data["idx"],
+				job			= data["job"],
+				data		= data["data"], # it's expected to just be a number
+			)),
+			self.AMQP_JOB_STATUS_QUEUE
+		)
+
 	# -----------------------
 	# amqp stuff
 	# -----------------------
@@ -183,33 +271,65 @@ class Slave(object):
 		self._amqp_man.ack_method(method)
 
 		data = json.loads(body)
-
 		self._max_vms_lock.acquire()
 
-		handler = VMHandler(
-			job			= data["job"],
-			idx			= data["idx"],
-			image		= data["image"],
-			tool		= data["tool"],
-			params		= data["params"],
-			code_loc	= self._code_loc,
-			on_finished	= self._on_vm_handler_finished
-		)
+		jobs = slave.models.Job.objects(id=data["job"])
+		if len(jobs) == 0:
+			self._log.warn("received a job that doesn't exist???")
+			return
 
-		self._handlers.append(handler)
-		handler.start()
+		job_obj = jobs[0]
+		if job_obj.status["name"] != "running":
+			self._log.warn("job's state is not 'running', so not running it (was {})".format(job_obj.status["name"]))
+			self._max_vms_lock.release()
+			return
+
+		try:
+			handler = VMHandler(
+				job				= data["job"],
+				idx				= data["idx"],
+				image			= data["image"],
+				image_username	= data["image_username"],
+				image_password	= data["image_password"],
+				tool			= data["tool"],
+				params			= data["params"],
+				network			= data["network"],
+				code_loc		= self._code_loc,
+				code_username	= self._code_username,
+				code_password	= self._code_password,
+				on_finished		= self._on_vm_handler_finished,
+				on_vnc_available	= self._on_vm_handler_vnc_avail
+			)
+		except KeyError as e:
+			self._log.warn("received malformed job: {!r}".format(data))
+			self._max_vms_lock.release()
+			return
+		else:
+			with self._handlers_lock:
+				self._handlers.append(handler)
+			handler.start()
 
 		self._update_status()
+		self._log.debug("done starting VMHandler")
 	
 	def _on_vm_handler_finished(self, handler):
 		"""
 		Handle a finished VM handler
 		"""
-		self._log.debug("The VM handler {} for job {} has finished".format(handler, handler.job))
-		del self._handlers[self._handlers.index(handler)]
+		self._log.debug("The VM handler {} for job {}:{} has finished".format(handler, handler.job, handler.idx))
+		with self._handlers_lock:
+			del self._handlers[self._handlers.index(handler)]
+
 		self._max_vms_lock.release()
 
 		self._total_jobs_run += 1
+		self._update_status()
+	
+	def _on_vm_handler_vnc_avail(self, handler):
+		"""
+		Send a new status update that will include the changes in the vnc
+		info in the handler.
+		"""
 		self._update_status()
 	
 	def _on_slave_all_received(self, channel, method, properties, body):
@@ -219,24 +339,38 @@ class Slave(object):
 
 		data = json.loads(body)
 
+		if "type" not in data:
+			self._log.warn("all slaves type specifier was not in data: {}".format(data))
+			return
+
 		self._amqp_man.ack_method(method)
 
 	def _on_slave_me_received(self, channel, method, properties, body):
 		"""
 		"""
 		self._log.info("received slave me msg from queue: {}".format(body))
+		self._amqp_man.ack_method(method)
 
 		data = json.loads(body)
 
 		switch = dict(
-			config	= self._handle_config
+			config	= self._handle_config,
+			cancel	= self._handle_job_cancel,
 		)
 
 		if "type" not in data or data["type"] not in switch:
 			self._log.debug("malformed data received on me slave queue: {}".format(body))
 		else:
 			switch[data["type"]](data)
-		self._amqp_man.ack_method(method)
+	
+	def _handle_job_cancel(self, data):
+		self._log.info("handling a job cancellation: {}".format(data))
+
+		if "job" not in data:
+			self._log.warn("the job was not specified")
+			return
+
+		self.cancel_job(data["job"])
 	
 	def _handle_config(self, data):
 		self._log.info("handling config: {}".format(data))
@@ -247,8 +381,10 @@ class Slave(object):
 			slave.models.do_connect(self._db_host)
 
 		if "code" in data:
-			self._log.info("setting code location to {}".format(data["code"]))
-			self._code_loc = data["code"]
+			self._log.info("setting code loc to {}".format(data["code"]["loc"]))
+			self._code_loc = data["code"]["loc"]
+			self._code_username = data["code"]["username"]
+			self._code_password = data["code"]["password"]
 
 		if "image_url" in data:
 			self._log.info("setting image url to {}".format(data["image_url"]))
@@ -262,12 +398,23 @@ class Slave(object):
 	# -----------------------
 
 	def _update_status(self):
+		vm_infos = []
+		for handler in self._handlers:
+			vm_infos.append(dict(
+				job			= handler.job,
+				idx			= handler.idx,
+				vnc_port	= handler.vnc_port,
+				tool		= handler.tool,
+				start_time	= handler.start_time
+			))
+
 		self._amqp_man.queue_msg(
 			json.dumps(dict(
 				type			= "status",
 				uuid			= self._uuid,
 				running_vms		= len(self._handlers),
-				total_jobs_run	= self._total_jobs_run
+				total_jobs_run	= self._total_jobs_run,
+				vms				= vm_infos
 			)),
 			self.AMQP_SLAVE_STATUS_QUEUE
 		)
@@ -275,10 +422,11 @@ class Slave(object):
 def main(amqp_host, max_vms):
 	#_install_sig_handlers()
 
-	endpoints.serverFromString(reactor, "tcp:55555").listen(GuestCommsFactory())
+	virt_ip = netifaces.ifaddresses('virbr0')[2][0]['addr']
+	endpoints.serverFromString(reactor, "tcp:55555:interface={}".format(virt_ip)).listen(GuestCommsFactory())
 
 	slave = Slave.instance(amqp_host, max_vms)
-	reactor.callWhenRunning(slave.run)
+	reactor.callWhenRunning(slave.start)
 	reactor.addSystemEventTrigger("during", "shutdown", Slave.instance().stop)
 	reactor.run()
 

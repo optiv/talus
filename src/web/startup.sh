@@ -2,4 +2,4 @@
 
 cd /web
 
-/usr/sbin/apache2ctl -D FOREGROUND
+/usr/sbin/apache2ctl -D FOREGROUND -D NO_DETACH

@@ -12,14 +12,16 @@ class Tool(TalusCodeBase):
 		"""TODO: to be defined1. """
 		TalusCodeBase.__init__(self)
 
+		self.idx = idx
+		self.log = parent_log.getChild(self.__class__.__name__)
+
 		self._progress_cb = progress_cb
 		self._results_cb = results_cb
-		self._log = parent_log.getChild(self.__class__.__name__)
 	
 	def progress(self, num=1):
 		self._progress_cb(num)
 	
-	def results(self, data):
+	def result(self, data):
 		self._results_cb(data)
 	
 	def run(self, arg1):

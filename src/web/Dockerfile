@@ -15,9 +15,11 @@ RUN apt-get install --no-install-recommends -q -y \
 		python-dev \
 		build-essential \
 		git \
+		supervisor \
 	&& apt-get purge -y --auto-remove python-dev build-essential \
 	&& apt-get clean \
-	&& rm -rf /tmp/* /var/tmp/* /var/lib/apt/lists/*
+	&& rm -rf /tmp/* /var/tmp/* /var/lib/apt/lists/* \
+	&& mkdir -p /var/lock/apache2 /var/run/apache2 /var/log/supervisor
 
 ADD startup.sh /startup.sh
 

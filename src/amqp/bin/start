@@ -14,6 +14,5 @@ sudo docker run \
 	-v /talus/data:/talus/data \
 	--name talus_amqp \
 	--hostname talus_amqp \
-	-it \
 	-p 5672:5672 \
 	$@ talus_amqp

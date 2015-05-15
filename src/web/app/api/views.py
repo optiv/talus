@@ -1,8 +1,15 @@
 import getpass
 import json
+import os
+import pwd
+import re
+from sh import git as GIT
 import shutil
 import tempfile
 import time
+
+code_path = "/code_cache/code"
+git = GIT.bake("--git-dir", os.path.join(code_path, ".git"), "--work-tree", code_path, _tty_out=False)
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -10,8 +17,8 @@ from rest_framework.parsers import MultiPartParser,FormParser,FileUploadParser
 
 from rest_framework_mongoengine.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
 
-from api.models import Image, OS, TmpFile, Code, Task, Job, Slave
-from api.serializers import OSSerializer, ImageSerializer, ImageImportSerializer, CodeSerializer, TaskSerializer, JobSerializer, SlaveSerializer
+from api.models import Image, OS, TmpFile, Code, Task, Job, Slave, Result
+from api.serializers import OSSerializer, ImageSerializer, ImageImportSerializer, CodeSerializer, TaskSerializer, JobSerializer, SlaveSerializer, ResultSerializer
 
 class TmpFileUpload(APIView):
 	parser_classes = (MultiPartParser,FormParser,)
@@ -56,6 +63,14 @@ class FilterableListView(ListCreateAPIView):
 			query_params[k] = v
 
 		return self.model.objects(**query_params)
+
+class ResultList(FilterableListView):
+	serializer_class = ResultSerializer
+	model = Result
+
+class ResultDetails(RetrieveUpdateDestroyAPIView):
+	queryset = Result.objects.all()
+	serializer_class = ResultSerializer
 
 class SlaveList(FilterableListView):
 	serializer_class = SlaveSerializer

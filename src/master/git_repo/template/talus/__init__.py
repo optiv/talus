@@ -1,6 +1,9 @@
 #!/usr/bin/env python 
 # encoding: utf-8
 
+# force all imports to be absolute import paths!
+from __future__ import absolute_import
+
 class TalusCodeBase(object):
 	"""The base class for Talus Tools and Components"""
 
