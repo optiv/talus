@@ -1,0 +1,281 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>master.lib.vm.utils &mdash; Talus 0.0.1 documentation</title>
+  
+
+  
+  
+
+  
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Roboto+Slab:400,700|Inconsolata:400,700&subset=latin,cyrillic' rel='stylesheet' type='text/css'>
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="Talus 0.0.1 documentation" href="../../../../index.html"/>
+        <link rel="up" title="master.lib.vm" href="../vm.html"/> 
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-nav-search">
+        
+          <a href="../../../../index.html" class="fa fa-home"> Talus</a>
+        
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+        
+          
+          
+              <ul class="simple">
+</ul>
+
+          
+        
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../../../../index.html">Talus</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../../../../index.html">Docs</a> &raquo;</li>
+      
+          <li><a href="../../../index.html">Module code</a> &raquo;</li>
+      
+          <li><a href="../../../master.html">master</a> &raquo;</li>
+      
+          <li><a href="../vm.html">master.lib.vm</a> &raquo;</li>
+      
+    <li>master.lib.vm.utils</li>
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document">
+            
+  <h1>Source code for master.lib.vm.utils</h1><div class="highlight"><pre>
+<span class="c">#!/usr/bin/env python</span>
+
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">shlex</span>
+<span class="kn">import</span> <span class="nn">shutil</span>
+<span class="kn">import</span> <span class="nn">subprocess</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">re</span>
+
+<div class="viewcode-block" id="run"><a class="viewcode-back" href="../../../../generated/master.lib.vm.html#master.lib.vm.utils.run">[docs]</a><span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="n">async</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">shell</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">env</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">output_to_stdout</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;Run the command specified by the array `args` and return</span>
+<span class="sd">	the output. If ``async`` is True, the proc object will be returned</span>
+
+<span class="sd">	:args: An array of command arguments to be run</span>
+<span class="sd">	:async: If true, return immediately with the proc object</span>
+<span class="sd">	:returns: output of the command or the proc object if ``async``</span>
+<span class="sd">	&quot;&quot;&quot;</span>
+	<span class="k">if</span> <span class="n">env</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+		<span class="n">proc_env</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+	<span class="k">else</span><span class="p">:</span>
+		<span class="n">proc_env</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+		<span class="n">proc_env</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">env</span><span class="p">)</span>
+
+	<span class="k">if</span> <span class="n">shell</span><span class="p">:</span>
+		<span class="k">if</span> <span class="n">output_to_stdout</span><span class="p">:</span>
+			<span class="n">proc</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">Popen</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="n">stderr</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">STDOUT</span><span class="p">,</span> <span class="n">env</span><span class="o">=</span><span class="n">proc_env</span><span class="p">)</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="n">proc</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">Popen</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="n">stdout</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span> <span class="n">stderr</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">STDOUT</span><span class="p">,</span> <span class="n">env</span><span class="o">=</span><span class="n">proc_env</span><span class="p">)</span>
+	<span class="k">else</span><span class="p">:</span>
+		<span class="n">proc</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">Popen</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="n">shell</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">env</span><span class="o">=</span><span class="n">proc_env</span><span class="p">)</span>
+
+	<span class="k">if</span> <span class="n">async</span><span class="p">:</span>
+		<span class="k">return</span> <span class="n">proc</span>
+	
+	<span class="c"># don&#39;t block</span>
+	<span class="k">else</span><span class="p">:</span>
+		<span class="n">stdout</span><span class="p">,</span><span class="n">_</span> <span class="o">=</span> <span class="n">proc</span><span class="o">.</span><span class="n">communicate</span><span class="p">()</span>
+	<span class="k">return</span> <span class="n">stdout</span>
+	</div>
+<div class="viewcode-block" id="qemu_img_info"><a class="viewcode-back" href="../../../../generated/master.lib.vm.html#master.lib.vm.utils.qemu_img_info">[docs]</a><span class="k">def</span> <span class="nf">qemu_img_info</span><span class="p">(</span><span class="n">image_path</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;Return a dict of info returned by qemu-img info. Assumes the image_path exists</span>
+<span class="sd">	and points to a valid VM image</span>
+
+<span class="sd">	:image_path: path to the image</span>
+<span class="sd">	:returns: dict of returned information about the image</span>
+
+<span class="sd">	&quot;&quot;&quot;</span>
+	<span class="n">output</span> <span class="o">=</span> <span class="n">run</span><span class="p">([</span><span class="s">&quot;qemu-img&quot;</span><span class="p">,</span> <span class="s">&quot;info&quot;</span><span class="p">,</span> <span class="n">image_path</span><span class="p">])</span>
+
+	<span class="n">res</span> <span class="o">=</span> <span class="p">{}</span>
+	<span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">output</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">):</span>
+		<span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s">r&#39;^\s*([^\s].*):\s*(.*)$&#39;</span><span class="p">,</span> <span class="n">line</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">match</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="k">continue</span>
+		<span class="n">res</span><span class="p">[</span><span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)]</span> <span class="o">=</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+
+	<span class="k">return</span> <span class="n">res</span>
+</div>
+<div class="viewcode-block" id="qemu_convert_image"><a class="viewcode-back" href="../../../../generated/master.lib.vm.html#master.lib.vm.utils.qemu_convert_image">[docs]</a><span class="k">def</span> <span class="nf">qemu_convert_image</span><span class="p">(</span><span class="n">image_path</span><span class="p">,</span> <span class="n">target_format</span><span class="p">,</span> <span class="n">target_path</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">orig_format</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;`qemu_convert_image` will conver the image found at `image_path` to the specified format.</span>
+<span class="sd">	It is expected that original file-type detection will be used. The resulting image</span>
+<span class="sd">	will be saved to `target_path`</span>
+
+<span class="sd">	:image_path: The path to the image (e.g. qcow2, vmdk, vdi, raw)</span>
+<span class="sd">	:target_format: The target format (e.g. qcow2, vmdk, vdi, raw)</span>
+<span class="sd">	:target_path: [optional] The path to save the converted image to</span>
+<span class="sd">	:orig_format: [optional] the format of the original image</span>
+<span class="sd">	:returns: The path the converted image was saved to, potentially the same as the original path</span>
+<span class="sd">	:raises: Exception if the original file format cannot be determined or if the image path does</span>
+<span class="sd">	not exist</span>
+<span class="sd">	&quot;&quot;&quot;</span>
+	<span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">image_path</span><span class="p">):</span>
+		<span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;Error, image path {} does not exist!&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">image_path</span><span class="p">))</span>
+
+	<span class="k">if</span> <span class="n">orig_format</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+		<span class="n">orig_format</span> <span class="o">=</span> <span class="n">get_image_format</span><span class="p">(</span><span class="n">image_path</span><span class="p">)</span>
+	<span class="k">if</span> <span class="n">orig_format</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+		<span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;Error, cannot determine original image format&quot;</span><span class="p">)</span>
+
+	<span class="k">if</span> <span class="n">target_path</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+		<span class="n">basename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">image_path</span><span class="p">)</span>
+		<span class="n">parts</span> <span class="o">=</span> <span class="n">basename</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&quot;.&quot;</span><span class="p">)[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+		<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+			<span class="n">left_side</span> <span class="o">=</span> <span class="n">parts</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="n">left_side</span> <span class="o">=</span> <span class="s">&quot;converted_&quot;</span> <span class="o">+</span> <span class="n">basename</span>
+		<span class="n">target_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">image_path</span><span class="p">)</span> <span class="o">+</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">sep</span> <span class="o">+</span> <span class="n">left_side</span> <span class="o">+</span> <span class="s">&quot;.&quot;</span> <span class="o">+</span> <span class="n">target_format</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+	
+	<span class="c"># it&#39;s already in the desired format, so just copy the file if needed</span>
+	<span class="k">if</span> <span class="n">orig_format</span> <span class="o">==</span> <span class="n">target_format</span><span class="p">:</span>
+		<span class="k">return</span> <span class="n">target_path</span>
+
+	<span class="n">args</span> <span class="o">=</span> <span class="p">[</span><span class="s">&quot;qemu-img&quot;</span><span class="p">,</span> <span class="s">&quot;convert&quot;</span><span class="p">,</span> <span class="s">&quot;-f&quot;</span><span class="p">,</span> <span class="n">orig_format</span><span class="p">,</span> <span class="s">&quot;-O&quot;</span><span class="p">,</span> <span class="n">target_format</span><span class="p">,</span> <span class="n">image_path</span><span class="p">,</span> <span class="n">target_path</span><span class="p">]</span>
+	<span class="n">output</span> <span class="o">=</span> <span class="n">run</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
+
+	<span class="k">return</span> <span class="n">target_path</span>
+</div>
+<div class="viewcode-block" id="get_image_format"><a class="viewcode-back" href="../../../../generated/master.lib.vm.html#master.lib.vm.utils.get_image_format">[docs]</a><span class="k">def</span> <span class="nf">get_image_format</span><span class="p">(</span><span class="n">image_path</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;Get the format of the VM image at `image_path`</span>
+
+<span class="sd">	:image_path: The path to the VM image</span>
+<span class="sd">	:returns: The format of the VM image, or None if it cannot be determined</span>
+<span class="sd">	&quot;&quot;&quot;</span>
+	<span class="n">info</span> <span class="o">=</span> <span class="n">qemu_img_info</span><span class="p">(</span><span class="n">image_path</span><span class="p">)</span>
+	<span class="k">if</span> <span class="s">&quot;file format&quot;</span> <span class="ow">in</span> <span class="n">info</span><span class="p">:</span>
+		<span class="k">return</span> <span class="n">info</span><span class="p">[</span><span class="s">&quot;file format&quot;</span><span class="p">]</span>
+	<span class="k">else</span><span class="p">:</span>
+		<span class="c"># try using the `file` command</span>
+		<span class="n">output</span> <span class="o">=</span> <span class="n">run</span><span class="p">([</span><span class="s">&quot;file&quot;</span><span class="p">,</span> <span class="n">image_path</span><span class="p">])</span>
+		<span class="k">if</span> <span class="s">&quot;VDI&quot;</span> <span class="ow">in</span> <span class="n">output</span><span class="p">:</span>
+			<span class="k">return</span> <span class="s">&quot;vdi&quot;</span>
+		<span class="k">if</span> <span class="s">&quot;VMDK&quot;</span> <span class="ow">in</span> <span class="n">output</span> <span class="ow">or</span> <span class="s">&quot;vmdk&quot;</span> <span class="ow">in</span> <span class="n">output</span><span class="p">:</span>
+			<span class="k">return</span> <span class="s">&quot;vmdk&quot;</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="k">return</span> <span class="bp">None</span>
+
+	<span class="k">return</span> <span class="bp">None</span></div>
+</pre></div>
+
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015, Optiv Labs.
+    </p>
+  </div>
+
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+  
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../../',
+            VERSION:'0.0.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

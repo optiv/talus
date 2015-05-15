@@ -1,0 +1,258 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>slave.vm.comms package &mdash; Talus 0.0.1 documentation</title>
+  
+
+  
+  
+
+  
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Roboto+Slab:400,700|Inconsolata:400,700&subset=latin,cyrillic' rel='stylesheet' type='text/css'>
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="Talus 0.0.1 documentation" href="../index.html"/> 
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-nav-search">
+        
+          <a href="../index.html" class="fa fa-home"> Talus</a>
+        
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+        
+          
+          
+              <ul class="simple">
+</ul>
+
+          
+        
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../index.html">Talus</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../index.html">Docs</a> &raquo;</li>
+      
+    <li>slave.vm.comms package</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          <a href="../_sources/generated/slave.vm.comms.txt" rel="nofollow"> View page source</a>
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document">
+            
+  <div class="section" id="slave-vm-comms-package">
+<h1>slave.vm.comms package<a class="headerlink" href="#slave-vm-comms-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="module-slave.vm.comms">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-slave.vm.comms" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="slave.vm.comms.SSHComms">
+<em class="property">class </em><code class="descclassname">slave.vm.comms.</code><code class="descname">SSHComms</code><a class="reference internal" href="../_modules/slave/vm/comms.html#SSHComms"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.vm.comms.SSHComms" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#slave.vm.comms.VMComms" title="slave.vm.comms.VMComms"><code class="xref py py-class docutils literal"><span class="pre">slave.vm.comms.VMComms</span></code></a></p>
+</dd></dl>
+
+<dl class="class">
+<dt id="slave.vm.comms.VMComms">
+<em class="property">class </em><code class="descclassname">slave.vm.comms.</code><code class="descname">VMComms</code><a class="reference internal" href="../_modules/slave/vm/comms.html#VMComms"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.vm.comms.VMComms" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<dl class="method">
+<dt id="slave.vm.comms.VMComms.connect">
+<code class="descname">connect</code><span class="sig-paren">(</span><em>ip</em>, <em>username</em>, <em>password</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave/vm/comms.html#VMComms.connect"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.vm.comms.VMComms.connect" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="classmethod">
+<dt id="slave.vm.comms.VMComms.get_comms">
+<em class="property">classmethod </em><code class="descname">get_comms</code><span class="sig-paren">(</span><em>vm_type</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave/vm/comms.html#VMComms.get_comms"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.vm.comms.VMComms.get_comms" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get an appropriate VMComms implementation for the vm type</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>vm_type</strong> (<em>str</em>) &#8211; either <code class="docutils literal"><span class="pre">VM_TYPE_LINUX</span></code> or <code class="docutils literal"><span class="pre">VM_TYPE_WINDOWS</span></code></td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">An appropriate VMComms instance</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="slave.vm.comms.VMComms.put_file">
+<code class="descname">put_file</code><span class="sig-paren">(</span><em>location</em>, <em>contents</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave/vm/comms.html#VMComms.put_file"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.vm.comms.VMComms.put_file" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="slave.vm.comms.VMComms.run_cmd">
+<code class="descname">run_cmd</code><span class="sig-paren">(</span><em>background=False</em>, <em>*cmd</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave/vm/comms.html#VMComms.run_cmd"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.vm.comms.VMComms.run_cmd" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="slave.vm.comms.VMComms.run_script">
+<code class="descname">run_script</code><span class="sig-paren">(</span><em>script</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave/vm/comms.html#VMComms.run_script"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.vm.comms.VMComms.run_script" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="slave.vm.comms.VMComms.sep">
+<code class="descname">sep</code><em class="property"> = '/'</em><a class="headerlink" href="#slave.vm.comms.VMComms.sep" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="slave.vm.comms.VMComms.tmp_loc">
+<code class="descname">tmp_loc</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave/vm/comms.html#VMComms.tmp_loc"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.vm.comms.VMComms.tmp_loc" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="slave.vm.comms.WinrmComms">
+<em class="property">class </em><code class="descclassname">slave.vm.comms.</code><code class="descname">WinrmComms</code><a class="reference internal" href="../_modules/slave/vm/comms.html#WinrmComms"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.vm.comms.WinrmComms" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#slave.vm.comms.VMComms" title="slave.vm.comms.VMComms"><code class="xref py py-class docutils literal"><span class="pre">slave.vm.comms.VMComms</span></code></a></p>
+<dl class="method">
+<dt id="slave.vm.comms.WinrmComms.connect">
+<code class="descname">connect</code><span class="sig-paren">(</span><em>ip</em>, <em>username</em>, <em>password</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave/vm/comms.html#WinrmComms.connect"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.vm.comms.WinrmComms.connect" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="slave.vm.comms.WinrmComms.put_file">
+<code class="descname">put_file</code><span class="sig-paren">(</span><em>location</em>, <em>contents</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave/vm/comms.html#WinrmComms.put_file"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.vm.comms.WinrmComms.put_file" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="slave.vm.comms.WinrmComms.run_cmd">
+<code class="descname">run_cmd</code><span class="sig-paren">(</span><em>background</em>, <em>*cmd</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave/vm/comms.html#WinrmComms.run_cmd"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.vm.comms.WinrmComms.run_cmd" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="slave.vm.comms.WinrmComms.run_script">
+<code class="descname">run_script</code><span class="sig-paren">(</span><em>script</em>, <em>background=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave/vm/comms.html#WinrmComms.run_script"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.vm.comms.WinrmComms.run_script" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="slave.vm.comms.WinrmComms.sep">
+<code class="descname">sep</code><em class="property"> = '\\'</em><a class="headerlink" href="#slave.vm.comms.WinrmComms.sep" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="slave.vm.comms.WinrmComms.tmp_loc">
+<code class="descname">tmp_loc</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave/vm/comms.html#WinrmComms.tmp_loc"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.vm.comms.WinrmComms.tmp_loc" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015, Optiv Labs.
+    </p>
+  </div>
+
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+  
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../',
+            VERSION:'0.0.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../_static/jquery.js"></script>
+      <script type="text/javascript" src="../_static/underscore.js"></script>
+      <script type="text/javascript" src="../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

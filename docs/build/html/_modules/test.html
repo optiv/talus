@@ -1,0 +1,274 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>test &mdash; Talus 0.0.1 documentation</title>
+  
+
+  
+  
+
+  
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Roboto+Slab:400,700|Inconsolata:400,700&subset=latin,cyrillic' rel='stylesheet' type='text/css'>
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="Talus 0.0.1 documentation" href="../index.html"/>
+        <link rel="up" title="Module code" href="index.html"/> 
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-nav-search">
+        
+          <a href="../index.html" class="fa fa-home"> Talus</a>
+        
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+        
+          
+          
+              <ul class="simple">
+</ul>
+
+          
+        
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../index.html">Talus</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../index.html">Docs</a> &raquo;</li>
+      
+          <li><a href="index.html">Module code</a> &raquo;</li>
+      
+    <li>test</li>
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document">
+            
+  <h1>Source code for test</h1><div class="highlight"><pre>
+<span class="c">#!/usr/bin/env python</span>
+<span class="c"># encoding: utf-8</span>
+
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">time</span>
+
+<span class="kn">import</span> <span class="nn">talus.api</span>
+<span class="kn">from</span> <span class="nn">talus.models</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">import</span> <span class="nn">talus.models</span>
+
+<span class="n">talus</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">set_base</span><span class="p">(</span><span class="s">&quot;http://localhost:8001&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="test_os_and_image_models"><a class="viewcode-back" href="../generated/test.html#test.test_os_and_image_models">[docs]</a><span class="k">def</span> <span class="nf">test_os_and_image_models</span><span class="p">():</span>
+	<span class="n">existing_os</span> <span class="o">=</span> <span class="n">OS</span><span class="o">.</span><span class="n">find_one</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s">&quot;testing os&quot;</span><span class="p">)</span>
+	<span class="k">if</span> <span class="n">existing_os</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+		<span class="n">new_os</span> <span class="o">=</span> <span class="n">OS</span><span class="p">(</span><span class="s">&quot;http://localhost:8001&quot;</span><span class="p">)</span>
+		<span class="n">new_os</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">&quot;testing os&quot;</span>
+		<span class="n">new_os</span><span class="o">.</span><span class="n">arch</span> <span class="o">=</span> <span class="s">&quot;x86&quot;</span>
+		<span class="n">new_os</span><span class="o">.</span><span class="n">type</span> <span class="o">=</span> <span class="s">&quot;windows&quot;</span>
+		<span class="n">new_os</span><span class="o">.</span><span class="n">version</span> <span class="o">=</span> <span class="s">&quot;10&quot;</span>
+		<span class="n">new_os</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+		<span class="n">existing_os</span> <span class="o">=</span> <span class="n">new_os</span>
+
+	<span class="n">new_image</span> <span class="o">=</span> <span class="n">Image</span><span class="p">(</span><span class="s">&quot;http://localhost:8001&quot;</span><span class="p">)</span>
+	<span class="n">new_image</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">&quot;test image&quot;</span>
+	<span class="n">new_image</span><span class="o">.</span><span class="n">os</span> <span class="o">=</span> <span class="n">existing_os</span>
+	<span class="n">new_image</span><span class="o">.</span><span class="n">desc</span> <span class="o">=</span> <span class="s">&quot;this is a description&quot;</span>
+	<span class="n">new_image</span><span class="o">.</span><span class="n">tags</span> <span class="o">=</span> <span class="p">[</span><span class="s">&quot;these&quot;</span><span class="p">,</span> <span class="s">&quot;are&quot;</span><span class="p">,</span> <span class="s">&quot;some&quot;</span><span class="p">,</span> <span class="s">&quot;tags&quot;</span><span class="p">]</span>
+	<span class="n">new_image</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s">&quot;importing&quot;</span><span class="p">,</span> <span class="n">tmpfile</span><span class="o">=</span><span class="s">&quot;/tmp/blah&quot;</span><span class="p">)</span>
+	<span class="n">new_image</span><span class="o">.</span><span class="n">base_image</span> <span class="o">=</span> <span class="bp">None</span>
+
+	<span class="n">new_image</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+	<span class="n">new_image</span><span class="o">.</span><span class="n">delete</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="test_image_import"><a class="viewcode-back" href="../generated/test.html#test.test_image_import">[docs]</a><span class="k">def</span> <span class="nf">test_image_import</span><span class="p">(</span><span class="n">image_path</span><span class="p">,</span> <span class="n">image_name</span><span class="p">):</span>
+	<span class="k">def</span> <span class="nf">progress_callback</span><span class="p">():</span>
+		<span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;.&quot;</span><span class="p">)</span>
+		<span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+	
+	<span class="n">existing_os</span> <span class="o">=</span> <span class="n">OS</span><span class="o">.</span><span class="n">find_one</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s">&quot;testing os&quot;</span><span class="p">)</span>
+	<span class="k">if</span> <span class="n">existing_os</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+		<span class="n">new_os</span> <span class="o">=</span> <span class="n">OS</span><span class="p">(</span><span class="s">&quot;http://localhost:8001&quot;</span><span class="p">)</span>
+		<span class="n">new_os</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">&quot;testing os&quot;</span>
+		<span class="n">new_os</span><span class="o">.</span><span class="n">arch</span> <span class="o">=</span> <span class="s">&quot;x86&quot;</span>
+		<span class="n">new_os</span><span class="o">.</span><span class="n">type</span> <span class="o">=</span> <span class="s">&quot;windows&quot;</span>
+		<span class="n">new_os</span><span class="o">.</span><span class="n">version</span> <span class="o">=</span> <span class="s">&quot;10&quot;</span>
+		<span class="n">new_os</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+		<span class="n">existing_os</span> <span class="o">=</span> <span class="n">new_os</span>
+	
+	<span class="n">client</span> <span class="o">=</span> <span class="n">talus</span><span class="o">.</span><span class="n">api</span><span class="o">.</span><span class="n">TalusClient</span><span class="p">(</span><span class="s">&quot;http://localhost:8001&quot;</span><span class="p">)</span>
+
+	<span class="n">client</span><span class="o">.</span><span class="n">image_delete</span><span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">image_name</span><span class="p">)</span>
+
+	<span class="n">image</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">image_import</span><span class="p">(</span><span class="n">image_path</span><span class="p">,</span> <span class="n">image_name</span><span class="p">,</span> <span class="n">existing_os</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s">&quot;some description&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s">&quot;windows&quot;</span><span class="p">,</span> <span class="s">&quot;7&quot;</span><span class="p">,</span> <span class="s">&quot;x64&quot;</span><span class="p">])</span>
+
+	<span class="k">while</span> <span class="n">image</span><span class="o">.</span><span class="n">status</span><span class="p">[</span><span class="s">&quot;name&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="s">&quot;configuring&quot;</span><span class="p">:</span>
+		<span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+		<span class="n">image</span><span class="o">.</span><span class="n">refresh</span><span class="p">()</span>
+	
+	<span class="k">print</span><span class="p">(</span><span class="s">&quot;image is running and waiting to be configured!&quot;</span><span class="p">)</span>
+	<span class="k">print</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">status</span><span class="p">)</span>
+	<span class="k">print</span><span class="p">(</span><span class="s">&quot;shut down the VM when ready!, be sure the firewall is open and virtio drivers are installed!&quot;</span><span class="p">)</span>
+	<span class="k">print</span><span class="p">(</span><span class="s">&quot;a CD-ROM should be mounted in the VM containing the virtio drivers&quot;</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="test_image_configure_with_interaction"><a class="viewcode-back" href="../generated/test.html#test.test_image_configure_with_interaction">[docs]</a><span class="k">def</span> <span class="nf">test_image_configure_with_interaction</span><span class="p">(</span><span class="n">image_name</span><span class="p">):</span>
+	<span class="n">client</span> <span class="o">=</span> <span class="n">talus</span><span class="o">.</span><span class="n">api</span><span class="o">.</span><span class="n">TalusClient</span><span class="p">(</span><span class="s">&quot;http://localhost:8001&quot;</span><span class="p">)</span>
+
+	<span class="n">image</span> <span class="o">=</span> <span class="n">talus</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">Image</span><span class="o">.</span><span class="n">find_one</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">image_name</span><span class="p">)</span>
+
+	<span class="n">image</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">image_configure</span><span class="p">(</span>
+		<span class="n">image</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+		<span class="n">user_interaction</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>
+		<span class="n">vagrantfile</span><span class="o">=</span><span class="bp">None</span>
+	<span class="p">)</span>
+
+	<span class="k">while</span> <span class="n">image</span><span class="o">.</span><span class="n">status</span><span class="p">[</span><span class="s">&quot;name&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="s">&quot;configuring&quot;</span><span class="p">:</span>
+		<span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+		<span class="n">image</span><span class="o">.</span><span class="n">refresh</span><span class="p">()</span>
+	
+	<span class="k">print</span><span class="p">(</span><span class="s">&quot;ready to interact with!&quot;</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="test_image_configure_without_interaction"><a class="viewcode-back" href="../generated/test.html#test.test_image_configure_without_interaction">[docs]</a><span class="k">def</span> <span class="nf">test_image_configure_without_interaction</span><span class="p">(</span><span class="n">image_name</span><span class="p">):</span>
+	<span class="n">image</span> <span class="o">=</span> <span class="n">talus</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">Image</span><span class="o">.</span><span class="n">find_one</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">image_name</span><span class="p">)</span>
+
+	<span class="n">client</span> <span class="o">=</span> <span class="n">talus</span><span class="o">.</span><span class="n">api</span><span class="o">.</span><span class="n">TalusClient</span><span class="p">(</span><span class="s">&quot;http://localhost:8001&quot;</span><span class="p">)</span>
+	<span class="n">image</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">image_configure</span><span class="p">(</span>
+		<span class="n">image</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+		<span class="n">user_interaction</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span>
+		<span class="n">vagrantfile</span><span class="o">=</span><span class="s">&quot;&quot;&quot;</span>
+<span class="s">			Vagrant.configure(&quot;2&quot;) do |config|</span>
+<span class="s">				config.vm.box = &quot;blah&quot;</span>
+<span class="s">				config.winrm.username = &quot;user&quot;</span>
+<span class="s">				config.winrm.password = &quot;password&quot;</span>
+
+<span class="s">				config.vm.provision &quot;shell&quot;, inline: &quot;echo blah &gt;&gt; C:</span><span class="se">\\\\</span><span class="s">Users</span><span class="se">\\\\</span><span class="s">user</span><span class="se">\\\\</span><span class="s">Desktop</span><span class="se">\\\\</span><span class="s">FROM_VAGRANT1.txt&quot;</span>
+<span class="s">				config.vm.provision &quot;shell&quot;, inline: &quot;echo blah &gt;&gt; C:</span><span class="se">\\\\</span><span class="s">Users</span><span class="se">\\\\</span><span class="s">user</span><span class="se">\\\\</span><span class="s">Desktop</span><span class="se">\\\\</span><span class="s">FROM_VAGRANT2.txt&quot;</span>
+<span class="s">				config.vm.provision &quot;shell&quot;, inline: &quot;echo blah &gt;&gt; C:</span><span class="se">\\\\</span><span class="s">Users</span><span class="se">\\\\</span><span class="s">user</span><span class="se">\\\\</span><span class="s">Desktop</span><span class="se">\\\\</span><span class="s">FROM_VAGRANT3.txt&quot;</span>
+<span class="s">				config.vm.provision &quot;shell&quot;, inline: &quot;echo blah &gt;&gt; C:</span><span class="se">\\\\</span><span class="s">Users</span><span class="se">\\\\</span><span class="s">user</span><span class="se">\\\\</span><span class="s">Desktop</span><span class="se">\\\\</span><span class="s">FROM_VAGRANT4.txt&quot;</span>
+<span class="s">			end</span>
+<span class="s">		&quot;&quot;&quot;</span>
+	<span class="p">)</span>
+
+	<span class="k">while</span> <span class="n">image</span><span class="o">.</span><span class="n">status</span><span class="p">[</span><span class="s">&quot;name&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="s">&quot;ready&quot;</span><span class="p">:</span>
+		<span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+		<span class="n">image</span><span class="o">.</span><span class="n">refresh</span><span class="p">()</span>
+	
+	<span class="k">print</span><span class="p">(</span><span class="s">&quot;update complete!&quot;</span><span class="p">)</span>
+</div>
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&quot;__main__&quot;</span><span class="p">:</span>
+		<span class="n">image_name</span> <span class="o">=</span> <span class="s">&quot;win7pro_testing7&quot;</span><span class="p">,</span>
+
+		<span class="n">test_image_import</span><span class="p">(</span><span class="s">&quot;~/images/win7pro_x64-disk1.vmdk&quot;</span><span class="p">,</span> <span class="n">image_name</span><span class="p">)</span>
+		<span class="c">#test_image_configure_with_interaction(image_name)</span>
+		<span class="c">#test_image_configure_without_interaction(image_name)</span>
+</pre></div>
+
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015, Optiv Labs.
+    </p>
+  </div>
+
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+  
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../',
+            VERSION:'0.0.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../_static/jquery.js"></script>
+      <script type="text/javascript" src="../_static/underscore.js"></script>
+      <script type="text/javascript" src="../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

@@ -1,0 +1,291 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>slave.vm.comms &mdash; Talus 0.0.1 documentation</title>
+  
+
+  
+  
+
+  
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Roboto+Slab:400,700|Inconsolata:400,700&subset=latin,cyrillic' rel='stylesheet' type='text/css'>
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="Talus 0.0.1 documentation" href="../../../index.html"/>
+        <link rel="up" title="slave.vm" href="../vm.html"/> 
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-nav-search">
+        
+          <a href="../../../index.html" class="fa fa-home"> Talus</a>
+        
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+        
+          
+          
+              <ul class="simple">
+</ul>
+
+          
+        
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../../../index.html">Talus</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../../../index.html">Docs</a> &raquo;</li>
+      
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+      
+          <li><a href="../../slave.html">slave</a> &raquo;</li>
+      
+          <li><a href="../vm.html">slave.vm</a> &raquo;</li>
+      
+    <li>slave.vm.comms</li>
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document">
+            
+  <h1>Source code for slave.vm.comms</h1><div class="highlight"><pre>
+<span class="c">#!/usr/bin/env python</span>
+<span class="c"># encoding: utf-8</span>
+
+<span class="kn">import</span> <span class="nn">base64</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">paramiko</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">winrm</span>
+
+<span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">)</span>
+
+<span class="n">VM_TYPE_LINUX</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">VM_TYPE_WINDOWS</span> <span class="o">=</span> <span class="mi">1</span>
+
+<div class="viewcode-block" id="VMComms"><a class="viewcode-back" href="../../../generated/slave.vm.comms.html#slave.vm.comms.VMComms">[docs]</a><span class="k">class</span> <span class="nc">VMComms</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+	<span class="n">sep</span> <span class="o">=</span> <span class="s">&quot;/&quot;</span>
+
+	<span class="nd">@classmethod</span>
+<div class="viewcode-block" id="VMComms.get_comms"><a class="viewcode-back" href="../../../generated/slave.vm.comms.html#slave.vm.comms.VMComms.get_comms">[docs]</a>	<span class="k">def</span> <span class="nf">get_comms</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vm_type</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Get an appropriate VMComms implementation for the vm type</span>
+
+<span class="sd">		:param str vm_type: either ``VM_TYPE_LINUX`` or ``VM_TYPE_WINDOWS``</span>
+<span class="sd">		:returns: An appropriate VMComms instance</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">switch</span> <span class="o">=</span> <span class="p">{</span>
+			<span class="n">VM_TYPE_LINUX</span><span class="p">:</span> <span class="n">SSHComms</span><span class="p">,</span>
+			<span class="n">VM_TYPE_WINDOWS</span><span class="p">:</span> <span class="n">WinrmComms</span>
+		<span class="p">}</span>
+
+		<span class="k">if</span> <span class="n">vm_type</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">switch</span><span class="p">:</span>
+			<span class="k">return</span> <span class="bp">None</span>
+
+		<span class="k">return</span> <span class="n">switch</span><span class="p">[</span><span class="n">vm_type</span><span class="p">]()</span>
+</div>
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">)</span>
+	
+<div class="viewcode-block" id="VMComms.tmp_loc"><a class="viewcode-back" href="../../../generated/slave.vm.comms.html#slave.vm.comms.VMComms.tmp_loc">[docs]</a>	<span class="k">def</span> <span class="nf">tmp_loc</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="k">raise</span> <span class="bp">NotImplemented</span><span class="p">(</span><span class="s">&quot;Inheriting classes must implement the tmp_loc function&quot;</span><span class="p">)</span>
+	</div>
+<div class="viewcode-block" id="VMComms.connect"><a class="viewcode-back" href="../../../generated/slave.vm.comms.html#slave.vm.comms.VMComms.connect">[docs]</a>	<span class="k">def</span> <span class="nf">connect</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ip</span><span class="p">,</span> <span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="p">):</span>
+		<span class="k">raise</span> <span class="bp">NotImplemented</span><span class="p">(</span><span class="s">&quot;Inheriting classes must implement the connect function&quot;</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="VMComms.run_cmd"><a class="viewcode-back" href="../../../generated/slave.vm.comms.html#slave.vm.comms.VMComms.run_cmd">[docs]</a>	<span class="k">def</span> <span class="nf">run_cmd</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">background</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="o">*</span><span class="n">cmd</span><span class="p">):</span>
+		<span class="k">raise</span> <span class="bp">NotImplemented</span><span class="p">(</span><span class="s">&quot;Inheriting classes must implement the run_cmd function&quot;</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="VMComms.run_script"><a class="viewcode-back" href="../../../generated/slave.vm.comms.html#slave.vm.comms.VMComms.run_script">[docs]</a>	<span class="k">def</span> <span class="nf">run_script</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">script</span><span class="p">):</span>
+		<span class="k">raise</span> <span class="bp">NotImplemented</span><span class="p">(</span><span class="s">&quot;Inheriting classes must implement the run_script function&quot;</span><span class="p">)</span>
+	</div>
+<div class="viewcode-block" id="VMComms.put_file"><a class="viewcode-back" href="../../../generated/slave.vm.comms.html#slave.vm.comms.VMComms.put_file">[docs]</a>	<span class="k">def</span> <span class="nf">put_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">location</span><span class="p">,</span> <span class="n">contents</span><span class="p">):</span>
+		<span class="k">raise</span> <span class="bp">NotImplemented</span><span class="p">(</span><span class="s">&quot;Inheriting classes must implement the put_file function&quot;</span><span class="p">)</span>
+</div></div>
+<div class="viewcode-block" id="WinrmComms"><a class="viewcode-back" href="../../../generated/slave.vm.comms.html#slave.vm.comms.WinrmComms">[docs]</a><span class="k">class</span> <span class="nc">WinrmComms</span><span class="p">(</span><span class="n">VMComms</span><span class="p">):</span>
+	<span class="n">sep</span> <span class="o">=</span> <span class="s">&quot;</span><span class="se">\\</span><span class="s">&quot;</span>
+
+<div class="viewcode-block" id="WinrmComms.connect"><a class="viewcode-back" href="../../../generated/slave.vm.comms.html#slave.vm.comms.WinrmComms.connect">[docs]</a>	<span class="k">def</span> <span class="nf">connect</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ip</span><span class="p">,</span> <span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;connecting to VM at {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">ip</span><span class="p">))</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_sess</span> <span class="o">=</span> <span class="n">winrm</span><span class="o">.</span><span class="n">Session</span><span class="p">(</span><span class="n">ip</span><span class="p">,</span> <span class="p">(</span><span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="p">))</span>
+
+		<span class="c"># loop until we can successfully </span>
+		<span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+			<span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
+			<span class="k">try</span><span class="p">:</span>
+				<span class="n">r</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sess</span><span class="o">.</span><span class="n">run_cmd</span><span class="p">(</span><span class="s">&quot;echo&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s">&quot;blah&quot;</span><span class="p">])</span>
+				<span class="k">if</span> <span class="s">&quot;blah&quot;</span> <span class="ow">in</span> <span class="n">r</span><span class="o">.</span><span class="n">std_out</span><span class="p">:</span>
+					<span class="k">break</span>
+			<span class="k">except</span><span class="p">:</span>
+				<span class="k">pass</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;connected to VM at {}!&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">ip</span><span class="p">))</span>
+	</div>
+<div class="viewcode-block" id="WinrmComms.tmp_loc"><a class="viewcode-back" href="../../../generated/slave.vm.comms.html#slave.vm.comms.WinrmComms.tmp_loc">[docs]</a>	<span class="k">def</span> <span class="nf">tmp_loc</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="k">return</span> <span class="s">&#39;$([System.Environment]::ExpandEnvironmentVariables(&quot;%TEMP%&quot;))&#39;</span>
+	</div>
+<div class="viewcode-block" id="WinrmComms.run_cmd"><a class="viewcode-back" href="../../../generated/slave.vm.comms.html#slave.vm.comms.WinrmComms.run_cmd">[docs]</a>	<span class="k">def</span> <span class="nf">run_cmd</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">background</span><span class="p">,</span> <span class="o">*</span><span class="n">cmd</span><span class="p">):</span>
+		<span class="k">if</span> <span class="n">background</span><span class="p">:</span>
+			<span class="n">cmd</span> <span class="o">=</span> <span class="p">[</span><span class="s">&quot;start&quot;</span><span class="p">,</span> <span class="s">&quot;cmd&quot;</span><span class="p">,</span> <span class="s">&quot;/k&quot;</span><span class="p">,</span> <span class="s">&#39;&quot;{}&quot;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s">&#39;&quot;&#39;</span> <span class="o">+</span> <span class="n">x</span> <span class="o">+</span> <span class="s">&#39;&quot;&#39;</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">cmd</span><span class="p">))]</span>
+
+		<span class="n">r</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sess</span><span class="o">.</span><span class="n">run_cmd</span><span class="p">(</span><span class="n">cmd</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">cmd</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span>
+		<span class="k">return</span> <span class="n">r</span><span class="o">.</span><span class="n">std_out</span>
+	</div>
+<div class="viewcode-block" id="WinrmComms.run_script"><a class="viewcode-back" href="../../../generated/slave.vm.comms.html#slave.vm.comms.WinrmComms.run_script">[docs]</a>	<span class="k">def</span> <span class="nf">run_script</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">script</span><span class="p">,</span> <span class="n">background</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+		<span class="k">if</span> <span class="n">background</span><span class="p">:</span>
+			<span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_script_background</span><span class="p">(</span><span class="n">script</span><span class="p">)</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="n">r</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sess</span><span class="o">.</span><span class="n">run_ps</span><span class="p">(</span><span class="n">script</span><span class="p">)</span>
+			<span class="k">return</span> <span class="n">r</span><span class="o">.</span><span class="n">std_out</span>
+	</div>
+	<span class="k">def</span> <span class="nf">_run_script_background</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">script</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Run the script in the background (do not block)</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">base64_script</span> <span class="o">=</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64encode</span><span class="p">(</span><span class="n">script</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s">&quot;utf_16_le&quot;</span><span class="p">))</span>
+		<span class="n">cmd</span> <span class="o">=</span> <span class="s">&quot;powershell -encodedcommand </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">base64_script</span>
+		<span class="n">shell_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sess</span><span class="o">.</span><span class="n">protocol</span><span class="o">.</span><span class="n">open_shell</span><span class="p">()</span>
+		<span class="n">command_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sess</span><span class="o">.</span><span class="n">protocol</span><span class="o">.</span><span class="n">run_command</span><span class="p">(</span><span class="n">shell_id</span><span class="p">,</span> <span class="n">cmd</span><span class="p">,</span> <span class="p">[])</span>
+
+		<span class="k">return</span> <span class="p">(</span><span class="n">shell_id</span><span class="p">,</span> <span class="n">command_id</span><span class="p">)</span>
+	
+<div class="viewcode-block" id="WinrmComms.put_file"><a class="viewcode-back" href="../../../generated/slave.vm.comms.html#slave.vm.comms.WinrmComms.put_file">[docs]</a>	<span class="k">def</span> <span class="nf">put_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">location</span><span class="p">,</span> <span class="n">contents</span><span class="p">):</span>
+		<span class="c"># max is supposed to be 2047 characters</span>
+		<span class="n">step</span> <span class="o">=</span> <span class="mi">1500</span>
+		<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">contents</span><span class="p">),</span> <span class="n">step</span><span class="p">):</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_do_put_file</span><span class="p">(</span><span class="n">location</span><span class="p">,</span> <span class="n">contents</span><span class="p">[</span><span class="n">i</span><span class="p">:</span><span class="n">i</span><span class="o">+</span><span class="n">step</span><span class="p">])</span>
+	</div>
+	<span class="k">def</span> <span class="nf">_do_put_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">location</span><span class="p">,</span> <span class="n">contents</span><span class="p">):</span>
+		<span class="c"># adapted/copied from https://github.com/diyan/pywinrm/issues/18</span>
+		<span class="n">ps_script</span> <span class="o">=</span> <span class="s">&quot;&quot;&quot;</span>
+<span class="s">$filePath = &quot;{location}&quot;</span>
+<span class="s">$s = @&quot;</span>
+<span class="s">{b64_contents}</span>
+<span class="s">&quot;@</span>
+<span class="s">$data = [System.Convert]::FromBase64String($s)</span>
+<span class="s">add-content -value $data -encoding byte -path $filePath</span>
+<span class="s">		&quot;&quot;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+			<span class="n">location</span>		<span class="o">=</span> <span class="n">location</span><span class="p">,</span>
+			<span class="n">b64_contents</span>	<span class="o">=</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64encode</span><span class="p">(</span><span class="n">contents</span><span class="p">)</span>
+		<span class="p">)</span>
+
+		<span class="n">r</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sess</span><span class="o">.</span><span class="n">run_ps</span><span class="p">(</span><span class="n">ps_script</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">r</span><span class="o">.</span><span class="n">status_code</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">std_err</span><span class="p">)</span>
+			<span class="k">return</span> <span class="bp">None</span>
+
+		<span class="k">return</span> <span class="n">r</span><span class="o">.</span><span class="n">std_out</span>
+</div>
+<div class="viewcode-block" id="SSHComms"><a class="viewcode-back" href="../../../generated/slave.vm.comms.html#slave.vm.comms.SSHComms">[docs]</a><span class="k">class</span> <span class="nc">SSHComms</span><span class="p">(</span><span class="n">VMComms</span><span class="p">):</span>
+	<span class="k">pass</span></div>
+</pre></div>
+
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015, Optiv Labs.
+    </p>
+  </div>
+
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+  
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../',
+            VERSION:'0.0.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

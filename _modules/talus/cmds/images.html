@@ -1,0 +1,395 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>talus.cmds.images &mdash; Talus 0.0.1 documentation</title>
+  
+
+  
+  
+
+  
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Roboto+Slab:400,700|Inconsolata:400,700&subset=latin,cyrillic' rel='stylesheet' type='text/css'>
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="Talus 0.0.1 documentation" href="../../../index.html"/>
+        <link rel="up" title="talus.cmds" href="../cmds.html"/> 
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-nav-search">
+        
+          <a href="../../../index.html" class="fa fa-home"> Talus</a>
+        
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+        
+          
+          
+              <ul class="simple">
+</ul>
+
+          
+        
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../../../index.html">Talus</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../../../index.html">Docs</a> &raquo;</li>
+      
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+      
+          <li><a href="../cmds.html">talus.cmds</a> &raquo;</li>
+      
+    <li>talus.cmds.images</li>
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document">
+            
+  <h1>Source code for talus.cmds.images</h1><div class="highlight"><pre>
+<span class="c">#!/usr/bin/env python</span>
+<span class="c"># encoding: utf-8</span>
+
+<span class="kn">import</span> <span class="nn">argparse</span>
+<span class="kn">import</span> <span class="nn">cmd</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">shlex</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">from</span> <span class="nn">tabulate</span> <span class="kn">import</span> <span class="n">tabulate</span>
+<span class="kn">import</span> <span class="nn">time</span>
+
+<span class="kn">from</span> <span class="nn">talus.cmds</span> <span class="kn">import</span> <span class="n">TalusCmdBase</span>
+<span class="kn">import</span> <span class="nn">talus.api</span>
+<span class="kn">from</span> <span class="nn">talus.models</span> <span class="kn">import</span> <span class="n">Image</span>
+
+<div class="viewcode-block" id="ImageCmd"><a class="viewcode-back" href="../../../generated/talus.cmds.html#talus.cmds.images.ImageCmd">[docs]</a><span class="k">class</span> <span class="nc">ImageCmd</span><span class="p">(</span><span class="n">TalusCmdBase</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;The Talus images command processor</span>
+<span class="sd">	&quot;&quot;&quot;</span>
+
+	<span class="n">command_name</span> <span class="o">=</span> <span class="s">&quot;image&quot;</span>
+
+<div class="viewcode-block" id="ImageCmd.do_list"><a class="viewcode-back" href="../../../generated/talus.cmds.html#talus.cmds.images.ImageCmd.do_list">[docs]</a>	<span class="k">def</span> <span class="nf">do_list</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">args</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;List existing images in Talus</span>
+<span class="sd">		</span>
+<span class="sd">		image list</span>
+
+<span class="sd">		Examples:</span>
+
+<span class="sd">		List all images in Talus:</span>
+
+<span class="sd">			image list</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="k">print</span><span class="p">(</span><span class="n">tabulate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_talus_client</span><span class="o">.</span><span class="n">image_iter</span><span class="p">(),</span> <span class="n">headers</span><span class="o">=</span><span class="n">Image</span><span class="o">.</span><span class="n">headers</span><span class="p">()))</span>
+	</div>
+<div class="viewcode-block" id="ImageCmd.do_info"><a class="viewcode-back" href="../../../generated/talus.cmds.html#talus.cmds.images.ImageCmd.do_info">[docs]</a>	<span class="k">def</span> <span class="nf">do_info</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">args</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;List detailed information about an image</span>
+
+<span class="sd">		info ID_OR_NAME</span>
+
+<span class="sd">		Examples:</span>
+
+<span class="sd">		List info about the image named &quot;Win 7 Pro&quot;</span>
+
+<span class="sd">			image info &quot;Win 7 Pro&quot;</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="k">pass</span>
+</div>
+<div class="viewcode-block" id="ImageCmd.do_import"><a class="viewcode-back" href="../../../generated/talus.cmds.html#talus.cmds.images.ImageCmd.do_import">[docs]</a>	<span class="k">def</span> <span class="nf">do_import</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">args</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Import an image into Talus</span>
+
+<span class="sd">		import FILE -n NAME -o OSID [-d DESC] [-t TAG1,TAG2,..] [-u USER] [-p PASS] [-i]</span>
+
+<span class="sd">		            FILE    The file to import</span>
+<span class="sd">			     -o,--os    ID or name of the operating system model</span>
+<span class="sd">		       -n,--name    The name of the resulting image (default: basename(FILE))</span>
+<span class="sd">			   -d,--desc    A description of the image (default: &quot;&quot;)</span>
+<span class="sd">			   -t,--tags    Tags associated with the image (default: [])</span>
+<span class="sd">			-f,--file-id    The id of an already-uploaded file (NOT A NORMAL USE CASE)</span>
+<span class="sd">	       -u,--username    The username to be used in the image (default: user)</span>
+<span class="sd">	       -p,--password    The password to be used in the image (default: password)</span>
+<span class="sd">		-i,--interactive    To interact with the imported image for setup (default: False)</span>
+
+<span class="sd">		Examples:</span>
+
+<span class="sd">		To import an image from VMWare at ``~/images/win7pro.vmdk`` named &quot;win 7 pro test&quot;</span>
+<span class="sd">		and to be given a chance to perform some manual setup/checks:</span>
+
+<span class="sd">			image import ~/images/win7pro.vmdk -n &quot;win 7 pro test&quot; -i -o &quot;win7pro&quot; -t windows7,x64,IE8</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">()</span>
+		<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&quot;file&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">)</span>
+		<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&quot;--os&quot;</span><span class="p">,</span> <span class="s">&quot;-o&quot;</span><span class="p">)</span>
+		<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&quot;--name&quot;</span><span class="p">,</span> <span class="s">&quot;-n&quot;</span><span class="p">)</span>
+		<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&quot;--desc&quot;</span><span class="p">,</span> <span class="s">&quot;-d&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s">&quot;desc&quot;</span><span class="p">)</span>
+		<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&quot;--file-id&quot;</span><span class="p">,</span> <span class="s">&quot;-f&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">None</span><span class="p">)</span>
+		<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&quot;--tags&quot;</span><span class="p">,</span> <span class="s">&quot;-t&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s">&quot;&quot;</span><span class="p">)</span>
+		<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&quot;--username&quot;</span><span class="p">,</span> <span class="s">&quot;-u&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s">&quot;user&quot;</span><span class="p">)</span>
+		<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&quot;--password&quot;</span><span class="p">,</span> <span class="s">&quot;-p&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s">&quot;password&quot;</span><span class="p">)</span>
+		<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&quot;--interactive&quot;</span><span class="p">,</span> <span class="s">&quot;-i&quot;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s">&quot;store_true&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+
+		<span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">(</span><span class="n">shlex</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">args</span><span class="p">))</span>
+
+		<span class="n">args</span><span class="o">.</span><span class="n">tags</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">tags</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&quot;,&quot;</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">name</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="n">args</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">file</span><span class="p">)</span>
+
+		<span class="n">image</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_talus_client</span><span class="o">.</span><span class="n">image_import</span><span class="p">(</span>
+			<span class="n">image_path</span>	<span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">file</span><span class="p">,</span>
+			<span class="n">image_name</span>	<span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+			<span class="n">os_id</span>		<span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">os</span><span class="p">,</span>
+			<span class="n">desc</span>		<span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">desc</span><span class="p">,</span>
+			<span class="n">tags</span>		<span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">tags</span><span class="p">,</span>
+			<span class="n">file_id</span>		<span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">file_id</span><span class="p">,</span>
+			<span class="n">username</span>	<span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">username</span><span class="p">,</span>
+			<span class="n">password</span>	<span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">password</span>
+		<span class="p">)</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_wait_for_image</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">interactive</span><span class="p">)</span>
+	</div>
+<div class="viewcode-block" id="ImageCmd.do_create"><a class="viewcode-back" href="../../../generated/talus.cmds.html#talus.cmds.images.ImageCmd.do_create">[docs]</a>	<span class="k">def</span> <span class="nf">do_create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">args</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Create a new image in talus using an existing base image. Anything not explicitly</span>
+<span class="sd">		specified will be inherited from the base image, except for the name, which is required.</span>
+
+<span class="sd">		create -n NAME -b BASEID_NAME [-d DESC] [-t TAG1,TAG2,..] [-u USER] [-p PASS] [-o OSID] [-i]</span>
+
+<span class="sd">			     -o,--os    ID or name of the operating system model</span>
+<span class="sd">		       -b,--base    ID or name of the base image</span>
+<span class="sd">		       -n,--name    The name of the resulting image (default: basename(FILE))</span>
+<span class="sd">			   -d,--desc    A description of the image (default: &quot;&quot;)</span>
+<span class="sd">			   -t,--tags    Tags associated with the image (default: [])</span>
+<span class="sd">		-v,--vagrantfile    A vagrant file that will be used to congfigure the image</span>
+<span class="sd">		-i,--interactive    To interact with the imported image for setup (default: False)</span>
+
+<span class="sd">		Examples:</span>
+
+<span class="sd">		To create a new image based on the image with id 222222222222222222222222 and adding</span>
+<span class="sd">		a new description and allowing for manual user setup:</span>
+
+<span class="sd">			image create -b 222222222222222222222222 -d &quot;some new description&quot; -i</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">()</span>
+		<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&quot;--os&quot;</span><span class="p">,</span> <span class="s">&quot;-o&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">None</span><span class="p">)</span>
+		<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&quot;--base&quot;</span><span class="p">,</span> <span class="s">&quot;-b&quot;</span><span class="p">)</span>
+		<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&quot;--name&quot;</span><span class="p">,</span> <span class="s">&quot;-n&quot;</span><span class="p">)</span>
+		<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&quot;--desc&quot;</span><span class="p">,</span> <span class="s">&quot;-d&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">None</span><span class="p">)</span>
+		<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&quot;--tags&quot;</span><span class="p">,</span> <span class="s">&quot;-t&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">None</span><span class="p">)</span>
+		<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&quot;--vagrantfile&quot;</span><span class="p">,</span> <span class="s">&quot;-v&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">argparse</span><span class="o">.</span><span class="n">FileType</span><span class="p">(</span><span class="s">&quot;rb&quot;</span><span class="p">))</span>
+		<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&quot;--interactive&quot;</span><span class="p">,</span> <span class="s">&quot;-i&quot;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s">&quot;store_true&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+
+		<span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">(</span><span class="n">shlex</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">args</span><span class="p">))</span>
+
+		<span class="n">vagrantfile_contents</span> <span class="o">=</span> <span class="bp">None</span>
+		<span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">vagrantfile</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="n">vagrantfile_contents</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">vagrantfile</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+
+		<span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">tags</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="n">args</span><span class="o">.</span><span class="n">tags</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">tags</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&quot;,&quot;</span><span class="p">)</span>
+
+		<span class="n">image</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_talus_client</span><span class="o">.</span><span class="n">image_create</span><span class="p">(</span>
+			<span class="n">image_name</span>				<span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+			<span class="n">base_image_id_or_name</span>	<span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">base</span><span class="p">,</span>
+			<span class="n">os_id</span>					<span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">os</span><span class="p">,</span>
+			<span class="n">desc</span>					<span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">desc</span><span class="p">,</span>
+			<span class="n">tags</span>					<span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">tags</span><span class="p">,</span>
+			<span class="n">vagrantfile</span>				<span class="o">=</span> <span class="n">vagrantfile_contents</span><span class="p">,</span>
+			<span class="n">user_interaction</span>		<span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">interactive</span>
+		<span class="p">)</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_wait_for_image</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">interactive</span><span class="p">)</span>
+	</div>
+<div class="viewcode-block" id="ImageCmd.do_configure"><a class="viewcode-back" href="../../../generated/talus.cmds.html#talus.cmds.images.ImageCmd.do_configure">[docs]</a>	<span class="k">def</span> <span class="nf">do_configure</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">args</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Configure an existing image in talus</span>
+
+<span class="sd">		configure ID_OR_NAME [-v PATH_TO_VAGRANTFILE] [-i]</span>
+
+<span class="sd">		      id_or_name    The ID or name of the image that is to be configured (required)</span>
+<span class="sd">		-i,--interactive    To interact with the imported image for setup (default: False)</span>
+<span class="sd">		-v,--vagrantfile    The path to the vagrantfile that should be used to configure the image (default=None)</span>
+
+<span class="sd">		Examples:</span>
+
+<span class="sd">		To configure an image named &quot;Windows 7 x64 Test&quot;, using a vagrantfile found</span>
+<span class="sd">		at `~/vagrantfiles/UpdateIE` with no interaction:</span>
+
+<span class="sd">			configure &quot;Windows 7 x64 Test&quot; --vagrantfile ~/vagrantfiles/UpdateIE</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">()</span>
+		<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&quot;image_id_or_name&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">)</span>
+		<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&quot;--interactive&quot;</span><span class="p">,</span> <span class="s">&quot;-i&quot;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s">&quot;store_true&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+		<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&quot;--vagrantfile&quot;</span><span class="p">,</span> <span class="s">&quot;-v&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">argparse</span><span class="o">.</span><span class="n">FileType</span><span class="p">(</span><span class="s">&quot;rb&quot;</span><span class="p">))</span>
+
+		<span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">(</span><span class="n">shlex</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">args</span><span class="p">))</span>
+
+		<span class="n">vagrantfile_contents</span> <span class="o">=</span> <span class="bp">None</span>
+		<span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">vagrantfile</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="n">vagrantfile_contents</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">vagrantfile</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+
+		<span class="n">image</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_talus_client</span><span class="o">.</span><span class="n">image_configure</span><span class="p">(</span>
+			<span class="n">args</span><span class="o">.</span><span class="n">image_id_or_name</span><span class="p">,</span>
+			<span class="n">vagrantfile</span><span class="o">=</span><span class="n">vagrantfile_contents</span><span class="p">,</span>
+			<span class="n">user_interaction</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">interactive</span>
+		<span class="p">)</span>
+
+		<span class="k">if</span> <span class="n">image</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="k">return</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_wait_for_image</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">interactive</span><span class="p">)</span>
+	</div>
+<div class="viewcode-block" id="ImageCmd.do_delete"><a class="viewcode-back" href="../../../generated/talus.cmds.html#talus.cmds.images.ImageCmd.do_delete">[docs]</a>	<span class="k">def</span> <span class="nf">do_delete</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">args</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Attempt to delete the specified image. This may fail if the image is the</span>
+<span class="sd">		base image for another image.</span>
+
+<span class="sd">		delete id_or_name</span>
+
+<span class="sd">		id_or_name    The ID or name of the image that is to be deleted</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">args</span> <span class="o">=</span> <span class="n">shlex</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
+		<span class="n">image</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_talus_client</span><span class="o">.</span><span class="n">image_delete</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+		<span class="k">if</span> <span class="n">image</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="k">return</span>
+
+		<span class="k">try</span><span class="p">:</span>
+			<span class="k">while</span> <span class="n">image</span><span class="o">.</span><span class="n">status</span><span class="p">[</span><span class="s">&quot;name&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s">&quot;delete&quot;</span><span class="p">:</span>
+				<span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+				<span class="n">image</span><span class="o">.</span><span class="n">refresh</span><span class="p">()</span>
+
+			<span class="k">if</span> <span class="s">&quot;error&quot;</span> <span class="ow">in</span> <span class="n">image</span><span class="o">.</span><span class="n">status</span><span class="p">:</span>
+				<span class="k">print</span><span class="p">(</span><span class="s">&quot;could not delete image due to: &quot;</span> <span class="o">+</span> <span class="n">image</span><span class="o">.</span><span class="n">status</span><span class="p">[</span><span class="s">&quot;error&quot;</span><span class="p">])</span>
+			<span class="k">else</span><span class="p">:</span>
+				<span class="k">print</span><span class="p">(</span><span class="s">&quot;could not delete image&quot;</span><span class="p">)</span>
+		<span class="k">except</span><span class="p">:</span>
+			<span class="k">print</span><span class="p">(</span><span class="s">&quot;image succesfully deleted&quot;</span><span class="p">)</span>
+
+	<span class="c"># ----------------------------</span>
+	<span class="c"># UTILITY</span>
+	<span class="c"># ----------------------------</span>
+</div>
+	<span class="k">def</span> <span class="nf">_wait_for_image</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">interactive</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Wait for the image to be ready, either for interactive interaction</span>
+<span class="sd">		or to enter the ready state&quot;&quot;&quot;</span>
+		<span class="k">if</span> <span class="n">interactive</span><span class="p">:</span>
+			<span class="k">while</span> <span class="n">image</span><span class="o">.</span><span class="n">status</span><span class="p">[</span><span class="s">&quot;name&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="s">&quot;configuring&quot;</span><span class="p">:</span>
+				<span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+				<span class="n">image</span><span class="o">.</span><span class="n">refresh</span><span class="p">()</span>
+
+			<span class="k">print</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">status</span><span class="p">[</span><span class="s">&quot;vnc&quot;</span><span class="p">])</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="k">while</span> <span class="n">image</span><span class="o">.</span><span class="n">status</span><span class="p">[</span><span class="s">&quot;name&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="s">&quot;ready&quot;</span><span class="p">:</span>
+				<span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+				<span class="n">image</span><span class="o">.</span><span class="n">refresh</span><span class="p">()</span>
+
+			<span class="k">print</span><span class="p">(</span><span class="s">&quot;image {!r} is ready for use&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">name</span><span class="p">))</span></div>
+</pre></div>
+
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015, Optiv Labs.
+    </p>
+  </div>
+
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+  
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../',
+            VERSION:'0.0.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

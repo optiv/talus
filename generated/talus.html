@@ -1,0 +1,725 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>talus package &mdash; Talus 0.0.1 documentation</title>
+  
+
+  
+  
+
+  
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Roboto+Slab:400,700|Inconsolata:400,700&subset=latin,cyrillic' rel='stylesheet' type='text/css'>
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="Talus 0.0.1 documentation" href="../index.html"/> 
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-nav-search">
+        
+          <a href="../index.html" class="fa fa-home"> Talus</a>
+        
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+        
+          
+          
+              <ul class="simple">
+</ul>
+
+          
+        
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../index.html">Talus</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../index.html">Docs</a> &raquo;</li>
+      
+    <li>talus package</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          <a href="../_sources/generated/talus.txt" rel="nofollow"> View page source</a>
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document">
+            
+  <div class="section" id="talus-package">
+<h1>talus package<a class="headerlink" href="#talus-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="subpackages">
+<h2>Subpackages<a class="headerlink" href="#subpackages" title="Permalink to this headline">¶</a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="talus.cmds.html">talus.cmds package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="talus.cmds.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="talus.cmds.html#module-talus.cmds.code">talus.cmds.code module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="talus.cmds.html#module-talus.cmds.images">talus.cmds.images module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="talus.cmds.html#module-talus.cmds.jobs">talus.cmds.jobs module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="talus.cmds.html#module-talus.cmds.oses">talus.cmds.oses module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="talus.cmds.html#module-talus.cmds.results">talus.cmds.results module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="talus.cmds.html#module-talus.cmds.slaves">talus.cmds.slaves module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="talus.cmds.html#module-talus.cmds.tasks">talus.cmds.tasks module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="talus.cmds.html#module-talus.cmds">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-talus.api">
+<span id="talus-api-module"></span><h2>talus.api module<a class="headerlink" href="#module-talus.api" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="talus.api.TalusClient">
+<em class="property">class </em><code class="descclassname">talus.api.</code><code class="descname">TalusClient</code><span class="sig-paren">(</span><em>api_base='http://localhost:8001'</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/api.html#TalusClient"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.api.TalusClient" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<p>An api client that will communicate with Talus</p>
+<dl class="method">
+<dt id="talus.api.TalusClient.code_create">
+<code class="descname">code_create</code><span class="sig-paren">(</span><em>code_name</em>, <em>code_type</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/api.html#TalusClient.code_create"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.api.TalusClient.code_create" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create the code, and return the results</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="talus.api.TalusClient.code_find">
+<code class="descname">code_find</code><span class="sig-paren">(</span><em>name_or_id</em>, <em>**search</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/api.html#TalusClient.code_find"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.api.TalusClient.code_find" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="talus.api.TalusClient.code_iter">
+<code class="descname">code_iter</code><span class="sig-paren">(</span><em>type_=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/api.html#TalusClient.code_iter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.api.TalusClient.code_iter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return an iterator that iterates over all existing Code models in Talus
+:returns: iterator</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="talus.api.TalusClient.image_configure">
+<code class="descname">image_configure</code><span class="sig-paren">(</span><em>image_id_or_name</em>, <em>vagrantfile=None</em>, <em>user_interaction=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/api.html#TalusClient.image_configure"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.api.TalusClient.image_configure" title="Permalink to this definition">¶</a></dt>
+<dd><p>Configure the image with id <code class="docutils literal"><span class="pre">image_id</span></code>. An instance of the image will
+be spun up which you can then configure. Shutting down the image will commit
+any changes.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name" colspan="2">Image_id_or_name:</th></tr>
+<tr class="field-odd field"><td>&nbsp;</td><td class="field-body">The id or name of the image that is to be configured</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Vagrantfile:</th><td class="field-body">The contents of a vagrantfile that is to be used to configure the image</td>
+</tr>
+<tr class="field-odd field"><th class="field-name" colspan="2">User_interaction:</th></tr>
+<tr class="field-odd field"><td>&nbsp;</td><td class="field-body">If the user should be given a chance to manually interact</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">The configured image</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="talus.api.TalusClient.image_create">
+<code class="descname">image_create</code><span class="sig-paren">(</span><em>image_name</em>, <em>base_image_id_or_name</em>, <em>os_id</em>, <em>desc=''</em>, <em>tags=None</em>, <em>vagrantfile=None</em>, <em>user_interaction=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/api.html#TalusClient.image_create"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.api.TalusClient.image_create" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a new VM image based on an existing image.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Image_name:</th><td class="field-body">The name of the new VM image (to be created)</td>
+</tr>
+<tr class="field-even field"><th class="field-name" colspan="2">Base_image_id_or_name:</th></tr>
+<tr class="field-even field"><td>&nbsp;</td><td class="field-body">The id or name of the base image</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Os_id:</th><td class="field-body">The id of the operating system</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Desc:</th><td class="field-body">A description of the new image</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Tags:</th><td class="field-body">A list of tags associated with the new image</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Vagrantfile:</th><td class="field-body">The Vagrantfile to run when creating the new image</td>
+</tr>
+<tr class="field-odd field"><th class="field-name" colspan="2">User_interaction:</th></tr>
+<tr class="field-odd field"><td>&nbsp;</td><td class="field-body">Allow user interaction to occur (vs automatically shutting down the VM after the vagrantfile is run)</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">The created image</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="talus.api.TalusClient.image_delete">
+<code class="descname">image_delete</code><span class="sig-paren">(</span><em>image_id_or_name</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/api.html#TalusClient.image_delete"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.api.TalusClient.image_delete" title="Permalink to this definition">¶</a></dt>
+<dd><p>Delete the image with id <code class="docutils literal"><span class="pre">image_id</span></code> or name <code class="docutils literal"><span class="pre">name</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Image_id:</th><td class="field-body">The id of the image to delete</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="talus.api.TalusClient.image_import">
+<code class="descname">image_import</code><span class="sig-paren">(</span><em>image_path</em>, <em>image_name</em>, <em>os_id</em>, <em>desc='desc'</em>, <em>tags=None</em>, <em>username='user'</em>, <em>password='password'</em>, <em>file_id=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/api.html#TalusClient.image_import"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.api.TalusClient.image_import" title="Permalink to this definition">¶</a></dt>
+<dd><p>TODO: Docstring for import_image.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Image_path:</th><td class="field-body">The path to the image to be uploaded</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Image_name:</th><td class="field-body">The name of the resulting image</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Os_id:</th><td class="field-body">The id or name of the operating system document (string)</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Desc:</th><td class="field-body">A description of the image</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Tags:</th><td class="field-body">An array of tags associated with this VM image (e.g. [&#8220;browser&#8221;, &#8220;ie&#8221;, &#8220;ie10&#8221;, &#8220;windows&#8221;])</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Username:</th><td class="field-body">The username to be used in the image</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Password:</th><td class="field-body">The password associated with the username</td>
+</tr>
+<tr class="field-even field"><th class="field-name">File_id:</th><td class="field-body">The id of the file that has already been uploaded to the server</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">The configured image</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="talus.api.TalusClient.image_iter">
+<code class="descname">image_iter</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/api.html#TalusClient.image_iter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.api.TalusClient.image_iter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return an iterator that iterates over all existing images in Talus
+:returns: iterator over all existing images</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="talus.api.TalusClient.job_cancel">
+<code class="descname">job_cancel</code><span class="sig-paren">(</span><em>job_name_or_id</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/api.html#TalusClient.job_cancel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.api.TalusClient.job_cancel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Cancel the job <code class="docutils literal"><span class="pre">job_name_or_id</span></code> in talus</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Job_name_or_id:</th><td class="field-body">The job name or id to cancel</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="talus.api.TalusClient.job_create">
+<code class="descname">job_create</code><span class="sig-paren">(</span><em>task_name_or_id</em>, <em>image</em>, <em>name=None</em>, <em>params=None</em>, <em>priority=50</em>, <em>queue='jobs'</em>, <em>limit=1</em>, <em>network='whitelist'</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/api.html#TalusClient.job_create"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.api.TalusClient.job_create" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a new job (run a task)</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="talus.api.TalusClient.job_iter">
+<code class="descname">job_iter</code><span class="sig-paren">(</span><em>**search</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/api.html#TalusClient.job_iter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.api.TalusClient.job_iter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Iterate through all of the jobs</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Search:</th><td class="field-body">optional search parameters</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="talus.api.TalusClient.os_delete">
+<code class="descname">os_delete</code><span class="sig-paren">(</span><em>os_id</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/api.html#TalusClient.os_delete"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.api.TalusClient.os_delete" title="Permalink to this definition">¶</a></dt>
+<dd><p>Delete an os by <code class="docutils literal"><span class="pre">os_id</span></code> which may be the id or name</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Os_id:</th><td class="field-body">The name or id of the os to delete</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="talus.api.TalusClient.os_iter">
+<code class="descname">os_iter</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/api.html#TalusClient.os_iter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.api.TalusClient.os_iter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return an iterator that iterates over all existing OS models in Talus
+:returns: iterator</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="talus.api.TalusClient.result_iter">
+<code class="descname">result_iter</code><span class="sig-paren">(</span><em>**search</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/api.html#TalusClient.result_iter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.api.TalusClient.result_iter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Iterate through result matching the search criteria</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Search:</th><td class="field-body">optional search parameters</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="talus.api.TalusClient.slave_iter">
+<code class="descname">slave_iter</code><span class="sig-paren">(</span><em>**search</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/api.html#TalusClient.slave_iter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.api.TalusClient.slave_iter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Iterate through all of the slaves</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Search:</th><td class="field-body">optional search parameters</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="talus.api.TalusClient.task_create">
+<code class="descname">task_create</code><span class="sig-paren">(</span><em>name</em>, <em>tool_id</em>, <em>params</em>, <em>version=None</em>, <em>limit=1</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/api.html#TalusClient.task_create"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.api.TalusClient.task_create" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a new task with the supplied arguments</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Name:</th><td class="field-body">The name of the task</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Tool_id:</th><td class="field-body">The id or name of the tool the task will run</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Params:</th><td class="field-body">A dict of params for the task</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Version:</th><td class="field-body">The version of code to use. None defaults to the HEAD version (default: None)</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Limit:</th><td class="field-body">The default limit of any jobs that use this task</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">The task model</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="talus.api.TalusClient.task_delete">
+<code class="descname">task_delete</code><span class="sig-paren">(</span><em>task_id</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/api.html#TalusClient.task_delete"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.api.TalusClient.task_delete" title="Permalink to this definition">¶</a></dt>
+<dd><p>Delete a task by <code class="docutils literal"><span class="pre">task_id</span></code> which may be the id or name</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Task_id:</th><td class="field-body">The name or id of the task to delete</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="talus.api.TalusClient.task_iter">
+<code class="descname">task_iter</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/api.html#TalusClient.task_iter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.api.TalusClient.task_iter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return an iterator that iterates over all existing Task models in Talus
+:returns: iterator</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-talus.errors">
+<span id="talus-errors-module"></span><h2>talus.errors module<a class="headerlink" href="#module-talus.errors" title="Permalink to this headline">¶</a></h2>
+<dl class="exception">
+<dt id="talus.errors.TalusApiError">
+<em class="property">exception </em><code class="descclassname">talus.errors.</code><code class="descname">TalusApiError</code><span class="sig-paren">(</span><em>msg</em>, <em>error=None</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/errors.html#TalusApiError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.errors.TalusApiError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">exceptions.Exception</span></code></p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-talus.models">
+<span id="talus-models-module"></span><h2>talus.models module<a class="headerlink" href="#module-talus.models" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="talus.models.Code">
+<em class="property">class </em><code class="descclassname">talus.models.</code><code class="descname">Code</code><span class="sig-paren">(</span><em>api_base='http://localhost:8000'</em>, <em>**fields</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/models.html#Code"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.models.Code" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#talus.models.TalusModel" title="talus.models.TalusModel"><code class="xref py py-class docutils literal"><span class="pre">talus.models.TalusModel</span></code></a></p>
+<p>The model for Tools/Components</p>
+<dl class="attribute">
+<dt id="talus.models.Code.api_path">
+<code class="descname">api_path</code><em class="property"> = 'api/code'</em><a class="headerlink" href="#talus.models.Code.api_path" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="talus.models.Code.fields">
+<code class="descname">fields</code><em class="property"> = {'name': &lt;talus.models.Field object at 0x2b893303e290&gt;, 'bases': &lt;talus.models.Field object at 0x2b893303ea50&gt;, 'params': &lt;talus.models.Field object at 0x2b893303eb50&gt;, 'timestamps': &lt;talus.models.Field object at 0x2b893303e310&gt;, 'type': &lt;talus.models.Field object at 0x2b893303e950&gt;, 'desc': &lt;talus.models.Field object at 0x2b893303ea90&gt;}</em><a class="headerlink" href="#talus.models.Code.fields" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="talus.models.Field">
+<em class="property">class </em><code class="descclassname">talus.models.</code><code class="descname">Field</code><span class="sig-paren">(</span><em>default_value=None</em>, <em>details=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/models.html#Field"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.models.Field" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<dl class="method">
+<dt id="talus.models.Field.dup">
+<code class="descname">dup</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/models.html#Field.dup"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.models.Field.dup" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="talus.models.Field.get_val">
+<code class="descname">get_val</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/models.html#Field.get_val"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.models.Field.get_val" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="talus.models.Image">
+<em class="property">class </em><code class="descclassname">talus.models.</code><code class="descname">Image</code><span class="sig-paren">(</span><em>api_base='http://localhost:8000'</em>, <em>**fields</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/models.html#Image"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.models.Image" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#talus.models.TalusModel" title="talus.models.TalusModel"><code class="xref py py-class docutils literal"><span class="pre">talus.models.TalusModel</span></code></a></p>
+<p>The model for Image API objects</p>
+<dl class="attribute">
+<dt id="talus.models.Image.api_path">
+<code class="descname">api_path</code><em class="property"> = 'api/image'</em><a class="headerlink" href="#talus.models.Image.api_path" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="talus.models.Image.fields">
+<code class="descname">fields</code><em class="property"> = {'status': &lt;talus.models.Field object at 0x2b893303eb90&gt;, 'username': &lt;talus.models.Field object at 0x2b893303e810&gt;, 'base_image': &lt;talus.models.RefField object at 0x2b893303e350&gt;, 'name': &lt;talus.models.Field object at 0x2b893303ead0&gt;, 'tags': &lt;talus.models.Field object at 0x2b893303e3d0&gt;, 'timestamps': &lt;talus.models.Field object at 0x2b893303e390&gt;, 'password': &lt;talus.models.Field object at 0x2b893303e9d0&gt;, 'os': &lt;talus.models.RefField object at 0x2b893303ea10&gt;, 'md5': &lt;talus.models.Field object at 0x2b893303ec50&gt;, 'desc': &lt;talus.models.Field object at 0x2b893303eb10&gt;}</em><a class="headerlink" href="#talus.models.Image.fields" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="talus.models.Job">
+<em class="property">class </em><code class="descclassname">talus.models.</code><code class="descname">Job</code><span class="sig-paren">(</span><em>api_base='http://localhost:8000'</em>, <em>**fields</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/models.html#Job"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.models.Job" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#talus.models.TalusModel" title="talus.models.TalusModel"><code class="xref py py-class docutils literal"><span class="pre">talus.models.TalusModel</span></code></a></p>
+<p>The model for running tasks (&#8220;Jobs&#8221;)</p>
+<dl class="attribute">
+<dt id="talus.models.Job.api_path">
+<code class="descname">api_path</code><em class="property"> = 'api/job'</em><a class="headerlink" href="#talus.models.Job.api_path" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="talus.models.Job.fields">
+<code class="descname">fields</code><em class="property"> = {'status': &lt;talus.models.Field object at 0x2b893303e090&gt;, 'image': &lt;talus.models.RefField object at 0x2b893303e2d0&gt;, 'timestamps': &lt;talus.models.Field object at 0x2b893303e0d0&gt;, 'limit': &lt;talus.models.Field object at 0x2b893303e190&gt;, 'network': &lt;talus.models.Field object at 0x2b893303e250&gt;, 'queue': &lt;talus.models.Field object at 0x2b893303e210&gt;, 'task': &lt;talus.models.RefField object at 0x2b89330c3fd0&gt;, 'name': &lt;talus.models.Field object at 0x2b89330c3f90&gt;, 'priority': &lt;talus.models.Field object at 0x2b893303e110&gt;, 'params': &lt;talus.models.Field object at 0x2b893303e050&gt;, 'progress': &lt;talus.models.Field object at 0x2b893303e1d0&gt;}</em><a class="headerlink" href="#talus.models.Job.fields" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="talus.models.OS">
+<em class="property">class </em><code class="descclassname">talus.models.</code><code class="descname">OS</code><span class="sig-paren">(</span><em>api_base='http://localhost:8000'</em>, <em>**fields</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/models.html#OS"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.models.OS" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#talus.models.TalusModel" title="talus.models.TalusModel"><code class="xref py py-class docutils literal"><span class="pre">talus.models.TalusModel</span></code></a></p>
+<p>The model for OS API objects</p>
+<dl class="attribute">
+<dt id="talus.models.OS.api_path">
+<code class="descname">api_path</code><em class="property"> = 'api/os'</em><a class="headerlink" href="#talus.models.OS.api_path" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="talus.models.OS.fields">
+<code class="descname">fields</code><em class="property"> = {'arch': &lt;talus.models.Field object at 0x2b893303e8d0&gt;, 'version': &lt;talus.models.Field object at 0x2b893303e850&gt;, 'type': &lt;talus.models.Field object at 0x2b893303e890&gt;, 'name': &lt;talus.models.Field object at 0x2b893303e550&gt;}</em><a class="headerlink" href="#talus.models.OS.fields" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="talus.models.RefField">
+<em class="property">class </em><code class="descclassname">talus.models.</code><code class="descname">RefField</code><span class="sig-paren">(</span><em>default_value=None</em>, <em>details=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/models.html#RefField"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.models.RefField" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#talus.models.Field" title="talus.models.Field"><code class="xref py py-class docutils literal"><span class="pre">talus.models.Field</span></code></a></p>
+<dl class="method">
+<dt id="talus.models.RefField.get_val">
+<code class="descname">get_val</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/models.html#RefField.get_val"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.models.RefField.get_val" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="talus.models.Result">
+<em class="property">class </em><code class="descclassname">talus.models.</code><code class="descname">Result</code><span class="sig-paren">(</span><em>api_base='http://localhost:8000'</em>, <em>**fields</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/models.html#Result"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.models.Result" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#talus.models.TalusModel" title="talus.models.TalusModel"><code class="xref py py-class docutils literal"><span class="pre">talus.models.TalusModel</span></code></a></p>
+<p>The model for Result objects</p>
+<dl class="attribute">
+<dt id="talus.models.Result.api_path">
+<code class="descname">api_path</code><em class="property"> = 'api/result'</em><a class="headerlink" href="#talus.models.Result.api_path" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="talus.models.Result.fields">
+<code class="descname">fields</code><em class="property"> = {'data': &lt;talus.models.Field object at 0x2b893303ebd0&gt;, 'job': &lt;talus.models.RefField object at 0x2b893303e990&gt;, 'type': &lt;talus.models.Field object at 0x2b893303e490&gt;, 'tool': &lt;talus.models.Field object at 0x2b893303e6d0&gt;, 'created': &lt;talus.models.Field object at 0x2b893303e650&gt;}</em><a class="headerlink" href="#talus.models.Result.fields" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="talus.models.Slave">
+<em class="property">class </em><code class="descclassname">talus.models.</code><code class="descname">Slave</code><span class="sig-paren">(</span><em>api_base='http://localhost:8000'</em>, <em>**fields</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/models.html#Slave"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.models.Slave" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#talus.models.TalusModel" title="talus.models.TalusModel"><code class="xref py py-class docutils literal"><span class="pre">talus.models.TalusModel</span></code></a></p>
+<p>The model for Slave API objects &#8211; intended to be READ ONLY</p>
+<dl class="attribute">
+<dt id="talus.models.Slave.api_path">
+<code class="descname">api_path</code><em class="property"> = 'api/slave'</em><a class="headerlink" href="#talus.models.Slave.api_path" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="talus.models.Slave.fields">
+<code class="descname">fields</code><em class="property"> = {'max_vms': &lt;talus.models.Field object at 0x2b893303e750&gt;, 'uuid': &lt;talus.models.Field object at 0x2b893303e790&gt;, 'ip': &lt;talus.models.Field object at 0x2b893303e710&gt;, 'hostname': &lt;talus.models.Field object at 0x2b893303e690&gt;, 'running_vms': &lt;talus.models.Field object at 0x2b893303e7d0&gt;, 'total_jobs_run': &lt;talus.models.Field object at 0x2b893303ec10&gt;, 'vms': &lt;talus.models.Field object at 0x2b893303ee90&gt;}</em><a class="headerlink" href="#talus.models.Slave.fields" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="talus.models.TalusModel">
+<em class="property">class </em><code class="descclassname">talus.models.</code><code class="descname">TalusModel</code><span class="sig-paren">(</span><em>api_base='http://localhost:8000'</em>, <em>**fields</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/models.html#TalusModel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.models.TalusModel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<p>The baseclass for Talus API models</p>
+<dl class="attribute">
+<dt id="talus.models.TalusModel.api_path">
+<code class="descname">api_path</code><em class="property"> = ''</em><a class="headerlink" href="#talus.models.TalusModel.api_path" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="classmethod">
+<dt id="talus.models.TalusModel.api_url">
+<em class="property">classmethod </em><code class="descname">api_url</code><span class="sig-paren">(</span><em>base</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/models.html#TalusModel.api_url"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.models.TalusModel.api_url" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add the base path and the model&#8217;s api_path together</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="talus.models.TalusModel.clear_id">
+<code class="descname">clear_id</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/models.html#TalusModel.clear_id"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.models.TalusModel.clear_id" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="talus.models.TalusModel.delete">
+<code class="descname">delete</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/models.html#TalusModel.delete"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.models.TalusModel.delete" title="Permalink to this definition">¶</a></dt>
+<dd><p>Delete this model</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="talus.models.TalusModel.fields">
+<code class="descname">fields</code><em class="property"> = {}</em><a class="headerlink" href="#talus.models.TalusModel.fields" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="classmethod">
+<dt id="talus.models.TalusModel.find_one">
+<em class="property">classmethod </em><code class="descname">find_one</code><span class="sig-paren">(</span><em>api_base=None</em>, <em>**search</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/models.html#TalusModel.find_one"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.models.TalusModel.find_one" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the first matching model, or None if none matched</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Api_base:</th><td class="field-body">The base of the api url, If None, models.API_BASE will be used</td>
+</tr>
+<tr class="field-even field"><th class="field-name">**searchsearch:</th><td class="field-body">The search params</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">The matched model or None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="talus.models.TalusModel.headers">
+<em class="property">classmethod </em><code class="descname">headers</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/models.html#TalusModel.headers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.models.TalusModel.headers" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="classmethod">
+<dt id="talus.models.TalusModel.objects">
+<em class="property">classmethod </em><code class="descname">objects</code><span class="sig-paren">(</span><em>api_base=None</em>, <em>**search</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/models.html#TalusModel.objects"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.models.TalusModel.objects" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a list of models</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Api_base:</th><td class="field-body">The base of the api url. If none, models.API_BASE will be used</td>
+</tr>
+<tr class="field-even field"><th class="field-name">**searchsearch:</th><td class="field-body">search params</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">A list of models</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="talus.models.TalusModel.objects_raw">
+<em class="property">classmethod </em><code class="descname">objects_raw</code><span class="sig-paren">(</span><em>api_base=None</em>, <em>**search</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/models.html#TalusModel.objects_raw"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.models.TalusModel.objects_raw" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a list of json objects</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Api_base:</th><td class="field-body">The base of the api url. If none, models.API_BASE will be used</td>
+</tr>
+<tr class="field-even field"><th class="field-name">**searchsearch:</th><td class="field-body">search params</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">A list of models as json objects (raw)</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="talus.models.TalusModel.refresh">
+<code class="descname">refresh</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/models.html#TalusModel.refresh"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.models.TalusModel.refresh" title="Permalink to this definition">¶</a></dt>
+<dd><p>Refresh the current model</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="talus.models.TalusModel.save">
+<code class="descname">save</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/models.html#TalusModel.save"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.models.TalusModel.save" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save this model&#8217;s fields</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="talus.models.Task">
+<em class="property">class </em><code class="descclassname">talus.models.</code><code class="descname">Task</code><span class="sig-paren">(</span><em>api_base='http://localhost:8000'</em>, <em>**fields</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/models.html#Task"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.models.Task" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#talus.models.TalusModel" title="talus.models.TalusModel"><code class="xref py py-class docutils literal"><span class="pre">talus.models.TalusModel</span></code></a></p>
+<p>The model for Tasks</p>
+<dl class="attribute">
+<dt id="talus.models.Task.api_path">
+<code class="descname">api_path</code><em class="property"> = 'api/task'</em><a class="headerlink" href="#talus.models.Task.api_path" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="talus.models.Task.fields">
+<code class="descname">fields</code><em class="property"> = {'name': &lt;talus.models.Field object at 0x2b89330c3d90&gt;, 'tool': &lt;talus.models.RefField object at 0x2b89330c3e10&gt;, 'version': &lt;talus.models.Field object at 0x2b89330c3ed0&gt;, 'limit': &lt;talus.models.Field object at 0x2b89330c3f50&gt;, 'params': &lt;talus.models.Field object at 0x2b89330c3e90&gt;, 'timestamps': &lt;talus.models.Field object at 0x2b89330c3f10&gt;}</em><a class="headerlink" href="#talus.models.Task.fields" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="talus.models.set_base">
+<code class="descclassname">talus.models.</code><code class="descname">set_base</code><span class="sig-paren">(</span><em>new_base</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/models.html#set_base"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.models.set_base" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="section" id="module-talus.utils">
+<span id="talus-utils-module"></span><h2>talus.utils module<a class="headerlink" href="#module-talus.utils" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="talus.utils.json_request">
+<code class="descclassname">talus.utils.</code><code class="descname">json_request</code><span class="sig-paren">(</span><em>method</em>, <em>*args</em>, <em>**params</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/utils.html#json_request"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.utils.json_request" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="section" id="module-talus">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-talus" title="Permalink to this headline">¶</a></h2>
+</div>
+</div>
+
+
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015, Optiv Labs.
+    </p>
+  </div>
+
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+  
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../',
+            VERSION:'0.0.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../_static/jquery.js"></script>
+      <script type="text/javascript" src="../_static/underscore.js"></script>
+      <script type="text/javascript" src="../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

@@ -1,0 +1,242 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>master.models &mdash; Talus 0.0.1 documentation</title>
+  
+
+  
+  
+
+  
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Roboto+Slab:400,700|Inconsolata:400,700&subset=latin,cyrillic' rel='stylesheet' type='text/css'>
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="Talus 0.0.1 documentation" href="../../index.html"/>
+        <link rel="up" title="master" href="../master.html"/> 
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-nav-search">
+        
+          <a href="../../index.html" class="fa fa-home"> Talus</a>
+        
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+        
+          
+          
+              <ul class="simple">
+</ul>
+
+          
+        
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../../index.html">Talus</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../../index.html">Docs</a> &raquo;</li>
+      
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+      
+          <li><a href="../master.html">master</a> &raquo;</li>
+      
+    <li>master.models</li>
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document">
+            
+  <h1>Source code for master.models</h1><div class="highlight"><pre>
+<span class="c">#!/usr/bin/env python</span>
+<span class="c"># encoding: utf-8</span>
+
+<span class="kn">import</span> <span class="nn">datetime</span>
+<span class="kn">from</span> <span class="nn">mongoengine</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">import</span> <span class="nn">os</span>
+
+<div class="viewcode-block" id="do_connect"><a class="viewcode-back" href="../../generated/master.html#master.models.do_connect">[docs]</a><span class="k">def</span> <span class="nf">do_connect</span><span class="p">():</span>
+	<span class="c"># this is to be set by whatever starts the master docker container</span>
+	<span class="n">talus_env</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s">&quot;TALUS_DB_PORT_27017_TCP&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">&quot;tcp://&quot;</span><span class="p">,</span> <span class="s">&quot;&quot;</span><span class="p">)</span>
+	<span class="n">talus_host</span><span class="p">,</span><span class="n">talus_port</span> <span class="o">=</span> <span class="n">talus_env</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&quot;:&quot;</span><span class="p">)</span>
+	<span class="n">talus_port</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">talus_port</span><span class="p">)</span>
+
+	<span class="n">connect</span><span class="p">(</span><span class="s">&quot;talus&quot;</span><span class="p">,</span> <span class="n">host</span><span class="o">=</span><span class="n">talus_host</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="n">talus_port</span><span class="p">)</span>
+</div>
+<span class="k">class</span> <span class="nc">Task</span><span class="p">(</span><span class="n">Document</span><span class="p">):</span>
+	<span class="n">name</span>		<span class="o">=</span> <span class="n">StringField</span><span class="p">(</span><span class="n">unique_with</span><span class="o">=</span><span class="s">&quot;tool&quot;</span><span class="p">)</span>
+	<span class="n">tool</span>		<span class="o">=</span> <span class="n">ReferenceField</span><span class="p">(</span><span class="s">&quot;Code&quot;</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+	<span class="n">params</span>		<span class="o">=</span> <span class="n">DictField</span><span class="p">()</span>
+	<span class="n">version</span>		<span class="o">=</span> <span class="n">StringField</span><span class="p">()</span> <span class="c"># intended to be used for git versioning</span>
+	<span class="n">limit</span>		<span class="o">=</span> <span class="n">IntField</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+	<span class="n">timestamps</span>	<span class="o">=</span> <span class="n">DictField</span><span class="p">()</span>
+
+<span class="k">class</span> <span class="nc">Result</span><span class="p">(</span><span class="n">Document</span><span class="p">):</span>
+	<span class="n">job</span>			<span class="o">=</span> <span class="n">ReferenceField</span><span class="p">(</span><span class="s">&quot;Job&quot;</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+	<span class="nb">type</span>		<span class="o">=</span> <span class="n">StringField</span><span class="p">(</span><span class="n">required</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+	<span class="n">tool</span>		<span class="o">=</span> <span class="n">StringField</span><span class="p">(</span><span class="n">required</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+	<span class="n">data</span>		<span class="o">=</span> <span class="n">DictField</span><span class="p">()</span>
+	<span class="n">created</span>		<span class="o">=</span> <span class="n">DateTimeField</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">)</span>
+
+<span class="k">class</span> <span class="nc">Job</span><span class="p">(</span><span class="n">Document</span><span class="p">):</span>
+	<span class="n">name</span>		<span class="o">=</span> <span class="n">StringField</span><span class="p">()</span>
+	<span class="n">task</span>		<span class="o">=</span> <span class="n">ReferenceField</span><span class="p">(</span><span class="s">&quot;Task&quot;</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+	<span class="n">params</span>		<span class="o">=</span> <span class="n">DictField</span><span class="p">()</span>
+	<span class="n">status</span>		<span class="o">=</span> <span class="n">DictField</span><span class="p">()</span>
+	<span class="n">timestamps</span>	<span class="o">=</span> <span class="n">DictField</span><span class="p">()</span>
+	<span class="n">queue</span>		<span class="o">=</span> <span class="n">StringField</span><span class="p">()</span>
+	<span class="n">priority</span>	<span class="o">=</span> <span class="n">IntField</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span> <span class="c"># 0-100</span>
+	<span class="n">limit</span>		<span class="o">=</span> <span class="n">IntField</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+	<span class="n">progress</span>	<span class="o">=</span> <span class="n">IntField</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+	<span class="n">image</span>		<span class="o">=</span> <span class="n">ReferenceField</span><span class="p">(</span><span class="s">&quot;Image&quot;</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+	<span class="n">network</span>		<span class="o">=</span> <span class="n">StringField</span><span class="p">()</span>
+
+<span class="k">class</span> <span class="nc">Code</span><span class="p">(</span><span class="n">Document</span><span class="p">):</span>
+	<span class="n">name</span>		<span class="o">=</span> <span class="n">StringField</span><span class="p">(</span><span class="n">unique_with</span><span class="o">=</span><span class="s">&quot;type&quot;</span><span class="p">)</span>
+	<span class="nb">type</span>		<span class="o">=</span> <span class="n">StringField</span><span class="p">()</span>
+	<span class="n">params</span>		<span class="o">=</span> <span class="n">ListField</span><span class="p">()</span>
+	<span class="n">bases</span>		<span class="o">=</span> <span class="n">ListField</span><span class="p">()</span>
+	<span class="n">desc</span>		<span class="o">=</span> <span class="n">StringField</span><span class="p">()</span>
+	<span class="n">timestamps</span>	<span class="o">=</span> <span class="n">DictField</span><span class="p">()</span>
+
+<span class="k">class</span> <span class="nc">TmpFile</span><span class="p">(</span><span class="n">Document</span><span class="p">):</span>
+	<span class="n">path</span>		<span class="o">=</span> <span class="n">StringField</span><span class="p">(</span><span class="n">unique</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+<span class="k">class</span> <span class="nc">OS</span><span class="p">(</span><span class="n">Document</span><span class="p">):</span>
+	<span class="n">name</span>		<span class="o">=</span> <span class="n">StringField</span><span class="p">()</span>
+	<span class="n">version</span>		<span class="o">=</span> <span class="n">StringField</span><span class="p">()</span>
+	<span class="nb">type</span>		<span class="o">=</span> <span class="n">StringField</span><span class="p">()</span>
+	<span class="n">arch</span>		<span class="o">=</span> <span class="n">StringField</span><span class="p">()</span>
+
+<span class="k">class</span> <span class="nc">Image</span><span class="p">(</span><span class="n">Document</span><span class="p">):</span>
+	<span class="n">name</span>		<span class="o">=</span> <span class="n">StringField</span><span class="p">(</span><span class="n">required</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+	<span class="n">os</span>			<span class="o">=</span> <span class="n">ReferenceField</span><span class="p">(</span><span class="s">&quot;OS&quot;</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+	<span class="n">desc</span>		<span class="o">=</span> <span class="n">StringField</span><span class="p">(</span><span class="n">required</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+	<span class="n">tags</span>		<span class="o">=</span> <span class="n">ListField</span><span class="p">(</span><span class="n">StringField</span><span class="p">())</span>
+	<span class="n">status</span>		<span class="o">=</span> <span class="n">DictField</span><span class="p">()</span>
+	<span class="n">base_image</span>	<span class="o">=</span> <span class="n">ReferenceField</span><span class="p">(</span><span class="s">&quot;Image&quot;</span><span class="p">,</span> <span class="n">null</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+	<span class="n">username</span>	<span class="o">=</span> <span class="n">StringField</span><span class="p">(</span><span class="n">required</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s">&quot;user&quot;</span><span class="p">)</span>
+	<span class="n">password</span>	<span class="o">=</span> <span class="n">StringField</span><span class="p">(</span><span class="n">required</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s">&quot;password&quot;</span><span class="p">)</span>
+	<span class="n">md5</span>			<span class="o">=</span> <span class="n">StringField</span><span class="p">(</span><span class="n">required</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">null</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+	<span class="n">timestamps</span>	<span class="o">=</span> <span class="n">DictField</span><span class="p">()</span>
+
+<span class="k">class</span> <span class="nc">Slave</span><span class="p">(</span><span class="n">Document</span><span class="p">):</span>
+	<span class="n">hostname</span>		<span class="o">=</span> <span class="n">StringField</span><span class="p">()</span>
+	<span class="n">uuid</span>			<span class="o">=</span> <span class="n">StringField</span><span class="p">()</span>
+	<span class="n">ip</span>				<span class="o">=</span> <span class="n">StringField</span><span class="p">()</span>
+	<span class="n">max_vms</span>			<span class="o">=</span> <span class="n">IntField</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+	<span class="n">running_vms</span>		<span class="o">=</span> <span class="n">IntField</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+	<span class="n">total_jobs_run</span>	<span class="o">=</span> <span class="n">IntField</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+	<span class="n">vms</span>				<span class="o">=</span> <span class="n">ListField</span><span class="p">(</span><span class="n">DictField</span><span class="p">())</span>
+</pre></div>
+
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015, Optiv Labs.
+    </p>
+  </div>
+
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+  
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'0.0.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

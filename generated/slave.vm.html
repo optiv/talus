@@ -1,0 +1,349 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>slave.vm package &mdash; Talus 0.0.1 documentation</title>
+  
+
+  
+  
+
+  
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Roboto+Slab:400,700|Inconsolata:400,700&subset=latin,cyrillic' rel='stylesheet' type='text/css'>
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="Talus 0.0.1 documentation" href="../index.html"/> 
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-nav-search">
+        
+          <a href="../index.html" class="fa fa-home"> Talus</a>
+        
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+        
+          
+          
+              <ul class="simple">
+</ul>
+
+          
+        
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../index.html">Talus</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../index.html">Docs</a> &raquo;</li>
+      
+    <li>slave.vm package</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          <a href="../_sources/generated/slave.vm.txt" rel="nofollow"> View page source</a>
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document">
+            
+  <div class="section" id="slave-vm-package">
+<h1>slave.vm package<a class="headerlink" href="#slave-vm-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="subpackages">
+<h2>Subpackages<a class="headerlink" href="#subpackages" title="Permalink to this headline">¶</a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="slave.vm.comms.html">slave.vm.comms package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="slave.vm.comms.html#module-slave.vm.comms">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-slave.vm.bootstrap">
+<span id="slave-vm-bootstrap-module"></span><h2>slave.vm.bootstrap module<a class="headerlink" href="#module-slave.vm.bootstrap" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="slave.vm.bootstrap.HostComms">
+<em class="property">class </em><code class="descclassname">slave.vm.bootstrap.</code><code class="descname">HostComms</code><span class="sig-paren">(</span><em>recv_callback</em>, <em>job_id</em>, <em>job_idx</em>, <em>tool</em>, <em>dev=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave/vm/bootstrap.html#HostComms"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.vm.bootstrap.HostComms" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">threading.Thread</span></code></p>
+<dl class="method">
+<dt id="slave.vm.bootstrap.HostComms.run">
+<code class="descname">run</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave/vm/bootstrap.html#HostComms.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.vm.bootstrap.HostComms.run" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="slave.vm.bootstrap.HostComms.send_msg">
+<code class="descname">send_msg</code><span class="sig-paren">(</span><em>type</em>, <em>data</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave/vm/bootstrap.html#HostComms.send_msg"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.vm.bootstrap.HostComms.send_msg" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="slave.vm.bootstrap.HostComms.stop">
+<code class="descname">stop</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave/vm/bootstrap.html#HostComms.stop"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.vm.bootstrap.HostComms.stop" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="slave.vm.bootstrap.TalusBootstrap">
+<em class="property">class </em><code class="descclassname">slave.vm.bootstrap.</code><code class="descname">TalusBootstrap</code><span class="sig-paren">(</span><em>config_path</em>, <em>dev=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave/vm/bootstrap.html#TalusBootstrap"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.vm.bootstrap.TalusBootstrap" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<p>The main class that will bootstrap the job and get things running</p>
+<dl class="method">
+<dt id="slave.vm.bootstrap.TalusBootstrap.run">
+<code class="descname">run</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave/vm/bootstrap.html#TalusBootstrap.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.vm.bootstrap.TalusBootstrap.run" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="slave.vm.bootstrap.TalusCodeImporter">
+<em class="property">class </em><code class="descclassname">slave.vm.bootstrap.</code><code class="descname">TalusCodeImporter</code><span class="sig-paren">(</span><em>loc</em>, <em>username</em>, <em>password</em>, <em>parent_log=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave/vm/bootstrap.html#TalusCodeImporter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.vm.bootstrap.TalusCodeImporter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<p>This class will dynamically import tools and components from the
+talus git repository.</p>
+<p>This class <em>should</em> conform to &#8220;pep-302&#8221;:<a class="reference external" href="https://www.python.org/dev/peps/pep-0302/">https://www.python.org/dev/peps/pep-0302/</a></p>
+<dl class="method">
+<dt id="slave.vm.bootstrap.TalusCodeImporter.download_module">
+<code class="descname">download_module</code><span class="sig-paren">(</span><em>abs_name</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave/vm/bootstrap.html#TalusCodeImporter.download_module"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.vm.bootstrap.TalusCodeImporter.download_module" title="Permalink to this definition">¶</a></dt>
+<dd><p>Download the module found at <code class="docutils literal"><span class="pre">abs_name</span></code> from the talus git repository</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>abs_name</strong> (<em>str</em>) &#8211; The absolute module name of the module to be downloaded</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="slave.vm.bootstrap.TalusCodeImporter.find_module">
+<code class="descname">find_module</code><span class="sig-paren">(</span><em>abs_name</em>, <em>path=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave/vm/bootstrap.html#TalusCodeImporter.find_module"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.vm.bootstrap.TalusCodeImporter.find_module" title="Permalink to this definition">¶</a></dt>
+<dd><p>Normally, a finder object would return a loader that can load the module.
+In our case, we&#8217;re going to be sneaky and just download the files and return
+<code class="docutils literal"><span class="pre">None</span></code> and let the normal sys.path-type loading take place.</p>
+<p>This method is cleaner and less error prone</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>abs_name</strong> (<em>str</em>) &#8211; The absolute name of the module to be imported</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="slave.vm.bootstrap.main">
+<code class="descclassname">slave.vm.bootstrap.</code><code class="descname">main</code><span class="sig-paren">(</span><em>dev=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave/vm/bootstrap.html#main"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.vm.bootstrap.main" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="section" id="module-slave.vm">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-slave.vm" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="slave.vm.ImageManager">
+<em class="property">class </em><code class="descclassname">slave.vm.</code><code class="descname">ImageManager</code><a class="reference internal" href="../_modules/slave/vm.html#ImageManager"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.vm.ImageManager" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<dl class="method">
+<dt id="slave.vm.ImageManager.download_image">
+<code class="descname">download_image</code><span class="sig-paren">(</span><em>image_id</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave/vm.html#ImageManager.download_image"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.vm.ImageManager.download_image" title="Permalink to this definition">¶</a></dt>
+<dd><p>Download the image from the image_url</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="slave.vm.ImageManager.ensure_image">
+<code class="descname">ensure_image</code><span class="sig-paren">(</span><em>image_id</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave/vm.html#ImageManager.ensure_image"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.vm.ImageManager.ensure_image" title="Permalink to this definition">¶</a></dt>
+<dd><p>Ensure that the image <code class="docutils literal"><span class="pre">image_id</span></code> and its bases exist in LIBVIRT_BASE
+checking its md5 against the md5 sum stored in the database</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">True/False on success</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="slave.vm.ImageManager.get_md5">
+<code class="descname">get_md5</code><span class="sig-paren">(</span><em>path</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave/vm.html#ImageManager.get_md5"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.vm.ImageManager.get_md5" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the md5 of the file at <code class="docutils literal"><span class="pre">path</span></code>. A cache will be used
+based on last modified time of the file. If the file does not
+exist, None will be returned.</p>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="slave.vm.ImageManager.instance">
+<em class="property">classmethod </em><code class="descname">instance</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave/vm.html#ImageManager.instance"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.vm.ImageManager.instance" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="slave.vm.VMHandler">
+<em class="property">class </em><code class="descclassname">slave.vm.</code><code class="descname">VMHandler</code><span class="sig-paren">(</span><em>job</em>, <em>idx</em>, <em>image</em>, <em>image_username</em>, <em>image_password</em>, <em>tool</em>, <em>params</em>, <em>code_loc</em>, <em>code_username</em>, <em>code_password</em>, <em>timeout=600</em>, <em>network='whitelist'</em>, <em>on_finished=None</em>, <em>on_vnc_available=None</em>, <em>startup_timeout=60</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave/vm.html#VMHandler"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.vm.VMHandler" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">threading.Thread</span></code></p>
+<dl class="method">
+<dt id="slave.vm.VMHandler.handle_comms">
+<code class="descname">handle_comms</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave/vm.html#VMHandler.handle_comms"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.vm.VMHandler.handle_comms" title="Permalink to this definition">¶</a></dt>
+<dd><p>Handle guest communications</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="slave.vm.VMHandler.handle_guest_startup">
+<code class="descname">handle_guest_startup</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave/vm.html#VMHandler.handle_guest_startup"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.vm.VMHandler.handle_guest_startup" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="slave.vm.VMHandler.run">
+<code class="descname">run</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave/vm.html#VMHandler.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.vm.VMHandler.run" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run the VMHandler</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="slave.vm.VMHandler.stop">
+<code class="descname">stop</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave/vm.html#VMHandler.stop"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.vm.VMHandler.stop" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="slave.vm.image_id_to_volume">
+<code class="descclassname">slave.vm.</code><code class="descname">image_id_to_volume</code><span class="sig-paren">(</span><em>image</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave/vm.html#image_id_to_volume"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.vm.image_id_to_volume" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="slave.vm.qemu_img_info">
+<code class="descclassname">slave.vm.</code><code class="descname">qemu_img_info</code><span class="sig-paren">(</span><em>image_path</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave/vm.html#qemu_img_info"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.vm.qemu_img_info" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a dict of info returned by qemu-img info. Assumes the image_path exists
+and points to a valid VM image</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Image_path:</th><td class="field-body">path to the image</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">dict of returned information about the image</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015, Optiv Labs.
+    </p>
+  </div>
+
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+  
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../',
+            VERSION:'0.0.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../_static/jquery.js"></script>
+      <script type="text/javascript" src="../_static/underscore.js"></script>
+      <script type="text/javascript" src="../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

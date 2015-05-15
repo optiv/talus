@@ -1,0 +1,711 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>slave.vm &mdash; Talus 0.0.1 documentation</title>
+  
+
+  
+  
+
+  
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Roboto+Slab:400,700|Inconsolata:400,700&subset=latin,cyrillic' rel='stylesheet' type='text/css'>
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="Talus 0.0.1 documentation" href="../../index.html"/>
+        <link rel="up" title="slave" href="../slave.html"/> 
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-nav-search">
+        
+          <a href="../../index.html" class="fa fa-home"> Talus</a>
+        
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+        
+          
+          
+              <ul class="simple">
+</ul>
+
+          
+        
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../../index.html">Talus</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../../index.html">Docs</a> &raquo;</li>
+      
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+      
+          <li><a href="../slave.html">slave</a> &raquo;</li>
+      
+    <li>slave.vm</li>
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document">
+            
+  <h1>Source code for slave.vm</h1><div class="highlight"><pre>
+<span class="c">#!/usr/bin/env python</span>
+<span class="c"># encoding: utf-8</span>
+
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">libvirt</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">netifaces</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">random</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">sh</span>
+<span class="kn">from</span> <span class="nn">sh</span> <span class="kn">import</span> <span class="n">md5sum</span>
+<span class="kn">from</span> <span class="nn">sh</span> <span class="kn">import</span> <span class="n">wget</span>
+<span class="kn">from</span> <span class="nn">sh</span> <span class="kn">import</span> <span class="n">arp</span>
+<span class="kn">import</span> <span class="nn">socket</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">threading</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">uuid</span>
+<span class="kn">import</span> <span class="nn">xmltodict</span>
+
+<span class="n">LIBVIRT_BASE</span> <span class="o">=</span> <span class="s">&quot;/var/lib/libvirt/images&quot;</span>
+
+<span class="kn">from</span> <span class="nn">slave.models</span> <span class="kn">import</span> <span class="n">Image</span>
+<span class="kn">from</span> <span class="nn">slave.vm.comms</span> <span class="kn">import</span> <span class="n">VMComms</span><span class="p">,</span> <span class="n">VM_TYPE_LINUX</span><span class="p">,</span> <span class="n">VM_TYPE_WINDOWS</span>
+
+<span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s">&quot;sh&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">WARN</span><span class="p">)</span>
+
+<div class="viewcode-block" id="image_id_to_volume"><a class="viewcode-back" href="../../generated/slave.vm.html#slave.vm.image_id_to_volume">[docs]</a><span class="k">def</span> <span class="nf">image_id_to_volume</span><span class="p">(</span><span class="n">image</span><span class="p">):</span>
+	<span class="k">return</span> <span class="s">&quot;{}_vagrant_box_image_0.img&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="qemu_img_info"><a class="viewcode-back" href="../../generated/slave.vm.html#slave.vm.qemu_img_info">[docs]</a><span class="k">def</span> <span class="nf">qemu_img_info</span><span class="p">(</span><span class="n">image_path</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;Return a dict of info returned by qemu-img info. Assumes the image_path exists</span>
+<span class="sd">	and points to a valid VM image</span>
+
+<span class="sd">	:image_path: path to the image</span>
+<span class="sd">	:returns: dict of returned information about the image</span>
+
+<span class="sd">	&quot;&quot;&quot;</span>
+	<span class="n">output</span> <span class="o">=</span> <span class="n">sh</span><span class="o">.</span><span class="n">qemu_img</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">image_path</span><span class="p">)</span>
+
+	<span class="n">res</span> <span class="o">=</span> <span class="p">{}</span>
+	<span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">output</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">):</span>
+		<span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s">r&#39;^\s*([^\s].*):\s*(.*)$&#39;</span><span class="p">,</span> <span class="n">line</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">match</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="k">continue</span>
+		<span class="n">res</span><span class="p">[</span><span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)]</span> <span class="o">=</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+
+	<span class="k">return</span> <span class="n">res</span>
+</div>
+<div class="viewcode-block" id="ImageManager"><a class="viewcode-back" href="../../generated/slave.vm.html#slave.vm.ImageManager">[docs]</a><span class="k">class</span> <span class="nc">ImageManager</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+	<span class="n">_instance</span> <span class="o">=</span> <span class="bp">None</span>
+	<span class="nd">@classmethod</span>
+<div class="viewcode-block" id="ImageManager.instance"><a class="viewcode-back" href="../../generated/slave.vm.html#slave.vm.ImageManager.instance">[docs]</a>	<span class="k">def</span> <span class="nf">instance</span><span class="p">(</span><span class="n">cls</span><span class="p">):</span>
+		<span class="k">if</span> <span class="n">cls</span><span class="o">.</span><span class="n">_instance</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="n">cls</span><span class="o">.</span><span class="n">_instance</span> <span class="o">=</span> <span class="n">cls</span><span class="p">()</span>
+		<span class="k">return</span> <span class="n">cls</span><span class="o">.</span><span class="n">_instance</span>
+</div>
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_cache</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s">&quot;ImageMan&quot;</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">image_url</span> <span class="o">=</span> <span class="bp">None</span>
+	
+<div class="viewcode-block" id="ImageManager.get_md5"><a class="viewcode-back" href="../../generated/slave.vm.html#slave.vm.ImageManager.get_md5">[docs]</a>	<span class="k">def</span> <span class="nf">get_md5</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Get the md5 of the file at ``path``. A cache will be used</span>
+<span class="sd">		based on last modified time of the file. If the file does not</span>
+<span class="sd">		exist, None will be returned.</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">realpath</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">path</span><span class="p">))</span>
+
+		<span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;could not get md5, path does not exist: {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">path</span><span class="p">))</span>
+			<span class="k">return</span> <span class="bp">None</span>
+
+		<span class="k">if</span> <span class="n">path</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span> <span class="ow">and</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">getmtime</span><span class="p">(</span><span class="n">path</span><span class="p">)</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">[</span><span class="n">path</span><span class="p">][</span><span class="s">&quot;modtime&quot;</span><span class="p">]:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;path was in cache ({}), md5: {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">[</span><span class="n">path</span><span class="p">][</span><span class="s">&quot;md5&quot;</span><span class="p">]))</span>
+			<span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">[</span><span class="n">path</span><span class="p">][</span><span class="s">&quot;md5&quot;</span><span class="p">]</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;path not in cache ({}), calculating&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">path</span><span class="p">))</span>
+		<span class="n">output</span> <span class="o">=</span> <span class="n">md5sum</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;calculated md5: &quot;</span> <span class="o">+</span> <span class="n">output</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">[</span><span class="n">path</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+			<span class="s">&quot;md5&quot;</span><span class="p">:</span> <span class="n">output</span><span class="p">,</span>
+			<span class="s">&quot;modtime&quot;</span><span class="p">:</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">getmtime</span><span class="p">(</span><span class="n">path</span><span class="p">),</span>
+		<span class="p">}</span>
+		<span class="k">return</span> <span class="n">output</span>
+	</div>
+<div class="viewcode-block" id="ImageManager.download_image"><a class="viewcode-back" href="../../generated/slave.vm.html#slave.vm.ImageManager.download_image">[docs]</a>	<span class="k">def</span> <span class="nf">download_image</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image_id</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Download the image from the image_url&quot;&quot;&quot;</span>
+		<span class="n">image_filename</span> <span class="o">=</span> <span class="n">image_id_to_volume</span><span class="p">(</span><span class="n">image_id</span><span class="p">)</span>
+		<span class="n">dest</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">LIBVIRT_BASE</span><span class="p">,</span> <span class="n">image_filename</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;downloading image {} to {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">image_id</span><span class="p">,</span> <span class="n">dest</span><span class="p">))</span>
+
+		<span class="n">wget</span><span class="p">(</span><span class="s">&quot;-q&quot;</span><span class="p">,</span> <span class="s">&quot;-O&quot;</span><span class="p">,</span> <span class="n">dest</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">image_url</span> <span class="o">+</span> <span class="s">&quot;/&quot;</span> <span class="o">+</span> <span class="n">image_filename</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;downloaded {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">image_id</span><span class="p">))</span>
+	</div>
+<div class="viewcode-block" id="ImageManager.ensure_image"><a class="viewcode-back" href="../../generated/slave.vm.html#slave.vm.ImageManager.ensure_image">[docs]</a>	<span class="k">def</span> <span class="nf">ensure_image</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image_id</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Ensure that the image ``image_id`` and its bases exist in LIBVIRT_BASE</span>
+<span class="sd">		checking its md5 against the md5 sum stored in the database</span>
+
+<span class="sd">		:returns: True/False on success</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;ensuring image {} exists and is valid&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">image_id</span><span class="p">))</span>
+
+		<span class="n">dest</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">LIBVIRT_BASE</span><span class="p">,</span> <span class="n">image_id_to_volume</span><span class="p">(</span><span class="n">image_id</span><span class="p">))</span>
+		<span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">dest</span><span class="p">):</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">download_image</span><span class="p">(</span><span class="n">image_id</span><span class="p">)</span>
+
+		<span class="k">else</span><span class="p">:</span>
+			<span class="n">images</span> <span class="o">=</span> <span class="n">Image</span><span class="o">.</span><span class="n">objects</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">image_id</span><span class="p">)</span>
+			<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">images</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s">&quot;image id {} does not reference a valid image&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">image_id</span><span class="p">))</span>
+				<span class="k">return</span> <span class="bp">False</span>
+
+			<span class="n">image</span> <span class="o">=</span> <span class="n">images</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+			<span class="n">md5</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_md5</span><span class="p">(</span><span class="n">dest</span><span class="p">)</span>
+			<span class="c"># all good, nothing has changed</span>
+			<span class="k">if</span> <span class="n">md5</span> <span class="o">==</span> <span class="n">image</span><span class="o">.</span><span class="n">md5</span><span class="p">:</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;image {} is unchanged&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">image_id</span><span class="p">))</span>
+
+			<span class="k">else</span><span class="p">:</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;image {} changed (model: {}, disk: {}), redownloading&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">image_id</span><span class="p">,</span> <span class="n">image</span><span class="o">.</span><span class="n">md5</span><span class="p">,</span> <span class="n">md5</span><span class="p">))</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">download_image</span><span class="p">(</span><span class="n">image_id</span><span class="p">)</span>
+
+		<span class="n">info</span> <span class="o">=</span> <span class="n">qemu_img_info</span><span class="p">(</span><span class="n">dest</span><span class="p">)</span>
+		<span class="k">if</span> <span class="s">&quot;backing file&quot;</span> <span class="ow">in</span> <span class="n">info</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;checking backing files for validity&quot;</span><span class="p">)</span>
+			<span class="n">backing</span> <span class="o">=</span> <span class="n">info</span><span class="p">[</span><span class="s">&quot;backing file&quot;</span><span class="p">]</span>
+			<span class="c"># backing will be a (absolute?) path</span>
+			<span class="n">backing_id</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">backing</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&quot;_&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">ensure_image</span><span class="p">(</span><span class="n">backing_id</span><span class="p">)</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;no backing file, image looks good!&quot;</span><span class="p">)</span>
+
+		<span class="k">return</span> <span class="bp">True</span>
+</div></div>
+<div class="viewcode-block" id="VMHandler"><a class="viewcode-back" href="../../generated/slave.vm.html#slave.vm.VMHandler">[docs]</a><span class="k">class</span> <span class="nc">VMHandler</span><span class="p">(</span><span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">):</span>
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">job</span><span class="p">,</span> <span class="n">idx</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">image_username</span><span class="p">,</span> <span class="n">image_password</span><span class="p">,</span> <span class="n">tool</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">code_loc</span><span class="p">,</span> <span class="n">code_username</span><span class="p">,</span> <span class="n">code_password</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">600</span><span class="p">,</span> <span class="n">network</span><span class="o">=</span><span class="s">&quot;whitelist&quot;</span><span class="p">,</span> <span class="n">on_finished</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">on_vnc_available</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">startup_timeout</span><span class="o">=</span><span class="mi">60</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Start up the VM image ``image`` in libvirt, with a timeout of ``timeout``,</span>
+<span class="sd">		and params ``params, using network ``network``.</span>
+
+<span class="sd">		:image: The name of the image</span>
+<span class="sd">		:params: Params that specify what to run inside of the VM</span>
+<span class="sd">		:timeout: The timeout for the vm</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="nb">super</span><span class="p">(</span><span class="n">VMHandler</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">()</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">job</span> <span class="o">=</span> <span class="n">job</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">idx</span> <span class="o">=</span> <span class="n">idx</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">image</span> <span class="o">=</span> <span class="n">image</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">image_username</span> <span class="o">=</span> <span class="n">image_username</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">image_password</span> <span class="o">=</span> <span class="n">image_password</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">tool</span> <span class="o">=</span> <span class="n">tool</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">params</span> <span class="o">=</span> <span class="n">params</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">code_loc</span> <span class="o">=</span> <span class="n">code_loc</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">code_username</span> <span class="o">=</span> <span class="n">code_username</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">code_password</span> <span class="o">=</span> <span class="n">code_password</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">timeout</span> <span class="o">=</span> <span class="n">timeout</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">startup_timeout</span> <span class="o">=</span> <span class="n">startup_timeout</span>
+
+		<span class="c"># network can be &#39;all&#39; or &#39;whitelist&#39;</span>
+		<span class="c"># whitelist values can also be followed by a semicolon</span>
+		<span class="c"># and a comma-separated list of domain names/ip addresses</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">network</span> <span class="o">=</span> <span class="n">network</span>
+
+		<span class="n">parts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">network</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&quot;:&quot;</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">network</span> <span class="o">=</span> <span class="n">parts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">whitelisted_hosts</span> <span class="o">=</span> <span class="p">[]</span>
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">network</span> <span class="o">==</span> <span class="s">&quot;whitelist&quot;</span><span class="p">:</span>
+			<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">whitelisted_hosts</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">parts</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&quot;,&quot;</span><span class="p">)]</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">ram</span> <span class="o">=</span> <span class="mi">1024</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">vnc_port</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">on_vnc_available</span> <span class="o">=</span> <span class="n">on_vnc_available</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">on_finished</span> <span class="o">=</span> <span class="n">on_finished</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s">&quot;VM-JOB:{}:{}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">job</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">idx</span><span class="p">))</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_running</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Event</span><span class="p">()</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_image_man</span> <span class="o">=</span> <span class="n">ImageManager</span><span class="o">.</span><span class="n">instance</span><span class="p">()</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_libvirt_conn</span> <span class="o">=</span> <span class="bp">None</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_vm_image_loc</span> <span class="o">=</span> <span class="bp">None</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_domain</span> <span class="o">=</span> <span class="bp">None</span>
+	
+<div class="viewcode-block" id="VMHandler.run"><a class="viewcode-back" href="../../generated/slave.vm.html#slave.vm.VMHandler.run">[docs]</a>	<span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Run the VMHandler</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_running</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;starting&quot;</span><span class="p">)</span>
+
+		<span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vm_start</span><span class="p">():</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s">&quot;error, could not start vm, bailing&quot;</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_running</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+			<span class="k">return</span>
+
+		<span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+		<span class="n">total_time</span> <span class="o">=</span> <span class="mi">0</span>
+		<span class="c"># wait for the VM to startup before waiting for it to be shutdown</span>
+		<span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">_running</span><span class="o">.</span><span class="n">is_set</span><span class="p">()</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vm_is_running</span><span class="p">()</span> <span class="ow">and</span> <span class="n">total_time</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">startup_timeout</span><span class="p">:</span>
+			<span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.2</span><span class="p">)</span>
+			<span class="n">total_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span><span class="p">()</span>
+
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_running</span><span class="o">.</span><span class="n">is_set</span><span class="p">():</span>
+			<span class="k">if</span> <span class="n">total_time</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">startup_timeout</span><span class="p">:</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s">&quot;VM took too long to startup, bailing&quot;</span><span class="p">)</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">_running</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+			
+			<span class="c"># means it started up</span>
+			<span class="k">else</span><span class="p">:</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;VM started up, waiting to inject bootstrap and run job&quot;</span><span class="p">)</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_connect_comms</span><span class="p">()</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_inject_and_run_bootstrap</span><span class="p">()</span>
+
+		<span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+		<span class="n">total_time</span> <span class="o">=</span> <span class="mi">0</span>
+		<span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">_running</span><span class="o">.</span><span class="n">is_set</span><span class="p">()</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vm_is_running</span><span class="p">()</span> <span class="ow">and</span> <span class="n">total_time</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">timeout</span><span class="p">:</span>
+			<span class="n">vnc_port</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vm_vnc_port</span><span class="p">()</span>
+			<span class="k">if</span> <span class="n">vnc_port</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">vnc_port</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">vnc_port</span> <span class="o">=</span> <span class="n">vnc_port</span>
+				<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_vnc_available</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+					<span class="bp">self</span><span class="o">.</span><span class="n">on_vnc_available</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+			<span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
+			<span class="n">total_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_vm_cleanup</span><span class="p">()</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;finished&quot;</span><span class="p">)</span>
+
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_finished</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">on_finished</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+	</div>
+<div class="viewcode-block" id="VMHandler.stop"><a class="viewcode-back" href="../../generated/slave.vm.html#slave.vm.VMHandler.stop">[docs]</a>	<span class="k">def</span> <span class="nf">stop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;stopping&quot;</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_running</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+	</div>
+<div class="viewcode-block" id="VMHandler.handle_comms"><a class="viewcode-back" href="../../generated/slave.vm.html#slave.vm.VMHandler.handle_comms">[docs]</a>	<span class="k">def</span> <span class="nf">handle_comms</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Handle guest communications&quot;&quot;&quot;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;handling comms: {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">data</span><span class="p">))</span>
+
+		<span class="n">switch</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+			<span class="n">startup</span>		<span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_guest_startup</span>
+		<span class="p">)</span>
+
+		<span class="k">if</span> <span class="s">&quot;type&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;guest comms does not include a type&quot;</span><span class="p">)</span>
+			<span class="k">return</span> <span class="s">&quot;{}&quot;</span>
+
+		<span class="k">return</span> <span class="n">switch</span><span class="p">[</span><span class="n">data</span><span class="p">[</span><span class="s">&quot;type&quot;</span><span class="p">]](</span><span class="n">data</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="VMHandler.handle_guest_startup"><a class="viewcode-back" href="../../generated/slave.vm.html#slave.vm.VMHandler.handle_guest_startup">[docs]</a>	<span class="k">def</span> <span class="nf">handle_guest_startup</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+		<span class="n">res</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+			<span class="nb">id</span>			<span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">job</span><span class="p">,</span>
+			<span class="n">tool</span>		<span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tool</span><span class="p">,</span>
+			<span class="n">params</span>		<span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">,</span>
+			<span class="n">idx</span>			<span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">idx</span><span class="p">,</span>
+			<span class="n">code_loc</span>	<span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">code_loc</span>
+		<span class="p">)</span>
+
+		<span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
+	
+	<span class="c"># ----------------------------</span>
+</div>
+	<span class="k">def</span> <span class="nf">_get_filter_params</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">network</span> <span class="o">==</span> <span class="s">&quot;all&quot;</span><span class="p">:</span>
+			<span class="k">return</span> <span class="s">&quot;&quot;</span>
+
+		<span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">network</span> <span class="o">==</span> <span class="s">&quot;whitelist&quot;</span><span class="p">:</span>
+			<span class="n">code_loc_host</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">code_loc</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">&quot;http://&quot;</span><span class="p">,</span> <span class="s">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">&quot;https://&quot;</span><span class="p">,</span> <span class="s">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&quot;/&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+			<span class="n">code_loc_ip</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">gethostbyname</span><span class="p">(</span><span class="n">code_loc_host</span><span class="p">)</span>
+
+			<span class="n">this_ip</span> <span class="o">=</span> <span class="n">netifaces</span><span class="o">.</span><span class="n">ifaddresses</span><span class="p">(</span><span class="s">&#39;virbr0&#39;</span><span class="p">)[</span><span class="mi">2</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s">&#39;addr&#39;</span><span class="p">]</span>
+			<span class="n">bcast</span> <span class="o">=</span> <span class="n">this_ip</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="s">&quot;.&quot;</span><span class="p">,</span><span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="s">&quot;.255&quot;</span>
+
+			<span class="n">ips</span> <span class="o">=</span> <span class="p">[</span>
+				<span class="s">&quot;255.255.255.255&quot;</span><span class="p">,</span>
+
+				<span class="c"># always include the guest comms ip</span>
+				<span class="n">bcast</span><span class="p">,</span>
+				<span class="n">this_ip</span><span class="p">,</span>
+				<span class="n">code_loc_ip</span>
+			<span class="p">]</span>
+
+			<span class="k">for</span> <span class="n">other_host</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">whitelisted_hosts</span><span class="p">:</span>
+				<span class="n">ips</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">gethostbyname</span><span class="p">(</span><span class="n">other_host</span><span class="p">))</span>
+
+			<span class="n">res</span> <span class="o">=</span> <span class="p">[]</span>
+			<span class="k">for</span> <span class="n">ip</span> <span class="ow">in</span> <span class="n">ips</span><span class="p">:</span>
+				<span class="n">res</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&quot;&lt;parameter name=&#39;WHITELIST&#39; value=&#39;{}&#39; /&gt;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">ip</span><span class="p">))</span>
+			<span class="k">return</span> <span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
+
+	<span class="k">def</span> <span class="nf">_connect_comms</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;waiting for vm to get an ip&quot;</span><span class="p">)</span>
+
+		<span class="n">ip_addr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vm_ip_address</span><span class="p">()</span>
+		<span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">_running</span><span class="o">.</span><span class="n">is_set</span><span class="p">()</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vm_is_running</span><span class="p">()</span> <span class="ow">and</span> <span class="n">ip_addr</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span>
+			<span class="n">ip_addr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vm_ip_address</span><span class="p">()</span>
+
+		<span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_running</span><span class="o">.</span><span class="n">is_set</span><span class="p">()</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vm_is_running</span><span class="p">():</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;stopped waiting for ip, was told to quit (or vm shutdown)&quot;</span><span class="p">)</span>
+			<span class="k">return</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;vm has an ip ({})! connecting comms&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">ip_addr</span><span class="p">))</span>
+
+		<span class="c"># TODO probe ports 22/5569 instead of this?</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_comms</span> <span class="o">=</span> <span class="n">VMComms</span><span class="o">.</span><span class="n">get_comms</span><span class="p">(</span><span class="n">VM_TYPE_WINDOWS</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_comms</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">ip_addr</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">image_username</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">image_password</span><span class="p">)</span>
+	
+	<span class="k">def</span> <span class="nf">_inject_and_run_bootstrap</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Inject and run the bootstrap inside the VM</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;injecting bootstrap&quot;</span><span class="p">)</span>
+
+		<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">__file__</span><span class="p">),</span> <span class="s">&quot;bootstrap.py&quot;</span><span class="p">),</span> <span class="s">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+			<span class="n">bootstrap_contents</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+
+		<span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_running</span><span class="o">.</span><span class="n">is_set</span><span class="p">()</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vm_is_running</span><span class="p">():</span>
+			<span class="k">return</span>
+
+		<span class="n">tmp_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_comms</span><span class="o">.</span><span class="n">sep</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">_comms</span><span class="o">.</span><span class="n">tmp_loc</span><span class="p">(),</span> <span class="s">&quot;bootstrap.py&quot;</span><span class="p">])</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;saving bootstrap to {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">tmp_path</span><span class="p">))</span>
+		<span class="n">output</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_comms</span><span class="o">.</span><span class="n">put_file</span><span class="p">(</span><span class="n">tmp_path</span><span class="p">,</span> <span class="n">bootstrap_contents</span><span class="p">)</span>
+
+		<span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_running</span><span class="o">.</span><span class="n">is_set</span><span class="p">()</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vm_is_running</span><span class="p">():</span>
+			<span class="k">return</span>
+
+		<span class="n">config_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_comms</span><span class="o">.</span><span class="n">sep</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">_comms</span><span class="o">.</span><span class="n">tmp_loc</span><span class="p">(),</span> <span class="s">&quot;config.json&quot;</span><span class="p">])</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;writing config to {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">config_path</span><span class="p">))</span>
+		<span class="n">output</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_comms</span><span class="o">.</span><span class="n">put_file</span><span class="p">(</span><span class="n">config_path</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_config</span><span class="p">())</span>
+
+		<span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_running</span><span class="o">.</span><span class="n">is_set</span><span class="p">()</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vm_is_running</span><span class="p">():</span>
+			<span class="k">return</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;running bootstrap&quot;</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_comms</span><span class="o">.</span><span class="n">run_script</span><span class="p">(</span><span class="s">&quot;python </span><span class="se">\&quot;</span><span class="s">&quot;</span> <span class="o">+</span> <span class="n">tmp_path</span> <span class="o">+</span> <span class="s">&quot;</span><span class="se">\&quot;</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">background</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+		<span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_running</span><span class="o">.</span><span class="n">is_set</span><span class="p">()</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vm_is_running</span><span class="p">():</span>
+			<span class="k">return</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;started bootstrap&quot;</span><span class="p">)</span>
+	
+	<span class="k">def</span> <span class="nf">_make_config</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="n">res</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+			<span class="nb">id</span>		<span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">job</span><span class="p">,</span>
+			<span class="n">idx</span>		<span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">idx</span><span class="p">,</span>
+			<span class="n">tool</span>	<span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tool</span><span class="p">,</span>
+			<span class="n">params</span>	<span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">,</span>
+			<span class="n">code</span>	<span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+				<span class="n">loc</span>			<span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">code_loc</span><span class="p">,</span>
+				<span class="n">username</span>	<span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">code_username</span><span class="p">,</span>
+				<span class="n">password</span>	<span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">code_password</span><span class="p">,</span>
+			<span class="p">)</span>
+		<span class="p">)</span>
+
+		<span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">res</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">separators</span><span class="o">=</span><span class="p">(</span><span class="s">&#39;,&#39;</span><span class="p">,</span> <span class="s">&#39;: &#39;</span><span class="p">))</span>
+	
+	<span class="c"># ----------------------------</span>
+
+	<span class="k">def</span> <span class="nf">_libvirt</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_libvirt_conn</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_libvirt_conn</span> <span class="o">=</span> <span class="n">libvirt</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s">&quot;qemu:///system&quot;</span><span class="p">)</span>
+		<span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_libvirt_conn</span>
+
+	<span class="k">def</span> <span class="nf">_libvirt_domain</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Return the libvirt domain for the currently-running vagrant box</span>
+<span class="sd">		:returns: libvirt.Domain if exists, None if it does not exist</span>
+
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">conn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_libvirt</span><span class="p">()</span>
+		<span class="k">try</span><span class="p">:</span>
+			<span class="n">domain</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">lookupByName</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_domain</span><span class="p">)</span>
+			<span class="k">return</span> <span class="n">domain</span>
+		<span class="k">except</span> <span class="n">libvirt</span><span class="o">.</span><span class="n">libvirtError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+			<span class="k">return</span> <span class="bp">None</span>
+	
+	<span class="k">def</span> <span class="nf">_vm_start</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_image_man</span><span class="o">.</span><span class="n">ensure_image</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">image</span><span class="p">):</span>
+			<span class="k">return</span> <span class="bp">False</span>
+		
+		<span class="bp">self</span><span class="o">.</span><span class="n">_vm_create</span><span class="p">()</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_vm_run</span><span class="p">()</span>
+
+		<span class="k">return</span> <span class="bp">True</span>
+	
+	<span class="k">def</span> <span class="nf">_vm_cleanup</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;cleaning up&quot;</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_vm_kill</span><span class="p">()</span>
+		<span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_vm_image_loc</span><span class="p">)</span>
+	
+	<span class="k">def</span> <span class="nf">_vm_kill</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="n">vm_name</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_vm_image_loc</span><span class="p">)</span>
+		<span class="c"># the domains created are transient, don&#39;t need to undefine them</span>
+		<span class="c"># sh.virsh.undefine(vm_name)</span>
+
+		<span class="c"># if the VM has already been shutdown, this will fail</span>
+		<span class="k">try</span><span class="p">:</span>
+			<span class="n">sh</span><span class="o">.</span><span class="n">virsh</span><span class="o">.</span><span class="n">destroy</span><span class="p">(</span><span class="n">vm_name</span><span class="p">)</span>
+		<span class="k">except</span><span class="p">:</span>
+			<span class="k">pass</span>
+	
+	<span class="k">def</span> <span class="nf">_vm_is_running</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Return True/False if the current image is still running</span>
+<span class="sd">		:returns: True/False</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">conn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_libvirt</span><span class="p">()</span>
+		<span class="k">try</span><span class="p">:</span>
+			<span class="n">domain</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">lookupByName</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_domain</span><span class="p">)</span>
+		<span class="k">except</span> <span class="n">libvirt</span><span class="o">.</span><span class="n">libvirtError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+			<span class="k">return</span> <span class="bp">False</span>
+
+		<span class="k">if</span> <span class="n">domain</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="k">return</span> <span class="bp">False</span>
+		<span class="n">state</span><span class="p">,</span><span class="n">reason</span> <span class="o">=</span> <span class="n">domain</span><span class="o">.</span><span class="n">state</span><span class="p">()</span>
+		<span class="k">if</span> <span class="n">state</span> <span class="o">==</span> <span class="n">libvirt</span><span class="o">.</span><span class="n">VIR_DOMAIN_RUNNING</span><span class="p">:</span>
+			<span class="k">return</span> <span class="bp">True</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="k">return</span> <span class="bp">False</span>
+
+	<span class="k">def</span> <span class="nf">_vm_vnc_port</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Return the vnc port of the vagrant VM</span>
+<span class="sd">		:returns: The vnc port. If the domain is not running, None is returned. If vnc is not (yet?) available, -1 is returned.</span>
+
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">domain</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_libvirt_domain</span><span class="p">()</span>
+		<span class="c"># VM isn&#39;t running (yet?)</span>
+		<span class="k">if</span> <span class="n">domain</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="k">return</span> <span class="bp">None</span>
+
+		<span class="n">info</span> <span class="o">=</span> <span class="n">xmltodict</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">domain</span><span class="o">.</span><span class="n">XMLDesc</span><span class="p">())</span>
+		<span class="n">port</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">info</span><span class="p">[</span><span class="s">&quot;domain&quot;</span><span class="p">][</span><span class="s">&quot;devices&quot;</span><span class="p">][</span><span class="s">&quot;graphics&quot;</span><span class="p">][</span><span class="s">&quot;@port&quot;</span><span class="p">])</span>
+
+		<span class="k">return</span> <span class="n">port</span>
+	
+	<span class="k">def</span> <span class="nf">_vm_ip_address</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Return the ip address (on the host) of the VM being handled</span>
+<span class="sd">		:returns: IP Address, or None if it does not yet have one</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">domain</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_libvirt_domain</span><span class="p">()</span>
+		<span class="k">if</span> <span class="n">domain</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="k">return</span> <span class="bp">None</span>
+
+		<span class="n">info</span> <span class="o">=</span> <span class="n">xmltodict</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">domain</span><span class="o">.</span><span class="n">XMLDesc</span><span class="p">())</span>
+		<span class="n">mac_addr</span> <span class="o">=</span> <span class="n">info</span><span class="p">[</span><span class="s">&quot;domain&quot;</span><span class="p">][</span><span class="s">&quot;devices&quot;</span><span class="p">][</span><span class="s">&quot;interface&quot;</span><span class="p">][</span><span class="s">&quot;mac&quot;</span><span class="p">][</span><span class="s">&quot;@address&quot;</span><span class="p">]</span>
+		<span class="n">output</span> <span class="o">=</span> <span class="n">arp</span><span class="p">(</span><span class="s">&quot;-a&quot;</span><span class="p">,</span> <span class="s">&quot;-n&quot;</span><span class="p">)</span>
+		<span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">output</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">):</span>
+			<span class="k">if</span> <span class="n">mac_addr</span> <span class="ow">in</span> <span class="n">line</span><span class="p">:</span>
+				<span class="n">ip_address</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s">r&#39;(\d{1,3}.\d{1,3}.\d{1,3}.\d{1,3})&#39;</span><span class="p">,</span> <span class="n">line</span><span class="p">)</span>
+				<span class="k">return</span> <span class="n">ip_address</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+		<span class="k">return</span> <span class="bp">None</span>
+	
+	<span class="k">def</span> <span class="nf">_vm_create</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_vm_image_loc</span> <span class="o">=</span> <span class="s">&quot;/tmp/{}_{}.img&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">job</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">idx</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_domain</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_vm_image_loc</span><span class="p">)</span>
+		<span class="n">output</span> <span class="o">=</span> <span class="n">sh</span><span class="o">.</span><span class="n">qemu_img</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_vm_image_loc</span><span class="p">,</span>
+			<span class="n">b</span>	<span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">LIBVIRT_BASE</span><span class="p">,</span> <span class="n">image_id_to_volume</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">image</span><span class="p">)),</span>
+			<span class="n">f</span>	<span class="o">=</span> <span class="s">&quot;qcow2&quot;</span><span class="p">,</span>
+		<span class="p">)</span>
+	
+	<span class="k">def</span> <span class="nf">_rand_mac_addr</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="n">mac</span> <span class="o">=</span> <span class="p">[</span><span class="mh">0x00</span><span class="p">,</span><span class="mh">0x16</span><span class="p">,</span><span class="mh">0x3e</span><span class="p">,</span>
+			<span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mh">0x00</span><span class="p">,</span> <span class="mh">0x7f</span><span class="p">),</span>
+			<span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mh">0x00</span><span class="p">,</span> <span class="mh">0xff</span><span class="p">),</span>
+			<span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mh">0x00</span><span class="p">,</span> <span class="mh">0xff</span><span class="p">)</span>
+		<span class="p">]</span>
+		<span class="k">return</span> <span class="s">&#39;:&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="s">&quot;</span><span class="si">%02x</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">x</span><span class="p">,</span> <span class="n">mac</span><span class="p">))</span>
+	
+	<span class="k">def</span> <span class="nf">_vm_run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Creates the domain and runs it&quot;&quot;&quot;</span>
+		<span class="n">vm_name</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_vm_image_loc</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;running VM {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">vm_name</span><span class="p">))</span>
+		
+		<span class="n">domain_xml</span> <span class="o">=</span> <span class="s">&quot;&quot;&quot;</span>
+<span class="s">			&lt;domain type=&#39;kvm&#39;&gt;</span>
+<span class="s">			  &lt;name&gt;{domain_name}&lt;/name&gt;</span>
+<span class="s">			  &lt;uuid&gt;{domain_uuid}&lt;/uuid&gt;</span>
+<span class="s">			  &lt;memory&gt;{mem_size}&lt;/memory&gt;</span>
+<span class="s">			  &lt;currentMemory&gt;{mem_size}&lt;/currentMemory&gt;</span>
+<span class="s">			  &lt;vcpu&gt;{num_cpus}&lt;/vcpu&gt;</span>
+<span class="s">			  &lt;os&gt;</span>
+<span class="s">				&lt;type arch=&#39;x86_64&#39;&gt;hvm&lt;/type&gt;</span>
+<span class="s">				&lt;boot dev=&#39;hd&#39;/&gt;</span>
+<span class="s">			  &lt;/os&gt;</span>
+<span class="s">			  &lt;features&gt;</span>
+<span class="s">				&lt;acpi/&gt;&lt;apic/&gt;&lt;pae/&gt;</span>
+<span class="s">			  &lt;/features&gt;</span>
+<span class="s">			  &lt;clock offset=&quot;utc&quot;/&gt;</span>
+<span class="s">			  &lt;on_poweroff&gt;destroy&lt;/on_poweroff&gt;</span>
+<span class="s">			  &lt;on_reboot&gt;restart&lt;/on_reboot&gt;</span>
+<span class="s">			  &lt;on_crash&gt;destroy&lt;/on_crash&gt;</span>
+<span class="s">			  &lt;devices&gt;</span>
+<span class="s">				&lt;emulator&gt;/usr/bin/kvm-spice&lt;/emulator&gt;</span>
+<span class="s">				&lt;disk type=&#39;file&#39; device=&#39;disk&#39;&gt;</span>
+<span class="s">				  &lt;driver name=&#39;qemu&#39; type=&#39;qcow2&#39;/&gt;</span>
+<span class="s">				  &lt;source file=&#39;{image_path}&#39;/&gt;</span>
+<span class="s">				  &lt;target dev=&#39;vda&#39; bus=&#39;sata&#39;/&gt;</span>
+<span class="s">				&lt;/disk&gt;</span>
+<span class="s">				&lt;interface type=&#39;network&#39;&gt;</span>
+<span class="s">				  &lt;source network=&#39;default&#39;/&gt;</span>
+<span class="s">				  &lt;model type=&#39;virtio&#39;/&gt;</span>
+<span class="s">				  &lt;filterref filter=&#39;{filter_name}&#39;&gt;</span>
+<span class="s">					{filter_params}</span>
+<span class="s">				  &lt;/filterref&gt;</span>
+<span class="s">				&lt;/interface&gt;</span>
+<span class="s">				&lt;input type=&#39;mouse&#39; bus=&#39;ps2&#39;/&gt;</span>
+<span class="s">				&lt;graphics type=&#39;vnc&#39; port=&#39;-1&#39;/&gt;</span>
+<span class="s">				&lt;console type=&#39;pty&#39;/&gt;</span>
+<span class="s">				&lt;video&gt;</span>
+<span class="s">				  &lt;model type=&#39;cirrus&#39;/&gt;</span>
+<span class="s">				&lt;/video&gt;</span>
+<span class="s">			  &lt;/devices&gt;</span>
+<span class="s">			&lt;/domain&gt;</span>
+<span class="s">		&quot;&quot;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+			<span class="n">domain_name</span>		<span class="o">=</span> <span class="n">vm_name</span><span class="p">,</span>
+			<span class="n">domain_uuid</span>		<span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">()),</span>
+			<span class="n">mem_size</span>		<span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ram</span> <span class="o">*</span> <span class="mi">1024</span><span class="p">,</span> <span class="c"># ram is in MB</span>
+			<span class="n">num_cpus</span>		<span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
+			<span class="n">image_path</span>		<span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vm_image_loc</span><span class="p">,</span>
+			<span class="n">filter_name</span>		<span class="o">=</span> <span class="s">&quot;talus-&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">network</span><span class="p">,</span>
+			<span class="n">filter_params</span>	<span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_filter_params</span><span class="p">(),</span>
+			<span class="c">#mac_address		= self._rand_mac_addr()</span>
+		<span class="p">)</span>
+
+		<span class="n">conn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_libvirt</span><span class="p">()</span>
+		<span class="c">#domain = conn.defineXML(domain_xml)</span>
+		<span class="c"># should create and start the VM</span>
+		<span class="n">domain</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">createXML</span><span class="p">(</span><span class="n">domain_xml</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+<span class="c">#</span>
+		<span class="c">#sh.virt_install(</span>
+			<span class="c">#&quot;--import&quot;, # stupid python keywords</span>
+			<span class="c">#virt_type		= &quot;kvm&quot;,</span>
+			<span class="c">#r				= self.ram,</span>
+			<span class="c">#accelerate		= True,</span>
+			<span class="c">#n				= vm_name,</span>
+			<span class="c">#disk			= &quot;{},device=disk,bus=sata,format=qcow2&quot;.format(self._vm_image_loc),</span>
+			<span class="c">#vnc				= True,</span>
+			<span class="c">##w				= &quot;bridge=virbr0,model=virtio&quot;,</span>
+			<span class="c">#w				= True,</span>
+			<span class="c">#noautoconsole	= True,</span>
+			<span class="c">## network		= &quot;filter....&quot;</span>
+		<span class="c">#)</span></div>
+</pre></div>
+
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015, Optiv Labs.
+    </p>
+  </div>
+
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+  
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'0.0.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

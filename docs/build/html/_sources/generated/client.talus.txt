@@ -1,0 +1,30 @@
+client.talus package
+====================
+
+Submodules
+----------
+
+client.talus.api module
+-----------------------
+
+.. automodule:: client.talus.api
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+client.talus.models module
+--------------------------
+
+.. automodule:: client.talus.models
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
+Module contents
+---------------
+
+.. automodule:: client.talus
+    :members:
+    :undoc-members:
+    :show-inheritance:

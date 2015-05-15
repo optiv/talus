@@ -1,0 +1,531 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>master &mdash; Talus 0.0.1 documentation</title>
+  
+
+  
+  
+
+  
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Roboto+Slab:400,700|Inconsolata:400,700&subset=latin,cyrillic' rel='stylesheet' type='text/css'>
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="Talus 0.0.1 documentation" href="../index.html"/>
+        <link rel="up" title="Module code" href="index.html"/> 
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-nav-search">
+        
+          <a href="../index.html" class="fa fa-home"> Talus</a>
+        
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+        
+          
+          
+              <ul class="simple">
+</ul>
+
+          
+        
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../index.html">Talus</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../index.html">Docs</a> &raquo;</li>
+      
+          <li><a href="index.html">Module code</a> &raquo;</li>
+      
+    <li>master</li>
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document">
+            
+  <h1>Source code for master</h1><div class="highlight"><pre>
+<span class="c">#!/usr/bin/env python</span>
+<span class="c"># encoding: utf-8</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">absolute_import</span>
+
+<span class="kn">import</span> <span class="nn">glob</span>
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">netifaces</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">pymongo</span>
+<span class="kn">import</span> <span class="nn">signal</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">threading</span>
+
+<span class="kn">import</span> <span class="nn">master.models</span>
+<span class="kn">from</span> <span class="nn">master.models</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">master.lib.mongo_oplog_watcher</span> <span class="kn">import</span> <span class="n">OplogWatcher</span><span class="p">,</span> <span class="n">OplogPrinter</span>
+<span class="kn">from</span> <span class="nn">master.lib.amqp_man</span> <span class="kn">import</span> <span class="n">AmqpManager</span>
+<span class="kn">import</span> <span class="nn">master.watchers</span>
+
+<span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">_signal_handler</span><span class="p">(</span><span class="n">signum</span><span class="p">,</span> <span class="n">frame</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;Shut down the running Master worker</span>
+
+<span class="sd">	:signum: Signal number (e.g. signal.SIGINT, etc)</span>
+<span class="sd">	:frame: Python frame (I think)</span>
+<span class="sd">	:returns: None</span>
+
+<span class="sd">	&quot;&quot;&quot;</span>
+	<span class="k">print</span><span class="p">(</span><span class="s">&quot;handling signal&quot;</span><span class="p">)</span>
+	<span class="n">Master</span><span class="o">.</span><span class="n">instance</span><span class="p">()</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+
+<span class="k">def</span> <span class="nf">_install_sig_handlers</span><span class="p">():</span>
+	<span class="sd">&quot;&quot;&quot;Install signal handlers</span>
+<span class="sd">	&quot;&quot;&quot;</span>
+	<span class="k">print</span><span class="p">(</span><span class="s">&quot;installing signal handlers&quot;</span><span class="p">)</span>
+	<span class="n">signal</span><span class="o">.</span><span class="n">signal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGINT</span><span class="p">,</span> <span class="n">_signal_handler</span><span class="p">)</span>
+	<span class="n">signal</span><span class="o">.</span><span class="n">signal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGTERM</span><span class="p">,</span> <span class="n">_signal_handler</span><span class="p">)</span>
+
+<div class="viewcode-block" id="TalusDBWatcher"><a class="viewcode-back" href="../generated/master.html#master.TalusDBWatcher">[docs]</a><span class="k">class</span> <span class="nc">TalusDBWatcher</span><span class="p">(</span><span class="n">OplogWatcher</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;A class to watch the mongodb for changes&quot;&quot;&quot;</span>
+
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parent_log</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;docstring for TalusDBWatcher constructor</span>
+<span class="sd">		</span>
+<span class="sd">		:db: database name, default to &quot;talus&quot;</span>
+<span class="sd">		:collection: name of the collection to filter on, default to ``None``</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+		<span class="n">OplogWatcher</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+		<span class="c"># { &lt;mod_name&gt;: [watchers], ... }</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_watchers</span> <span class="o">=</span> <span class="p">{}</span>
+
+		<span class="k">if</span> <span class="n">parent_log</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_log</span>  <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s">&quot;DB-WATCH&quot;</span><span class="p">)</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_log</span> <span class="o">=</span> <span class="n">parent_log</span><span class="o">.</span><span class="n">getChild</span><span class="p">(</span><span class="s">&quot;DB-WATCH&quot;</span><span class="p">)</span>
+	
+<div class="viewcode-block" id="TalusDBWatcher.run"><a class="viewcode-back" href="../generated/master.html#master.TalusDBWatcher.run">[docs]</a>	<span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;running&quot;</span><span class="p">)</span>
+		<span class="nb">super</span><span class="p">(</span><span class="n">TalusDBWatcher</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+
+		<span class="k">for</span> <span class="n">collection</span><span class="p">,</span><span class="n">watchers</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_watchers</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+			<span class="k">for</span> <span class="n">watcher</span> <span class="ow">in</span> <span class="n">watchers</span><span class="p">:</span>
+				<span class="n">watcher</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+	</div>
+<div class="viewcode-block" id="TalusDBWatcher.stop"><a class="viewcode-back" href="../generated/master.html#master.TalusDBWatcher.stop">[docs]</a>	<span class="k">def</span> <span class="nf">stop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Stop the database watcher</span>
+<span class="sd">		:returns: TODO</span>
+
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;stopping&quot;</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_running</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+	</div>
+<div class="viewcode-block" id="TalusDBWatcher.add_watcher"><a class="viewcode-back" href="../generated/master.html#master.TalusDBWatcher.add_watcher">[docs]</a>	<span class="k">def</span> <span class="nf">add_watcher</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">collection</span><span class="p">,</span> <span class="n">watcher</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_watchers</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">collection</span><span class="p">,</span> <span class="p">[])</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">watcher</span><span class="p">)</span>
+	</div>
+<div class="viewcode-block" id="TalusDBWatcher.insert"><a class="viewcode-back" href="../generated/master.html#master.TalusDBWatcher.insert">[docs]</a>	<span class="k">def</span> <span class="nf">insert</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ns</span><span class="p">,</span> <span class="n">ts</span><span class="p">,</span> <span class="nb">id</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">raw</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Handle new insertions into the database</span>
+
+<span class="sd">		:ns: TODO</span>
+<span class="sd">		:ts: TODO</span>
+<span class="sd">		:id: TODO</span>
+<span class="sd">		:obj: TODO</span>
+<span class="sd">		:raw: TODO</span>
+<span class="sd">		:**kwargs: TODO</span>
+<span class="sd">		:returns: TODO</span>
+
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;watched insert in {}: {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">ns</span><span class="p">,</span> <span class="nb">id</span><span class="p">))</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;received insert: {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">obj</span><span class="p">))</span>
+
+		<span class="k">if</span> <span class="n">ns</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_watchers</span><span class="p">:</span>
+			<span class="k">for</span> <span class="n">watcher</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_watchers</span><span class="p">[</span><span class="n">ns</span><span class="p">]:</span>
+				<span class="n">watcher</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="nb">id</span><span class="p">,</span> <span class="n">obj</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="TalusDBWatcher.update"><a class="viewcode-back" href="../generated/master.html#master.TalusDBWatcher.update">[docs]</a>	<span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ns</span><span class="p">,</span> <span class="n">ts</span><span class="p">,</span> <span class="nb">id</span><span class="p">,</span> <span class="n">mod</span><span class="p">,</span> <span class="n">raw</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Handle new updates in the database</span>
+
+<span class="sd">		:ns: TODO</span>
+<span class="sd">		:ts: TODO</span>
+<span class="sd">		:id: TODO</span>
+<span class="sd">		:mod: TODO</span>
+<span class="sd">		:raw: TODO</span>
+<span class="sd">		:**kwargs: TODO</span>
+<span class="sd">		:returns: TODO</span>
+
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;update for {}:{}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">ns</span><span class="p">,</span> <span class="nb">id</span><span class="p">))</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;modification: {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">mod</span><span class="p">))</span>
+
+		<span class="k">if</span> <span class="n">ns</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_watchers</span><span class="p">:</span>
+			<span class="k">for</span> <span class="n">watcher</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_watchers</span><span class="p">[</span><span class="n">ns</span><span class="p">]:</span>
+				<span class="n">watcher</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="nb">id</span><span class="p">,</span> <span class="n">mod</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="TalusDBWatcher.delete"><a class="viewcode-back" href="../generated/master.html#master.TalusDBWatcher.delete">[docs]</a>	<span class="k">def</span> <span class="nf">delete</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ns</span><span class="p">,</span> <span class="n">ts</span><span class="p">,</span> <span class="nb">id</span><span class="p">,</span> <span class="n">raw</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Handle new deletions in the database</span>
+
+<span class="sd">		:ns: TODO</span>
+<span class="sd">		:ts: TODO</span>
+<span class="sd">		:id: TODO</span>
+<span class="sd">		:raw: TODO</span>
+<span class="sd">		:**kwargs: TODO</span>
+<span class="sd">		:returns: TODO</span>
+
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;watched delete in {}: {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">ns</span><span class="p">,</span> <span class="nb">id</span><span class="p">))</span>
+
+		<span class="k">if</span> <span class="n">ns</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_watchers</span><span class="p">:</span>
+			<span class="k">for</span> <span class="n">watcher</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_watchers</span><span class="p">[</span><span class="n">ns</span><span class="p">]:</span>
+				<span class="n">watcher</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
+</div></div>
+<div class="viewcode-block" id="Master"><a class="viewcode-back" href="../generated/master.html#master.Master">[docs]</a><span class="k">class</span> <span class="nc">Master</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;The master class watches the database for changes, queues and handles amqp messages,</span>
+<span class="sd">	and handles VM image conversions&quot;&quot;&quot;</span>
+
+	<span class="n">AMQP_BROADCAST_XCHG</span> <span class="o">=</span> <span class="s">&quot;broadcast&quot;</span>
+	<span class="n">AMQP_SLAVE_QUEUE</span> <span class="o">=</span> <span class="s">&quot;slaves&quot;</span>
+	<span class="n">AMQP_SLAVE_STATUS_QUEUE</span> <span class="o">=</span> <span class="s">&quot;slave_status&quot;</span>
+
+	<span class="c"># -------------------------</span>
+	<span class="c"># class methods</span>
+	<span class="c"># -------------------------</span>
+
+	<span class="n">_instance</span> <span class="o">=</span> <span class="bp">None</span>
+
+	<span class="nd">@classmethod</span>
+<div class="viewcode-block" id="Master.instance"><a class="viewcode-back" href="../generated/master.html#master.Master.instance">[docs]</a>	<span class="k">def</span> <span class="nf">instance</span><span class="p">(</span><span class="n">cls</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Return the singleton instance of the Master class</span>
+<span class="sd">		:returns: TODO</span>
+
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="k">if</span> <span class="n">cls</span><span class="o">.</span><span class="n">_instance</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="n">cls</span><span class="o">.</span><span class="n">_instance</span> <span class="o">=</span> <span class="n">cls</span><span class="p">()</span>
+		<span class="k">return</span> <span class="n">cls</span><span class="o">.</span><span class="n">_instance</span>
+</div>
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;docstring for Master constructor&quot;&quot;&quot;</span>
+		<span class="nb">super</span><span class="p">(</span><span class="n">Master</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">()</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">)</span>
+
+		<span class="c"># this will be set when the docker container is linked to talus_db</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_db_conn_info</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s">&quot;TALUS_DB_PORT_27017_TCP&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">&quot;tcp://&quot;</span><span class="p">,</span> <span class="s">&quot;&quot;</span><span class="p">)</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_running</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Event</span><span class="p">()</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_watcher</span> <span class="o">=</span> <span class="bp">None</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_amqp_man</span> <span class="o">=</span> <span class="n">AmqpManager</span><span class="o">.</span><span class="n">instance</span><span class="p">()</span>
+		
+		<span class="c"># TODO need a better way than just eth0</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_ip</span> <span class="o">=</span> <span class="n">netifaces</span><span class="o">.</span><span class="n">ifaddresses</span><span class="p">(</span><span class="s">&#39;eth0&#39;</span><span class="p">)[</span><span class="mi">2</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s">&#39;addr&#39;</span><span class="p">]</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;ready&quot;</span><span class="p">)</span>
+
+	<span class="c"># -------------------------</span>
+	<span class="c"># public functions</span>
+	<span class="c"># -------------------------</span>
+	
+<div class="viewcode-block" id="Master.run"><a class="viewcode-back" href="../generated/master.html#master.Master.run">[docs]</a>	<span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Run the master daemon</span>
+<span class="sd">		:returns: TODO</span>
+
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;running&quot;</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_running</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_start_watcher</span><span class="p">()</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;started watcher&quot;</span><span class="p">)</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_amqp_man</span><span class="o">.</span><span class="n">do_start</span><span class="p">()</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_amqp_listen_for_slaves</span><span class="p">()</span>
+
+		<span class="c"># stupid GIL</span>
+		<span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">_watcher</span><span class="o">.</span><span class="n">is_alive</span><span class="p">():</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_watcher</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="mi">2</span><span class="o">**</span><span class="mi">32</span><span class="p">)</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_shutdown_singletons</span><span class="p">()</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;done running&quot;</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Master.stop"><a class="viewcode-back" href="../generated/master.html#master.Master.stop">[docs]</a>	<span class="k">def</span> <span class="nf">stop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Stop the master service from running</span>
+<span class="sd">		:returns: TODO</span>
+
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;stopping&quot;</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_running</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_watcher</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+	</div>
+<div class="viewcode-block" id="Master.handle_signal"><a class="viewcode-back" href="../generated/master.html#master.Master.handle_signal">[docs]</a>	<span class="k">def</span> <span class="nf">handle_signal</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sig</span><span class="p">,</span> <span class="n">frame</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;TODO: Docstring for handle_signal.</span>
+
+<span class="sd">		:sig: TODO</span>
+<span class="sd">		:frame: TODO</span>
+<span class="sd">		:returns: TODO</span>
+
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+	
+	<span class="c"># -------------------------</span>
+	<span class="c"># private functions</span>
+	<span class="c"># -------------------------</span>
+</div>
+	<span class="k">def</span> <span class="nf">_amqp_listen_for_slaves</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Setup amqp queues to listen/respond to slaves</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_amqp_man</span><span class="o">.</span><span class="n">declare_exchange</span><span class="p">(</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">AMQP_BROADCAST_XCHG</span><span class="p">,</span>
+			<span class="s">&quot;fanout&quot;</span>
+		<span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_amqp_man</span><span class="o">.</span><span class="n">declare_queue</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">AMQP_SLAVE_QUEUE</span><span class="p">,</span>
+			<span class="n">durable</span>		<span class="o">=</span> <span class="bp">True</span><span class="p">,</span>
+			<span class="n">auto_delete</span>	<span class="o">=</span> <span class="bp">False</span><span class="p">,</span>
+			<span class="n">exclusive</span>	<span class="o">=</span> <span class="bp">False</span>
+		<span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_amqp_man</span><span class="o">.</span><span class="n">declare_queue</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">AMQP_SLAVE_STATUS_QUEUE</span><span class="p">,</span>
+			<span class="n">durable</span>		<span class="o">=</span> <span class="bp">True</span><span class="p">,</span>
+			<span class="n">auto_delete</span>	<span class="o">=</span> <span class="bp">False</span><span class="p">,</span>
+			<span class="n">exclusive</span>	<span class="o">=</span> <span class="bp">False</span>
+		<span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_amqp_man</span><span class="o">.</span><span class="n">consume_queue</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">AMQP_SLAVE_STATUS_QUEUE</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_on_slave_status</span><span class="p">)</span>
+	
+	<span class="k">def</span> <span class="nf">_on_slave_status</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">channel</span><span class="p">,</span> <span class="n">method</span><span class="p">,</span> <span class="n">props</span><span class="p">,</span> <span class="n">body</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Slaves will respond to commands/queries via this queue. Slaves</span>
+<span class="sd">		will also send an initial connection message via this queue</span>
+<span class="sd">		in order to get configuration details and report basic stats</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_amqp_man</span><span class="o">.</span><span class="n">ack_method</span><span class="p">(</span><span class="n">method</span><span class="p">)</span>
+
+		<span class="n">data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">body</span><span class="p">)</span>
+		<span class="n">switch</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+			<span class="n">new</span>			<span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handle_slave_new</span><span class="p">,</span>
+			<span class="n">status</span>		<span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handle_slave_status</span><span class="p">,</span>
+			<span class="n">heartbeat</span>	<span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handle_slave_heartbeat</span><span class="p">,</span>
+		<span class="p">)</span>
+
+		<span class="k">if</span> <span class="s">&quot;type&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span> <span class="ow">or</span> <span class="n">data</span><span class="p">[</span><span class="s">&quot;type&quot;</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">switch</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s">&quot;recieved slave data is in the wrong format&quot;</span><span class="p">)</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="n">switch</span><span class="p">[</span><span class="n">data</span><span class="p">[</span><span class="s">&quot;type&quot;</span><span class="p">]](</span><span class="n">data</span><span class="p">)</span>
+	
+	<span class="k">def</span> <span class="nf">_handle_slave_status</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Handle slave status messages&quot;&quot;&quot;</span>
+		<span class="k">if</span> <span class="s">&quot;uuid&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s">&quot;got a slave status message that does not include a uuid&quot;</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+			<span class="k">return</span>
+
+		<span class="n">uuid</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s">&quot;uuid&quot;</span><span class="p">]</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;got slave status update message&quot;</span><span class="p">)</span>
+
+		<span class="n">slaves</span> <span class="o">=</span> <span class="n">Slave</span><span class="o">.</span><span class="n">objects</span><span class="p">(</span><span class="n">uuid</span><span class="o">=</span><span class="n">uuid</span><span class="p">)</span>
+		<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">slaves</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s">&quot;got a slave status message that does not specify its uuid!&quot;</span><span class="p">)</span>
+			<span class="k">return</span>
+
+		<span class="n">slave</span> <span class="o">=</span> <span class="n">slaves</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+		<span class="k">if</span> <span class="s">&quot;running_vms&quot;</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+			<span class="n">slave</span><span class="o">.</span><span class="n">running_vms</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s">&quot;running_vms&quot;</span><span class="p">]</span>
+
+		<span class="k">if</span> <span class="s">&quot;total_jobs_run&quot;</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+			<span class="n">slave</span><span class="o">.</span><span class="n">total_jobs_run</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s">&quot;total_jobs_run&quot;</span><span class="p">]</span>
+
+		<span class="k">if</span> <span class="s">&quot;vms&quot;</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+			<span class="n">slave</span><span class="o">.</span><span class="n">vms</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s">&quot;vms&quot;</span><span class="p">]</span>
+
+		<span class="n">slave</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+	
+	<span class="k">def</span> <span class="nf">_handle_slave_new</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Handle new slave messages&quot;&quot;&quot;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;handling new slave message: {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">data</span><span class="p">))</span>
+
+		<span class="c"># these must be unique</span>
+		<span class="n">Slave</span><span class="o">.</span><span class="n">objects</span><span class="p">(</span>
+			<span class="n">ip</span><span class="o">=</span><span class="n">data</span><span class="p">[</span><span class="s">&quot;ip&quot;</span><span class="p">],</span>
+			<span class="n">hostname</span><span class="o">=</span><span class="n">data</span><span class="p">[</span><span class="s">&quot;hostname&quot;</span><span class="p">]</span>
+		<span class="p">)</span><span class="o">.</span><span class="n">delete</span><span class="p">()</span>
+
+		<span class="n">slave</span> <span class="o">=</span> <span class="n">Slave</span><span class="p">()</span>
+		<span class="n">slave</span><span class="o">.</span><span class="n">ip</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s">&quot;ip&quot;</span><span class="p">]</span>
+		<span class="n">slave</span><span class="o">.</span><span class="n">hostname</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s">&quot;hostname&quot;</span><span class="p">]</span>
+		<span class="n">slave</span><span class="o">.</span><span class="n">uuid</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s">&quot;uuid&quot;</span><span class="p">]</span>
+		<span class="n">slave</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_amqp_man</span><span class="o">.</span><span class="n">queue_msg</span><span class="p">(</span>
+			<span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="nb">dict</span><span class="p">(</span>
+				<span class="nb">type</span>		<span class="o">=</span> <span class="s">&quot;config&quot;</span><span class="p">,</span>
+				<span class="n">db</span>			<span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ip</span><span class="p">,</span>
+				<span class="n">code</span>		<span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+					<span class="n">loc</span>		<span class="o">=</span> <span class="s">&quot;http://{}/code_cache&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ip</span><span class="p">),</span>
+
+					<span class="c"># TODO put these in a config file</span>
+					<span class="n">username</span>	<span class="o">=</span> <span class="s">&quot;talus_job&quot;</span><span class="p">,</span>
+					<span class="n">password</span>	<span class="o">=</span> <span class="s">&quot;Monkeys eat bananas and poop all day.&quot;</span>
+				<span class="p">),</span>
+				<span class="n">image_url</span>	<span class="o">=</span> <span class="s">&quot;http://{}/images/&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ip</span><span class="p">)</span>
+			<span class="p">)),</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">AMQP_SLAVE_QUEUE</span> <span class="o">+</span> <span class="s">&quot;_&quot;</span> <span class="o">+</span> <span class="n">slave</span><span class="o">.</span><span class="n">uuid</span>
+		<span class="p">)</span>
+	
+	<span class="k">def</span> <span class="nf">_handle_slave_heartbeat</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Handle slave heartbeats&quot;&quot;&quot;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;handling slave heartbeat: {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">data</span><span class="p">))</span>
+
+	<span class="k">def</span> <span class="nf">_shutdown_singletons</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;shutting down singletons&quot;</span><span class="p">)</span>
+		<span class="n">AmqpManager</span><span class="o">.</span><span class="n">instance</span><span class="p">()</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+
+	<span class="k">def</span> <span class="nf">_start_watcher</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Create and start the DB watcher</span>
+<span class="sd">		:returns: TODO</span>
+
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_watcher</span> <span class="o">=</span> <span class="n">TalusDBWatcher</span><span class="p">(</span>
+			<span class="n">parent_log</span>	<span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="p">,</span>
+			<span class="n">connection</span>	<span class="o">=</span> <span class="n">pymongo</span><span class="o">.</span><span class="n">MongoClient</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_db_conn_info</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&quot;:&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">27017</span><span class="p">)</span>
+		<span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_watcher</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+		<span class="c"># import all of the DB watchers defined in master/watchers/</span>
+		<span class="k">for</span> <span class="n">filename</span> <span class="ow">in</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">__file__</span><span class="p">),</span> <span class="s">&quot;watchers&quot;</span><span class="p">,</span> <span class="s">&quot;*.py&quot;</span><span class="p">)):</span>
+			<span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;__init__.py&quot;</span><span class="p">:</span>
+				<span class="k">continue</span>
+
+			<span class="n">mod_name</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">&quot;.py&quot;</span><span class="p">,</span> <span class="s">&quot;&quot;</span><span class="p">)</span>
+			<span class="n">mod_base</span> <span class="o">=</span> <span class="nb">__import__</span><span class="p">(</span><span class="s">&quot;master.watchers&quot;</span><span class="p">,</span> <span class="nb">globals</span><span class="p">(),</span> <span class="nb">locals</span><span class="p">(),</span> <span class="n">fromlist</span><span class="o">=</span><span class="p">[</span><span class="n">mod_name</span><span class="p">])</span>
+			<span class="n">mod</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">mod_base</span><span class="p">,</span> <span class="n">mod_name</span><span class="p">)</span>
+			
+			<span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">dir</span><span class="p">(</span><span class="n">mod</span><span class="p">):</span>
+				<span class="n">item</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">mod</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+				<span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">item</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="nb">type</span><span class="p">:</span>
+					<span class="k">continue</span>
+				<span class="k">if</span> <span class="n">item</span> <span class="o">!=</span> <span class="n">master</span><span class="o">.</span><span class="n">watchers</span><span class="o">.</span><span class="n">WatcherBase</span> <span class="ow">and</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="n">master</span><span class="o">.</span><span class="n">watchers</span><span class="o">.</span><span class="n">WatcherBase</span><span class="p">):</span>
+					<span class="n">watcher</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">mod</span><span class="p">,</span> <span class="n">name</span><span class="p">)(</span><span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="p">)</span>
+					<span class="bp">self</span><span class="o">.</span><span class="n">_watcher</span><span class="o">.</span><span class="n">add_watcher</span><span class="p">(</span><span class="n">watcher</span><span class="o">.</span><span class="n">collection</span><span class="p">,</span> <span class="n">watcher</span><span class="p">)</span>
+	</div>
+<div class="viewcode-block" id="main"><a class="viewcode-back" href="../generated/master.html#master.main">[docs]</a><span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+	<span class="n">_install_sig_handlers</span><span class="p">()</span>
+
+	<span class="n">master</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">do_connect</span><span class="p">()</span>
+
+	<span class="n">m</span> <span class="o">=</span> <span class="n">Master</span><span class="o">.</span><span class="n">instance</span><span class="p">()</span>
+	<span class="n">m</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+</div>
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&quot;__main__&quot;</span><span class="p">:</span>
+	<span class="n">main</span><span class="p">()</span>
+</pre></div>
+
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015, Optiv Labs.
+    </p>
+  </div>
+
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+  
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../',
+            VERSION:'0.0.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../_static/jquery.js"></script>
+      <script type="text/javascript" src="../_static/underscore.js"></script>
+      <script type="text/javascript" src="../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

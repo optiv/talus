@@ -1,0 +1,250 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>master.watchers.job &mdash; Talus 0.0.1 documentation</title>
+  
+
+  
+  
+
+  
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Roboto+Slab:400,700|Inconsolata:400,700&subset=latin,cyrillic' rel='stylesheet' type='text/css'>
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="Talus 0.0.1 documentation" href="../../../index.html"/>
+        <link rel="up" title="master.watchers" href="../watchers.html"/> 
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-nav-search">
+        
+          <a href="../../../index.html" class="fa fa-home"> Talus</a>
+        
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+        
+          
+          
+              <ul class="simple">
+</ul>
+
+          
+        
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../../../index.html">Talus</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../../../index.html">Docs</a> &raquo;</li>
+      
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+      
+          <li><a href="../../master.html">master</a> &raquo;</li>
+      
+          <li><a href="../watchers.html">master.watchers</a> &raquo;</li>
+      
+    <li>master.watchers.job</li>
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document">
+            
+  <h1>Source code for master.watchers.job</h1><div class="highlight"><pre>
+<span class="c">#!/usr/bin/env python</span>
+<span class="c"># encoding: utf-8</span>
+
+<span class="kn">import</span> <span class="nn">bson</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">uuid</span>
+
+<span class="kn">import</span> <span class="nn">master.models</span>
+<span class="kn">from</span> <span class="nn">master.lib.jobs</span> <span class="kn">import</span> <span class="n">JobManager</span>
+<span class="kn">from</span> <span class="nn">master.watchers</span> <span class="kn">import</span> <span class="n">WatcherBase</span>
+<span class="kn">from</span> <span class="nn">master.lib.amqp_man</span> <span class="kn">import</span> <span class="n">AmqpManager</span>
+<span class="kn">from</span> <span class="nn">master</span> <span class="kn">import</span> <span class="n">Master</span>
+
+<div class="viewcode-block" id="JobWatcher"><a class="viewcode-back" href="../../../generated/master.watchers.html#master.watchers.job.JobWatcher">[docs]</a><span class="k">class</span> <span class="nc">JobWatcher</span><span class="p">(</span><span class="n">WatcherBase</span><span class="p">):</span>
+	<span class="n">collection</span> <span class="o">=</span> <span class="s">&quot;talus.job&quot;</span>
+
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+		<span class="n">WatcherBase</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_job_man</span> <span class="o">=</span> <span class="n">JobManager</span><span class="p">()</span>
+		<span class="c"># this needs to be continuously running</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_job_man</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+		<span class="k">for</span> <span class="n">job</span> <span class="ow">in</span> <span class="n">master</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">Job</span><span class="o">.</span><span class="n">objects</span><span class="p">(</span><span class="n">status__name__in</span><span class="o">=</span><span class="p">[</span><span class="s">&quot;run&quot;</span><span class="p">,</span> <span class="s">&quot;stop&quot;</span><span class="p">]):</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_handle_status</span><span class="p">(</span><span class="n">job</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">job</span><span class="o">=</span><span class="n">job</span><span class="p">)</span>
+	
+<div class="viewcode-block" id="JobWatcher.stop"><a class="viewcode-back" href="../../../generated/master.watchers.html#master.watchers.job.JobWatcher.stop">[docs]</a>	<span class="k">def</span> <span class="nf">stop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Stop the JobWatcher&quot;&quot;&quot;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_job_man</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="JobWatcher.insert"><a class="viewcode-back" href="../../../generated/master.watchers.html#master.watchers.job.JobWatcher.insert">[docs]</a>	<span class="k">def</span> <span class="nf">insert</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">id_</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;handling insert&quot;</span><span class="p">)</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_handle_status</span><span class="p">(</span><span class="n">id_</span><span class="p">,</span> <span class="n">obj</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="JobWatcher.update"><a class="viewcode-back" href="../../../generated/master.watchers.html#master.watchers.job.JobWatcher.update">[docs]</a>	<span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">,</span> <span class="n">mod</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;handling update&quot;</span><span class="p">)</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_handle_status</span><span class="p">(</span><span class="nb">id</span><span class="p">,</span> <span class="n">mod</span><span class="p">)</span>
+	</div>
+<div class="viewcode-block" id="JobWatcher.delete"><a class="viewcode-back" href="../../../generated/master.watchers.html#master.watchers.job.JobWatcher.delete">[docs]</a>	<span class="k">def</span> <span class="nf">delete</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;handling delete&quot;</span><span class="p">)</span>
+
+		<span class="c">#self._handle_status(id)</span>
+
+	<span class="c"># -----------------------</span>
+</div>
+	<span class="k">def</span> <span class="nf">_handle_status</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">id_</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">job</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+		<span class="n">switch</span> <span class="o">=</span> <span class="p">{</span>
+			<span class="s">&quot;run&quot;</span>		<span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handle_run</span><span class="p">,</span>
+			<span class="s">&quot;cancel&quot;</span>	<span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handle_cancel</span><span class="p">,</span>
+		<span class="p">}</span>
+
+		<span class="k">if</span> <span class="n">job</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="n">jobs</span> <span class="o">=</span> <span class="n">master</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">Job</span><span class="o">.</span><span class="n">objects</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">id_</span><span class="p">)</span>
+			<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">jobs</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+				<span class="k">return</span>
+			<span class="n">job</span> <span class="o">=</span> <span class="n">jobs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+		<span class="k">if</span> <span class="n">job</span><span class="o">.</span><span class="n">status</span><span class="p">[</span><span class="s">&quot;name&quot;</span><span class="p">]</span> <span class="ow">in</span> <span class="n">switch</span><span class="p">:</span>
+			<span class="n">switch</span><span class="p">[</span><span class="n">job</span><span class="o">.</span><span class="n">status</span><span class="p">[</span><span class="s">&quot;name&quot;</span><span class="p">]](</span><span class="n">id_</span><span class="p">,</span> <span class="n">job</span><span class="p">)</span>
+	
+	<span class="k">def</span> <span class="nf">_handle_run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">id_</span><span class="p">,</span> <span class="n">job</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Handle running a job</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;handling job runnage&quot;</span><span class="p">)</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_job_man</span><span class="o">.</span><span class="n">run_job</span><span class="p">(</span><span class="n">job</span><span class="p">)</span>
+
+		<span class="n">job</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="p">{</span>
+			<span class="s">&quot;name&quot;</span><span class="p">:</span> <span class="s">&quot;running&quot;</span>
+		<span class="p">}</span>
+		<span class="n">job</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+	
+	<span class="k">def</span> <span class="nf">_handle_cancel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">id_</span><span class="p">,</span> <span class="n">job</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Handle cancelling a job</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;handling job cancellation&quot;</span><span class="p">)</span>
+
+		<span class="n">job</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="p">{</span>
+			<span class="s">&quot;name&quot;</span><span class="p">:</span> <span class="s">&quot;cancelling&quot;</span>
+		<span class="p">}</span>
+		<span class="n">job</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_job_man</span><span class="o">.</span><span class="n">cancel_job</span><span class="p">(</span><span class="n">job</span><span class="p">)</span></div>
+</pre></div>
+
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015, Optiv Labs.
+    </p>
+  </div>
+
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+  
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../',
+            VERSION:'0.0.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

@@ -1,0 +1,357 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>master package &mdash; Talus 0.0.1 documentation</title>
+  
+
+  
+  
+
+  
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Roboto+Slab:400,700|Inconsolata:400,700&subset=latin,cyrillic' rel='stylesheet' type='text/css'>
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="Talus 0.0.1 documentation" href="../index.html"/> 
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-nav-search">
+        
+          <a href="../index.html" class="fa fa-home"> Talus</a>
+        
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+        
+          
+          
+              <ul class="simple">
+</ul>
+
+          
+        
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../index.html">Talus</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../index.html">Docs</a> &raquo;</li>
+      
+    <li>master package</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          <a href="../_sources/gend/master.txt" rel="nofollow"> View page source</a>
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document">
+            
+  <div class="section" id="master-package">
+<h1>master package<a class="headerlink" href="#master-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="subpackages">
+<h2>Subpackages<a class="headerlink" href="#subpackages" title="Permalink to this headline">¶</a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="master.lib.html">master.lib package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="master.lib.html#subpackages">Subpackages</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="master.lib.vm.html">master.lib.vm package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="master.lib.vm.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="master.lib.vm.html#module-master.lib.vm.manage">master.lib.vm.manage module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="master.lib.vm.html#module-master.lib.vm">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="master.lib.html#module-master.lib">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="master-master-module">
+<h2>master.master module<a class="headerlink" href="#master-master-module" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-master">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-master" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="master.Master">
+<em class="property">class </em><code class="descclassname">master.</code><code class="descname">Master</code><a class="reference internal" href="../_modules/master.html#Master"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#master.Master" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<p>The master class watches the database for changes, queues and handles amqp messages,
+and handles VM image conversions</p>
+<dl class="attribute">
+<dt id="master.Master.AMQP_BROADCAST_XCHG">
+<code class="descname">AMQP_BROADCAST_XCHG</code><em class="property"> = 'broadcast'</em><a class="headerlink" href="#master.Master.AMQP_BROADCAST_XCHG" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="master.Master.AMQP_SLAVE_QUEUE">
+<code class="descname">AMQP_SLAVE_QUEUE</code><em class="property"> = 'slaves'</em><a class="headerlink" href="#master.Master.AMQP_SLAVE_QUEUE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="master.Master.AMQP_SLAVE_STATUS_QUEUE">
+<code class="descname">AMQP_SLAVE_STATUS_QUEUE</code><em class="property"> = 'slave_status'</em><a class="headerlink" href="#master.Master.AMQP_SLAVE_STATUS_QUEUE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="master.Master.handle_signal">
+<code class="descname">handle_signal</code><span class="sig-paren">(</span><em>sig</em>, <em>frame</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/master.html#Master.handle_signal"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#master.Master.handle_signal" title="Permalink to this definition">¶</a></dt>
+<dd><p>TODO: Docstring for handle_signal.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Sig:</th><td class="field-body">TODO</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Frame:</th><td class="field-body">TODO</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">TODO</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="master.Master.instance">
+<em class="property">classmethod </em><code class="descname">instance</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/master.html#Master.instance"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#master.Master.instance" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the singleton instance of the Master class
+:returns: TODO</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="master.Master.run">
+<code class="descname">run</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/master.html#Master.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#master.Master.run" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run the master daemon
+:returns: TODO</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="master.Master.stop">
+<code class="descname">stop</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/master.html#Master.stop"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#master.Master.stop" title="Permalink to this definition">¶</a></dt>
+<dd><p>Stop the master service from running
+:returns: TODO</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="master.TalusDBWatcher">
+<em class="property">class </em><code class="descclassname">master.</code><code class="descname">TalusDBWatcher</code><span class="sig-paren">(</span><em>parent_log=None</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/master.html#TalusDBWatcher"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#master.TalusDBWatcher" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="../generated/master.lib.html#master.lib.mongo_oplog_watcher.OplogWatcher" title="master.lib.mongo_oplog_watcher.OplogWatcher"><code class="xref py py-class docutils literal"><span class="pre">master.lib.mongo_oplog_watcher.OplogWatcher</span></code></a></p>
+<p>A class to watch the mongodb for changes</p>
+<dl class="method">
+<dt id="master.TalusDBWatcher.add_watcher">
+<code class="descname">add_watcher</code><span class="sig-paren">(</span><em>collection</em>, <em>watcher</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/master.html#TalusDBWatcher.add_watcher"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#master.TalusDBWatcher.add_watcher" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="master.TalusDBWatcher.delete">
+<code class="descname">delete</code><span class="sig-paren">(</span><em>ns</em>, <em>ts</em>, <em>id</em>, <em>raw</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/master.html#TalusDBWatcher.delete"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#master.TalusDBWatcher.delete" title="Permalink to this definition">¶</a></dt>
+<dd><p>Handle new deletions in the database</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Ns:</th><td class="field-body">TODO</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Ts:</th><td class="field-body">TODO</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Id:</th><td class="field-body">TODO</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raw:</th><td class="field-body">TODO</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">**kwargskwargs:</th><td class="field-body">TODO</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">TODO</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="master.TalusDBWatcher.insert">
+<code class="descname">insert</code><span class="sig-paren">(</span><em>ns</em>, <em>ts</em>, <em>id</em>, <em>obj</em>, <em>raw</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/master.html#TalusDBWatcher.insert"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#master.TalusDBWatcher.insert" title="Permalink to this definition">¶</a></dt>
+<dd><p>Handle new insertions into the database</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Ns:</th><td class="field-body">TODO</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Ts:</th><td class="field-body">TODO</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Id:</th><td class="field-body">TODO</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Obj:</th><td class="field-body">TODO</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raw:</th><td class="field-body">TODO</td>
+</tr>
+<tr class="field-even field"><th class="field-name">**kwargskwargs:</th><td class="field-body">TODO</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">TODO</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="master.TalusDBWatcher.run">
+<code class="descname">run</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/master.html#TalusDBWatcher.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#master.TalusDBWatcher.run" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="master.TalusDBWatcher.stop">
+<code class="descname">stop</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/master.html#TalusDBWatcher.stop"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#master.TalusDBWatcher.stop" title="Permalink to this definition">¶</a></dt>
+<dd><p>Stop the database watcher
+:returns: TODO</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="master.TalusDBWatcher.update">
+<code class="descname">update</code><span class="sig-paren">(</span><em>ns</em>, <em>ts</em>, <em>id</em>, <em>mod</em>, <em>raw</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/master.html#TalusDBWatcher.update"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#master.TalusDBWatcher.update" title="Permalink to this definition">¶</a></dt>
+<dd><p>Handle new updates in the database</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Ns:</th><td class="field-body">TODO</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Ts:</th><td class="field-body">TODO</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Id:</th><td class="field-body">TODO</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Mod:</th><td class="field-body">TODO</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raw:</th><td class="field-body">TODO</td>
+</tr>
+<tr class="field-even field"><th class="field-name">**kwargskwargs:</th><td class="field-body">TODO</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">TODO</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="master.main">
+<code class="descclassname">master.</code><code class="descname">main</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/master.html#main"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#master.main" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015, Optiv Labs.
+    </p>
+  </div>
+
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+  
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../',
+            VERSION:'0.0.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../_static/jquery.js"></script>
+      <script type="text/javascript" src="../_static/underscore.js"></script>
+      <script type="text/javascript" src="../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

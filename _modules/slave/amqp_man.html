@@ -1,0 +1,431 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>slave.amqp_man &mdash; Talus 0.0.1 documentation</title>
+  
+
+  
+  
+
+  
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Roboto+Slab:400,700|Inconsolata:400,700&subset=latin,cyrillic' rel='stylesheet' type='text/css'>
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="Talus 0.0.1 documentation" href="../../index.html"/>
+        <link rel="up" title="slave" href="../slave.html"/> 
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-nav-search">
+        
+          <a href="../../index.html" class="fa fa-home"> Talus</a>
+        
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+        
+          
+          
+              <ul class="simple">
+</ul>
+
+          
+        
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../../index.html">Talus</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../../index.html">Docs</a> &raquo;</li>
+      
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+      
+          <li><a href="../slave.html">slave</a> &raquo;</li>
+      
+    <li>slave.amqp_man</li>
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document">
+            
+  <h1>Source code for slave.amqp_man</h1><div class="highlight"><pre>
+<span class="c">#!/usr/bin/env python</span>
+<span class="c"># encoding: utf-8</span>
+
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">threading</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">pika</span>
+
+<span class="n">pika_logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s">&#39;pika&#39;</span><span class="p">)</span>
+<span class="n">pika_logger</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">CRITICAL</span><span class="p">)</span>
+
+<div class="viewcode-block" id="AmqpQueueHandler"><a class="viewcode-back" href="../../generated/slave.html#slave.amqp_man.AmqpQueueHandler">[docs]</a><span class="k">class</span> <span class="nc">AmqpQueueHandler</span><span class="p">(</span><span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">):</span>
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">callback</span><span class="p">,</span> <span class="n">queue_name</span><span class="p">,</span> <span class="n">channel</span><span class="p">,</span> <span class="n">lock</span><span class="p">,</span> <span class="n">no_ack</span><span class="p">,</span> <span class="n">running</span><span class="p">):</span>
+		<span class="nb">super</span><span class="p">(</span><span class="n">AmqpQueueHandler</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">()</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">lock</span> <span class="o">=</span> <span class="n">lock</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">channel</span> <span class="o">=</span> <span class="n">channel</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">queue_name</span> <span class="o">=</span> <span class="n">queue_name</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">callback</span> <span class="o">=</span> <span class="n">callback</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">no_ack</span> <span class="o">=</span> <span class="n">no_ack</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_running</span> <span class="o">=</span> <span class="n">running</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s">&quot;AmqpMan&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">getChild</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">queue_name</span><span class="p">)</span>
+	
+<div class="viewcode-block" id="AmqpQueueHandler.run"><a class="viewcode-back" href="../../generated/slave.html#slave.amqp_man.AmqpQueueHandler.run">[docs]</a>	<span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_running</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;monitoring&quot;</span><span class="p">)</span>
+
+		<span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">_running</span><span class="o">.</span><span class="n">is_set</span><span class="p">():</span>
+			<span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">lock</span><span class="p">:</span>
+				<span class="n">method</span><span class="p">,</span> <span class="n">props</span><span class="p">,</span> <span class="n">body</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">channel</span><span class="o">.</span><span class="n">basic_get</span><span class="p">(</span>
+					<span class="bp">self</span><span class="o">.</span><span class="n">queue_name</span><span class="p">,</span>
+					<span class="n">no_ack</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">no_ack</span>
+				<span class="p">)</span>
+			<span class="k">if</span> <span class="n">method</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+				<span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
+				<span class="k">continue</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;recieved message&quot;</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">callback</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">channel</span><span class="p">,</span> <span class="n">method</span><span class="p">,</span> <span class="n">props</span><span class="p">,</span> <span class="n">body</span><span class="p">)</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;finished&quot;</span><span class="p">)</span>
+	</div>
+<div class="viewcode-block" id="AmqpQueueHandler.stop"><a class="viewcode-back" href="../../generated/slave.html#slave.amqp_man.AmqpQueueHandler.stop">[docs]</a>	<span class="k">def</span> <span class="nf">stop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;stopping&quot;</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_running</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+</div></div>
+<div class="viewcode-block" id="AmqpManager"><a class="viewcode-back" href="../../generated/slave.html#slave.amqp_man.AmqpManager">[docs]</a><span class="k">class</span> <span class="nc">AmqpManager</span><span class="p">(</span><span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;A class to manage jobs (starting/stopping/cancelling/etc)&quot;&quot;&quot;</span>
+
+	<span class="n">AMQP_JOB_QUEUE</span> <span class="o">=</span> <span class="s">&quot;jobs&quot;</span>
+	<span class="n">AMQP_JOB_RESULT_QUEUE</span> <span class="o">=</span> <span class="s">&quot;job_results&quot;</span>
+
+	<span class="n">_INSTANCE</span> <span class="o">=</span> <span class="bp">None</span>
+	<span class="nd">@classmethod</span>
+<div class="viewcode-block" id="AmqpManager.instance"><a class="viewcode-back" href="../../generated/slave.html#slave.amqp_man.AmqpManager.instance">[docs]</a>	<span class="k">def</span> <span class="nf">instance</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">host</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+		<span class="k">if</span> <span class="n">cls</span><span class="o">.</span><span class="n">_INSTANCE</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="n">cls</span><span class="o">.</span><span class="n">_INSTANCE</span> <span class="o">=</span> <span class="n">cls</span><span class="p">(</span><span class="n">host</span><span class="p">)</span>
+		<span class="k">return</span> <span class="n">cls</span><span class="o">.</span><span class="n">_INSTANCE</span>
+</div>
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">host</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;init the job manager</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="nb">super</span><span class="p">(</span><span class="n">AmqpManager</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">()</span>
+
+		<span class="k">if</span> <span class="n">host</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">and</span> <span class="s">&quot;TALUS_AMQP_PORT_5672_TCP&quot;</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">:</span>
+			<span class="n">host</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s">&quot;TALUS_AMQP_PORT_5672_TCP&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">&quot;tcp://&quot;</span><span class="p">,</span> <span class="s">&quot;&quot;</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_amqp_host</span> <span class="o">=</span> <span class="n">host</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_amqp_conn</span> <span class="o">=</span> <span class="bp">None</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_amqp_channel</span> <span class="o">=</span> <span class="bp">None</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_running</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Event</span><span class="p">()</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_amqp_connected</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Event</span><span class="p">()</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_amqp_consume_thread</span> <span class="o">=</span> <span class="bp">None</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s">&quot;AmqpMan&quot;</span><span class="p">)</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_cached_exchange_declares</span> <span class="o">=</span> <span class="p">[]</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_cached_bind_queues</span> <span class="o">=</span> <span class="p">[]</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_cached_queue_declares</span> <span class="o">=</span> <span class="p">[]</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_cached_queue_consumes</span> <span class="o">=</span> <span class="p">[]</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_queue_props</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_queue_handlers</span> <span class="o">=</span> <span class="p">{}</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_amqp_lock</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Lock</span><span class="p">()</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_handlers_lock</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Lock</span><span class="p">()</span>
+	
+<div class="viewcode-block" id="AmqpManager.do_start"><a class="viewcode-back" href="../../generated/slave.html#slave.amqp_man.AmqpManager.do_start">[docs]</a>	<span class="k">def</span> <span class="nf">do_start</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_running</span><span class="o">.</span><span class="n">is_set</span><span class="p">():</span>
+			<span class="k">return</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+	</div>
+<div class="viewcode-block" id="AmqpManager.run"><a class="viewcode-back" href="../../generated/slave.html#slave.amqp_man.AmqpManager.run">[docs]</a>	<span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Run the job manager. Only one of these should ever be running at a time</span>
+<span class="sd">		:returns: TODO</span>
+
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;running&quot;</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_running</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_amqp_connect</span><span class="p">()</span>
+
+		<span class="k">for</span> <span class="n">exchange_name</span><span class="p">,</span> <span class="nb">type</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cached_exchange_declares</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">declare_exchange</span><span class="p">(</span><span class="n">exchange_name</span><span class="p">,</span> <span class="nb">type</span><span class="p">)</span>
+		<span class="k">for</span> <span class="n">queue_name</span><span class="p">,</span> <span class="n">props</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cached_queue_declares</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">declare_queue</span><span class="p">(</span><span class="n">queue_name</span><span class="p">,</span> <span class="o">**</span><span class="n">props</span><span class="p">)</span>
+		<span class="k">for</span> <span class="n">exchange_name</span><span class="p">,</span> <span class="n">queue</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cached_bind_queues</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">bind_queue</span><span class="p">(</span><span class="n">exchange_name</span><span class="p">,</span> <span class="n">queue</span><span class="p">)</span>
+		<span class="k">for</span> <span class="n">queue_name</span><span class="p">,</span> <span class="n">callback</span><span class="p">,</span> <span class="n">no_ack</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cached_queue_consumes</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">consume_queue</span><span class="p">(</span><span class="n">queue_name</span><span class="p">,</span> <span class="n">callback</span><span class="p">,</span> <span class="n">no_ack</span><span class="o">=</span><span class="n">no_ack</span><span class="p">)</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_amqp_ioloop</span><span class="p">()</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;finished&quot;</span><span class="p">)</span>
+	</div>
+<div class="viewcode-block" id="AmqpManager.stop"><a class="viewcode-back" href="../../generated/slave.html#slave.amqp_man.AmqpManager.stop">[docs]</a>	<span class="k">def</span> <span class="nf">stop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Stop the job manager</span>
+<span class="sd">		:returns: TODO</span>
+
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;stopping&quot;</span><span class="p">)</span>
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_amqp_channel</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="k">try</span><span class="p">:</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">_amqp_channel</span><span class="o">.</span><span class="n">stop_consuming</span><span class="p">()</span>
+			<span class="k">except</span> <span class="ne">RuntimeError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+				<span class="k">pass</span>
+			<span class="k">try</span><span class="p">:</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">_amqp_conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+			<span class="k">except</span> <span class="ne">RuntimeError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+				<span class="k">pass</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_running</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+		</div>
+<div class="viewcode-block" id="AmqpManager.get_message_count"><a class="viewcode-back" href="../../generated/slave.html#slave.amqp_man.AmqpManager.get_message_count">[docs]</a>	<span class="k">def</span> <span class="nf">get_message_count</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">queue_name</span><span class="p">,</span> <span class="o">**</span><span class="n">props</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot; Get the size of the amqp queue ``queue_name``. Note that the ``props``</span>
+<span class="sd">		kwargs must match the declaration properties of the queue. Getting the</span>
+<span class="sd">		queue size is done by redeclaring the queue with the same properties, with</span>
+<span class="sd">		the additional ``passive=True`` property set.</span>
+
+<span class="sd">		:queue_name: The name of the queue</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">props</span><span class="p">)</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">and</span> <span class="n">queue_name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_queue_props</span><span class="p">:</span>
+			<span class="n">props</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_queue_props</span><span class="p">[</span><span class="n">queue_name</span><span class="p">]</span>
+
+		<span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_amqp_lock</span><span class="p">:</span>
+			<span class="n">method</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_amqp_channel</span><span class="o">.</span><span class="n">queue_declare</span><span class="p">(</span><span class="n">queue_name</span><span class="p">,</span> <span class="n">passive</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="o">**</span><span class="n">props</span><span class="p">)</span>
+		<span class="n">res</span> <span class="o">=</span> <span class="n">method</span><span class="o">.</span><span class="n">method</span><span class="o">.</span><span class="n">message_count</span>
+		<span class="k">return</span> <span class="n">res</span>
+	</div>
+<div class="viewcode-block" id="AmqpManager.declare_exchange"><a class="viewcode-back" href="../../generated/slave.html#slave.amqp_man.AmqpManager.declare_exchange">[docs]</a>	<span class="k">def</span> <span class="nf">declare_exchange</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="nb">type</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Declare an exchange named ``name`` and of type ``type``</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;declaring exchange {}, type {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="nb">type</span><span class="p">))</span>
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_amqp_channel</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_cached_exchange_declares</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">name</span><span class="p">,</span> <span class="nb">type</span><span class="p">))</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_amqp_channel</span><span class="o">.</span><span class="n">exchange_declare</span><span class="p">(</span>
+				<span class="n">exchange</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
+				<span class="nb">type</span><span class="o">=</span><span class="nb">type</span>
+			<span class="p">)</span>
+	</div>
+<div class="viewcode-block" id="AmqpManager.bind_queue"><a class="viewcode-back" href="../../generated/slave.html#slave.amqp_man.AmqpManager.bind_queue">[docs]</a>	<span class="k">def</span> <span class="nf">bind_queue</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exchange</span><span class="p">,</span> <span class="n">queue</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Bind the queue ``queue`` to the exchange ``exchange``</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;binding queue {!r} to exchange {!r}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">queue</span><span class="p">,</span> <span class="n">exchange</span><span class="p">))</span>
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_amqp_channel</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_cached_bind_queues</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">exchange</span><span class="p">,</span> <span class="n">queue</span><span class="p">))</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_amqp_channel</span><span class="o">.</span><span class="n">queue_bind</span><span class="p">(</span> <span class="n">exchange</span><span class="o">=</span><span class="n">exchange</span><span class="p">,</span>
+				<span class="n">queue</span><span class="o">=</span><span class="n">queue</span>
+			<span class="p">)</span>
+	</div>
+<div class="viewcode-block" id="AmqpManager.declare_queue"><a class="viewcode-back" href="../../generated/slave.html#slave.amqp_man.AmqpManager.declare_queue">[docs]</a>	<span class="k">def</span> <span class="nf">declare_queue</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">queue_name</span><span class="p">,</span> <span class="o">**</span><span class="n">props</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Declare the queue ``queue_name`` with properties defined in</span>
+<span class="sd">		``**props`` kwargs. Popular properties to set:</span>
+
+<span class="sd">		* durable</span>
+<span class="sd">		* exclusive</span>
+<span class="sd">		* auto_delete</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;declaring queue {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">queue_name</span><span class="p">))</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_queue_props</span><span class="p">[</span><span class="n">queue_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">props</span>
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_amqp_channel</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_cached_queue_declares</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">queue_name</span><span class="p">,</span> <span class="n">props</span><span class="p">))</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_amqp_channel</span><span class="o">.</span><span class="n">queue_declare</span><span class="p">(</span>
+				<span class="n">queue_name</span><span class="p">,</span>
+				<span class="o">**</span><span class="n">props</span>
+			<span class="p">)</span>
+	</div>
+<div class="viewcode-block" id="AmqpManager.consume_queue"><a class="viewcode-back" href="../../generated/slave.html#slave.amqp_man.AmqpManager.consume_queue">[docs]</a>	<span class="k">def</span> <span class="nf">consume_queue</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">queue_name</span><span class="p">,</span> <span class="n">callback</span><span class="p">,</span> <span class="n">no_ack</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Consume from the queue ``queue_name`` with callback ``callback``</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;will consume from queue {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">queue_name</span><span class="p">))</span>
+
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_amqp_channel</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_cached_queue_consumes</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">queue_name</span><span class="p">,</span> <span class="n">callback</span><span class="p">,</span> <span class="n">no_ack</span><span class="p">))</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handlers_lock</span><span class="p">:</span>
+				<span class="n">handler</span> <span class="o">=</span> <span class="n">AmqpQueueHandler</span><span class="p">(</span>
+					<span class="n">callback</span><span class="p">,</span>
+					<span class="n">queue_name</span><span class="p">,</span>
+					<span class="bp">self</span><span class="o">.</span><span class="n">_amqp_channel</span><span class="p">,</span>
+					<span class="bp">self</span><span class="o">.</span><span class="n">_amqp_lock</span><span class="p">,</span>
+					<span class="n">no_ack</span><span class="p">,</span>
+					<span class="bp">self</span><span class="o">.</span><span class="n">_running</span>
+				<span class="p">)</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">_queue_handlers</span><span class="p">[</span><span class="n">queue_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">handler</span>
+				<span class="n">handler</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+	</div>
+<div class="viewcode-block" id="AmqpManager.wait_for_ready"><a class="viewcode-back" href="../../generated/slave.html#slave.amqp_man.AmqpManager.wait_for_ready">[docs]</a>	<span class="k">def</span> <span class="nf">wait_for_ready</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">2</span><span class="o">**</span><span class="mi">31</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Wait until the AMQP manager is connected and ready to go</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;waiting until connected&quot;</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_amqp_connected</span><span class="o">.</span><span class="n">wait</span><span class="p">(</span><span class="n">timeout</span><span class="p">)</span>
+		<span class="c"># stupid, not sure if neccessary</span>
+		<span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;connected!&quot;</span><span class="p">)</span>
+	</div>
+<div class="viewcode-block" id="AmqpManager.queue_msg"><a class="viewcode-back" href="../../generated/slave.html#slave.amqp_man.AmqpManager.queue_msg">[docs]</a>	<span class="k">def</span> <span class="nf">queue_msg</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">queue_name</span><span class="p">,</span> <span class="o">**</span><span class="n">props</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Queue the message ``msg`` in  the queue ``queue_name``</span>
+
+<span class="sd">		:param str msg: The message to send (str or unicode)</span>
+<span class="sd">		:param str queue_name: The queue to put the message in</span>
+<span class="sd">		:param dict **props: Any additional props (exchange, etc)</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">default_props</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+			<span class="n">exchange</span>	<span class="o">=</span> <span class="s">&quot;&quot;</span>
+		<span class="p">)</span>
+		<span class="n">default_props</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">props</span><span class="p">)</span>
+		<span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_amqp_lock</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_amqp_channel</span><span class="o">.</span><span class="n">basic_publish</span><span class="p">(</span>
+				<span class="n">routing_key</span><span class="o">=</span><span class="n">queue_name</span><span class="p">,</span>
+				<span class="n">body</span><span class="o">=</span><span class="n">msg</span><span class="p">,</span>
+				<span class="o">**</span><span class="n">default_props</span>
+			<span class="p">)</span>
+	</div>
+<div class="viewcode-block" id="AmqpManager.ack_method"><a class="viewcode-back" href="../../generated/slave.html#slave.amqp_man.AmqpManager.ack_method">[docs]</a>	<span class="k">def</span> <span class="nf">ack_method</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">method</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;basic_ack the method</span>
+
+<span class="sd">		:method: The method to ack</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_amqp_lock</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_amqp_channel</span><span class="o">.</span><span class="n">basic_ack</span><span class="p">(</span><span class="n">delivery_tag</span><span class="o">=</span><span class="n">method</span><span class="o">.</span><span class="n">delivery_tag</span><span class="p">)</span>
+	
+	<span class="c"># ---------------------------------------</span>
+	<span class="c"># amqp related</span>
+	<span class="c"># ---------------------------------------</span>
+	</div>
+	<span class="k">def</span> <span class="nf">_amqp_ioloop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">_running</span><span class="o">.</span><span class="n">is_set</span><span class="p">():</span>
+			<span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
+
+	<span class="k">def</span> <span class="nf">_amqp_connect</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;connecting to amqp: {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_amqp_host</span><span class="p">))</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_amqp_conn</span> <span class="o">=</span> <span class="n">pika</span><span class="o">.</span><span class="n">BlockingConnection</span><span class="p">(</span><span class="n">pika</span><span class="o">.</span><span class="n">URLParameters</span><span class="p">(</span><span class="s">&quot;amqp://guest:guest@&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_amqp_host</span><span class="p">))</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_amqp_channel</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_amqp_conn</span><span class="o">.</span><span class="n">channel</span><span class="p">()</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_amqp_connected</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
+	
+	<span class="k">def</span> <span class="nf">_job_queue</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">channel</span><span class="p">,</span> <span class="n">method</span><span class="p">,</span> <span class="n">properties</span><span class="p">,</span> <span class="n">body</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Called when an AMQP message is received</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="k">print</span><span class="p">(</span><span class="s">&quot;received {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">body</span><span class="p">))</span></div>
+</pre></div>
+
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015, Optiv Labs.
+    </p>
+  </div>
+
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+  
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'0.0.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

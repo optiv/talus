@@ -1,0 +1,911 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>master.lib.vm.manage &mdash; Talus 0.0.1 documentation</title>
+  
+
+  
+  
+
+  
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Roboto+Slab:400,700|Inconsolata:400,700&subset=latin,cyrillic' rel='stylesheet' type='text/css'>
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="Talus 0.0.1 documentation" href="../../../../index.html"/>
+        <link rel="up" title="master.lib.vm" href="../vm.html"/> 
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-nav-search">
+        
+          <a href="../../../../index.html" class="fa fa-home"> Talus</a>
+        
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+        
+          
+          
+              <ul class="simple">
+</ul>
+
+          
+        
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../../../../index.html">Talus</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../../../../index.html">Docs</a> &raquo;</li>
+      
+          <li><a href="../../../index.html">Module code</a> &raquo;</li>
+      
+          <li><a href="../../../master.html">master</a> &raquo;</li>
+      
+          <li><a href="../vm.html">master.lib.vm</a> &raquo;</li>
+      
+    <li>master.lib.vm.manage</li>
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document">
+            
+  <h1>Source code for master.lib.vm.manage</h1><div class="highlight"><pre>
+<span class="c">#!/usr/bin/env python</span>
+<span class="c"># encoding: utf-8</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">The manage module contains classes to manage VM creation,</span>
+<span class="sd">conversion, snapshots, and exporting</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">deque</span>
+<span class="kn">import</span> <span class="nn">libvirt</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">shutil</span>
+<span class="kn">import</span> <span class="nn">signal</span>
+<span class="kn">import</span> <span class="nn">socket</span>
+<span class="kn">import</span> <span class="nn">subprocess</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">tempfile</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">threading</span>
+<span class="kn">import</span> <span class="nn">uuid</span>
+<span class="kn">import</span> <span class="nn">xmltodict</span>
+
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">utils</span>
+
+<span class="n">DATA_DIR</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">__file__</span><span class="p">)),</span> <span class="s">&quot;..&quot;</span><span class="p">,</span> <span class="s">&quot;..&quot;</span><span class="p">,</span> <span class="s">&quot;data&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="libvirt_callback"><a class="viewcode-back" href="../../../../generated/master.lib.vm.html#master.lib.vm.manage.libvirt_callback">[docs]</a><span class="k">def</span> <span class="nf">libvirt_callback</span><span class="p">(</span><span class="n">ignore</span><span class="p">,</span> <span class="n">err</span><span class="p">):</span>
+	<span class="k">if</span> <span class="n">err</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">!=</span> <span class="n">libvirt</span><span class="o">.</span><span class="n">VIR_ERR_ERROR</span><span class="p">:</span>
+		<span class="c"># log it?</span>
+		<span class="k">pass</span></div>
+<span class="n">libvirt</span><span class="o">.</span><span class="n">registerErrorHandler</span><span class="p">(</span><span class="n">f</span><span class="o">=</span><span class="n">libvirt_callback</span><span class="p">,</span> <span class="n">ctx</span><span class="o">=</span><span class="bp">None</span><span class="p">)</span>
+
+<div class="viewcode-block" id="VMWorker"><a class="viewcode-back" href="../../../../generated/master.lib.vm.html#master.lib.vm.manage.VMWorker">[docs]</a><span class="k">class</span> <span class="nc">VMWorker</span><span class="p">(</span><span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;A threaded class that manages individual VMs&quot;&quot;&quot;</span>
+
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">,</span> <span class="n">log</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;docstring for VMWorker constructor</span>
+<span class="sd">		</span>
+<span class="sd">		:log: The parent log of the worker&quot;&quot;&quot;</span>
+		<span class="nb">super</span><span class="p">(</span><span class="n">VMWorker</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">()</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_idx</span> <span class="o">=</span> <span class="n">idx</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span> <span class="o">=</span> <span class="n">log</span><span class="o">.</span><span class="n">getChild</span><span class="p">(</span><span class="s">&quot;{}[{}]&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">,</span> <span class="n">idx</span><span class="p">))</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_running</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Event</span><span class="p">()</span>
+		<span class="c"># used to signal that the machine is up and running</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_accessible</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Event</span><span class="p">()</span>
+	
+<div class="viewcode-block" id="VMWorker.run"><a class="viewcode-back" href="../../../../generated/master.lib.vm.html#master.lib.vm.manage.VMWorker.run">[docs]</a>	<span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user_interaction_cb</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Run the VM</span>
+<span class="sd">		:returns: TODO</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="k">raise</span> <span class="bp">NotImplemented</span><span class="p">(</span><span class="s">&quot;Inheriting classes must implement the run function&quot;</span><span class="p">)</span>
+	</div>
+<div class="viewcode-block" id="VMWorker.stop"><a class="viewcode-back" href="../../../../generated/master.lib.vm.html#master.lib.vm.manage.VMWorker.stop">[docs]</a>	<span class="k">def</span> <span class="nf">stop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">force</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Stop the running VM and block until everything is cleaned up</span>
+
+<span class="sd">		:force: TODO</span>
+<span class="sd">		:returns: TODO</span>
+
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;STOPPING&quot;</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_running</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
+	</div>
+<div class="viewcode-block" id="VMWorker.wait_for_ready"><a class="viewcode-back" href="../../../../generated/master.lib.vm.html#master.lib.vm.manage.VMWorker.wait_for_ready">[docs]</a>	<span class="k">def</span> <span class="nf">wait_for_ready</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Block until the VM is up and running</span>
+<span class="sd">		:timeout: max amount of time to wait for (seconds)</span>
+<span class="sd">		:returns: None</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;waiting for box to become accessible&quot;</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">timeout</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_accessible</span><span class="o">.</span><span class="n">wait</span><span class="p">(</span><span class="n">timeout</span><span class="p">)</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_accessible</span><span class="o">.</span><span class="n">wait</span><span class="p">(</span><span class="mi">2</span><span class="o">**</span><span class="mi">31</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;box is accessible&quot;</span><span class="p">)</span>
+	</div>
+<div class="viewcode-block" id="VMWorker.get_vnc_info"><a class="viewcode-back" href="../../../../generated/master.lib.vm.html#master.lib.vm.manage.VMWorker.get_vnc_info">[docs]</a>	<span class="k">def</span> <span class="nf">get_vnc_info</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Return the vnc info for the worker</span>
+<span class="sd">		:returns: TODO</span>
+
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="k">raise</span> <span class="bp">NotImplemented</span><span class="p">(</span><span class="s">&quot;Inheriting classes must implement the get_vnc_info function&quot;</span><span class="p">)</span>
+	</div>
+<div class="viewcode-block" id="VMWorker.status"><a class="viewcode-back" href="../../../../generated/master.lib.vm.html#master.lib.vm.manage.VMWorker.status">[docs]</a>	<span class="k">def</span> <span class="nf">status</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Get the status of the VM</span>
+<span class="sd">		:returns: A status string</span>
+
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="k">raise</span> <span class="bp">NotImplemented</span><span class="p">(</span><span class="s">&quot;Inheriting classes must implement the status function&quot;</span><span class="p">)</span>
+
+<span class="c"># not gonna be needed on the Master</span></div></div>
+<div class="viewcode-block" id="LibvirtWorker"><a class="viewcode-back" href="../../../../generated/master.lib.vm.html#master.lib.vm.manage.LibvirtWorker">[docs]</a><span class="k">class</span> <span class="nc">LibvirtWorker</span><span class="p">(</span><span class="n">VMWorker</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;A worker for managing a running libvirt vms directly (not via vagrant)&quot;&quot;&quot;</span>
+
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image_path</span><span class="p">,</span> <span class="n">idx</span><span class="p">,</span> <span class="n">log</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;docstring for LibvirtWorker constructor&quot;&quot;&quot;</span>
+		<span class="nb">super</span><span class="p">(</span><span class="n">LibvirtWorker</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="n">log</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">image_path</span> <span class="o">=</span> <span class="n">image_path</span>
+</div>
+<div class="viewcode-block" id="VagrantWorker"><a class="viewcode-back" href="../../../../generated/master.lib.vm.html#master.lib.vm.manage.VagrantWorker">[docs]</a><span class="k">class</span> <span class="nc">VagrantWorker</span><span class="p">(</span><span class="n">VMWorker</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;A worker for managing a running vagrant image&quot;&quot;&quot;</span>
+
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">box_name</span><span class="p">,</span> <span class="n">vagrantfile</span><span class="p">,</span> <span class="n">idx</span><span class="p">,</span> <span class="n">log</span><span class="p">,</span> <span class="n">vagrant_base</span><span class="o">=</span><span class="s">&quot;~/.vagrant.d&quot;</span><span class="p">,</span> <span class="n">image_store</span><span class="o">=</span><span class="s">&quot;/var/lib/libvirt/images&quot;</span><span class="p">,</span> <span class="n">dest_name</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">import_image_path</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">iso_path</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">on_success</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">user_interaction</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;docstring for VagrantWorker constructor</span>
+<span class="sd">		</span>
+<span class="sd">		:box_name: the name of the box to be run</span>
+<span class="sd">		:vagrantfile: the Vagrantfile to run against the box</span>
+<span class="sd">		:vagrant_base: the base directory of vagrant (defaults to ~/.vagrant.d)</span>
+<span class="sd">		:image_store: The directory where all the images are stored (default /var/lib/libvirt/images)</span>
+<span class="sd">		:dest_name: the name of the resulting, modified box. If None, the original box will be overwritten with the new changes</span>
+<span class="sd">		:import_only: if True, the image_path will be used to create a new vagrant-libvirt compatible box</span>
+<span class="sd">		:import_image_path: The path to the VM image that is to be imported (a new vagrant box created)</span>
+<span class="sd">		:iso_path: Path to the ``iso`` to be mounted in the VM after booting</span>
+<span class="sd">		:on_success: A callback that is called when the operation is successfully completed (VM is shutdown)</span>
+<span class="sd">		:user_interaction: Whether or not user interaction is expected</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="nb">super</span><span class="p">(</span><span class="n">VagrantWorker</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="n">log</span><span class="p">)</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_image_store</span> <span class="o">=</span> <span class="n">image_store</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_libvirt_conn</span> <span class="o">=</span> <span class="bp">None</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_vagrant_base</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="n">vagrant_base</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_box_name</span> <span class="o">=</span> <span class="n">box_name</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_vagrantfile</span> <span class="o">=</span> <span class="n">vagrantfile</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_dest_name</span> <span class="o">=</span> <span class="n">dest_name</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_import_image_path</span> <span class="o">=</span> <span class="n">import_image_path</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_iso_path</span> <span class="o">=</span> <span class="n">iso_path</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_on_success</span> <span class="o">=</span> <span class="n">on_success</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_user_interaction</span> <span class="o">=</span> <span class="n">user_interaction</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_options</span> <span class="o">=</span> <span class="n">options</span>
+	
+<div class="viewcode-block" id="VagrantWorker.run"><a class="viewcode-back" href="../../../../generated/master.lib.vm.html#master.lib.vm.manage.VagrantWorker.run">[docs]</a>	<span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Run the vagrant box by creating a project that uses the specified box</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_running</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_maybe_do_import</span><span class="p">()</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_project_dir</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_vagrant_project</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_vagrantfile</span><span class="p">,</span> <span class="n">base_name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_box_name</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_run_env</span> <span class="o">=</span> <span class="p">{</span>
+			<span class="s">&quot;VAGRANT_CWD&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_project_dir</span>
+		<span class="p">}</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;created temporary vagrant project at {!r}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_project_dir</span><span class="p">))</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_domain</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_project_dir</span> <span class="o">+</span> <span class="s">&quot;_default&quot;</span><span class="p">)</span>
+
+		<span class="n">args</span> <span class="o">=</span> <span class="p">[</span><span class="s">&quot;vagrant&quot;</span><span class="p">,</span> <span class="s">&quot;up&quot;</span><span class="p">]</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;running {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">args</span><span class="p">)))</span>
+		<span class="n">proc</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="n">async</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">output_to_stdout</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">env</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_env</span><span class="p">)</span>
+
+		<span class="c"># wait for it to initally spin up, or for the proc to exit</span>
+		<span class="c"># break if the box is running or &quot;vagrant up&quot; has exited already</span>
+		<span class="n">count</span> <span class="o">=</span> <span class="mi">0</span>
+		<span class="k">while</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_box_is_running</span><span class="p">()</span> <span class="ow">and</span> <span class="n">proc</span><span class="o">.</span><span class="n">poll</span><span class="p">()</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="k">if</span> <span class="n">count</span> <span class="o">%</span> <span class="mi">10</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;box isn&#39;t running yet, and &#39;vagrant up&#39; has not exited yet&quot;</span><span class="p">)</span>
+			<span class="n">count</span> <span class="o">+=</span> <span class="mi">1</span>
+			<span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;box should be up and running&quot;</span><span class="p">)</span>
+
+		<span class="k">if</span> <span class="n">proc</span><span class="o">.</span><span class="n">poll</span><span class="p">()</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;vagrant up quit before the VM started, likely some error&quot;</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_running</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="c"># the box is up, so let&#39;s wait until we have a valid vnc port</span>
+			<span class="c"># TODO should probably have some sort of time on this</span>
+			<span class="n">port</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_vnc_port</span><span class="p">()</span>
+			<span class="k">while</span> <span class="n">port</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">or</span> <span class="n">port</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+				<span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.2</span><span class="p">)</span>
+				<span class="n">port</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_vnc_port</span><span class="p">()</span>
+
+			<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;setting accessible event&quot;</span><span class="p">)</span>
+			<span class="c"># signal that the VM is now accessible via VNC</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_accessible</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
+
+		<span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+			<span class="c"># don&#39;t need to wait for user interaction, and the VM has been provisioned (vagrant up exited)</span>
+			<span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_user_interaction</span> <span class="ow">and</span> <span class="n">proc</span><span class="o">.</span><span class="n">poll</span><span class="p">()</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;non-interactive mode, vagrant up exited, shutting down VM and continuing on with my short life&quot;</span><span class="p">)</span>
+
+				<span class="c"># give the shutdown command a chance to execute before we pull the plug</span>
+				<span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">):</span>
+					<span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_box_is_running</span><span class="p">():</span>
+						<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;shutdown script worked, box shut down on its own&quot;</span><span class="p">)</span>
+						<span class="k">break</span>
+					<span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+				<span class="c"># if the VM hasn&#39;t shutdown on its own by now, kill it</span>
+				<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_box_is_running</span><span class="p">():</span>
+					<span class="n">args</span> <span class="o">=</span> <span class="p">[</span><span class="s">&quot;vagrant&quot;</span><span class="p">,</span> <span class="s">&quot;halt&quot;</span><span class="p">]</span>
+					<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;running {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">args</span><span class="p">)))</span>
+					<span class="n">output</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="n">env</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_env</span><span class="p">)</span>
+
+			<span class="c"># someone has told us to bail</span>
+			<span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_running</span><span class="o">.</span><span class="n">is_set</span><span class="p">():</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;running event cleared. someone doesn&#39;t like me&quot;</span><span class="p">)</span>
+				<span class="k">break</span>
+
+			<span class="c"># if the VM has been shutdown</span>
+			<span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_box_is_running</span><span class="p">():</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;running VM has been shutdown. continuing on&quot;</span><span class="p">)</span>
+				<span class="k">break</span>
+
+			<span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.2</span><span class="p">)</span>
+
+		<span class="c"># the vagrant up command is still running. KILL IT. FORCIBLY. WITH PREJUDICE</span>
+		<span class="k">if</span> <span class="n">proc</span><span class="o">.</span><span class="n">poll</span><span class="p">()</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;vagrant up process is still running, forcefully terminating it&quot;</span><span class="p">)</span>
+			<span class="n">proc</span><span class="o">.</span><span class="n">terminate</span><span class="p">()</span>
+			<span class="n">proc</span><span class="o">.</span><span class="n">kill</span><span class="p">()</span>
+			<span class="n">proc</span><span class="o">.</span><span class="n">send_signal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGKILL</span><span class="p">)</span>
+
+		<span class="c"># TODO do we want a temporary &quot;run this VM and let me poke around&quot;?</span>
+		<span class="c"># if not self._temporary:</span>
+		<span class="c">#	self._save</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_save</span><span class="p">()</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_cleanup</span><span class="p">()</span>
+
+		<span class="c"># in case _box_is_running() returned False, we should clear the _running Event</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_running</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_on_success</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="c"># create new from base</span>
+			<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dest_name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">_on_success</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_dest_name</span><span class="p">)</span>
+			
+			<span class="c"># configure/import an image</span>
+			<span class="k">else</span><span class="p">:</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">_on_success</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_box_name</span><span class="p">)</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;vagrant worker finished&quot;</span><span class="p">)</span>
+	</div>
+	<span class="k">def</span> <span class="nf">_maybe_do_import</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Maybe import an image into a vagrant box</span>
+<span class="sd">		:returns: None</span>
+
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_import_image_path</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="k">return</span>
+
+		<span class="c"># imports only configure a base image. Create a new image based on the newly imported one</span>
+		<span class="c"># to use a vagrant file</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_vagrantfile</span> <span class="o">=</span> <span class="bp">None</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;converting image at {!r} to qcow2 format&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_import_image_path</span><span class="p">))</span>
+		<span class="n">new_image_path</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">qemu_convert_image</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_import_image_path</span><span class="p">,</span> <span class="s">&quot;qcow2&quot;</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;qcow2 image now found at {!r}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">new_image_path</span><span class="p">))</span>
+		
+		<span class="c"># only copy it if the resulting file is the same as the original file</span>
+		<span class="c"># (otherwise the normal behavior is that a new file MUST be created)</span>
+		<span class="n">copy</span> <span class="o">=</span> <span class="p">(</span><span class="n">new_image_path</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">_import_image_path</span><span class="p">)</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;imported image from</span><span class="se">\n\t</span><span class="s">{}</span><span class="se">\n</span><span class="s">to qcow2 image at</span><span class="se">\n\t</span><span class="s">{}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_import_image_path</span><span class="p">,</span> <span class="n">new_image_path</span><span class="p">))</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_create_vagrant_box</span><span class="p">(</span>
+			<span class="n">new_image_path</span><span class="p">,</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_box_name</span><span class="p">,</span>
+			<span class="c"># use the default vagrant file, we&#39;ll use the user&#39;s vagrantfile when</span>
+			<span class="c"># we modify the imported image</span>
+			<span class="n">vagrantfile</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+			<span class="n">copy</span><span class="o">=</span><span class="n">copy</span>
+		<span class="p">)</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;vagrant box {!r} created&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_box_name</span><span class="p">))</span>
+	
+	<span class="k">def</span> <span class="nf">_box_is_running</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Return True/False if the current box is still running</span>
+<span class="sd">		:returns: True/False</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">conn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_libvirt</span><span class="p">()</span>
+		<span class="k">try</span><span class="p">:</span>
+			<span class="n">domain</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">lookupByName</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_domain</span><span class="p">)</span>
+		<span class="k">except</span> <span class="n">libvirt</span><span class="o">.</span><span class="n">libvirtError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+			<span class="k">return</span> <span class="bp">False</span>
+
+		<span class="k">if</span> <span class="n">domain</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="k">return</span> <span class="bp">False</span>
+		<span class="n">state</span><span class="p">,</span><span class="n">reason</span> <span class="o">=</span> <span class="n">domain</span><span class="o">.</span><span class="n">state</span><span class="p">()</span>
+		<span class="k">if</span> <span class="n">state</span> <span class="o">==</span> <span class="n">libvirt</span><span class="o">.</span><span class="n">VIR_DOMAIN_RUNNING</span><span class="p">:</span>
+			<span class="k">return</span> <span class="bp">True</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="k">return</span> <span class="bp">False</span>
+	
+<div class="viewcode-block" id="VagrantWorker.get_vnc_port"><a class="viewcode-back" href="../../../../generated/master.lib.vm.html#master.lib.vm.manage.VagrantWorker.get_vnc_port">[docs]</a>	<span class="k">def</span> <span class="nf">get_vnc_port</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Return the vnc port of the vagrant VM</span>
+<span class="sd">		:returns: The vnc port. If the domain is not running, None is returned. If vnc is not (yet?) available, -1 is returned.</span>
+
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">domain</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_libvirt_domain</span><span class="p">()</span>
+		<span class="c"># VM isn&#39;t running (yet?)</span>
+		<span class="k">if</span> <span class="n">domain</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="k">return</span> <span class="bp">None</span>
+
+		<span class="n">info</span> <span class="o">=</span> <span class="n">xmltodict</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">domain</span><span class="o">.</span><span class="n">XMLDesc</span><span class="p">())</span>
+		<span class="n">port</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">info</span><span class="p">[</span><span class="s">&quot;domain&quot;</span><span class="p">][</span><span class="s">&quot;devices&quot;</span><span class="p">][</span><span class="s">&quot;graphics&quot;</span><span class="p">][</span><span class="s">&quot;@port&quot;</span><span class="p">])</span>
+
+		<span class="k">return</span> <span class="n">port</span>
+	</div>
+<div class="viewcode-block" id="VagrantWorker.get_vnc_info"><a class="viewcode-back" href="../../../../generated/master.lib.vm.html#master.lib.vm.manage.VagrantWorker.get_vnc_info">[docs]</a>	<span class="k">def</span> <span class="nf">get_vnc_info</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Return the vnc info for the running vagrant worker</span>
+<span class="sd">		:returns: TODO</span>
+
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">port</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_vnc_port</span><span class="p">()</span>
+		
+		<span class="c"># TODO change this to some config setting?</span>
+		<span class="n">hostname</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">gethostname</span><span class="p">()</span>
+
+		<span class="k">return</span> <span class="p">{</span>
+			<span class="s">&quot;uri&quot;</span><span class="p">:</span> <span class="s">&quot;vnc://{}:{}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">hostname</span><span class="p">,</span> <span class="n">port</span><span class="p">)</span>
+		<span class="p">}</span>
+	</div>
+	<span class="k">def</span> <span class="nf">_libvirt</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Return a libvirt connection</span>
+<span class="sd">		:returns: TODO</span>
+
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_libvirt_conn</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_libvirt_conn</span> <span class="o">=</span> <span class="n">libvirt</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s">&quot;qemu:///system&quot;</span><span class="p">)</span>
+		<span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_libvirt_conn</span>
+	
+	<span class="k">def</span> <span class="nf">_libvirt_domain</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Return the libvirt domain for the currently-running vagrant box</span>
+<span class="sd">		:returns: libvirt.Domain if exists, None if it does not exist</span>
+
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">conn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_libvirt</span><span class="p">()</span>
+		<span class="k">try</span><span class="p">:</span>
+			<span class="n">domain</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">lookupByName</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_domain</span><span class="p">)</span>
+			<span class="k">return</span> <span class="n">domain</span>
+		<span class="k">except</span> <span class="n">libvirt</span><span class="o">.</span><span class="n">libvirtError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+			<span class="k">return</span> <span class="bp">None</span>
+	
+	<span class="k">def</span> <span class="nf">_save</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Save the VM by either overwriting an existing vagrant box or creating a new vagrant box</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">vm_name</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_project_dir</span> <span class="o">+</span> <span class="s">&quot;_default.img&quot;</span><span class="p">)</span>
+		<span class="n">vm_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_image_store</span><span class="p">,</span> <span class="n">vm_name</span><span class="p">)</span>
+
+		<span class="c"># merge the changes made with the image `box_name`</span>
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dest_name</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="c"># commit the changes into the base image. shouldn&#39;t have to move anything around here</span>
+			<span class="n">args</span> <span class="o">=</span> <span class="p">[</span><span class="s">&quot;qemu-img&quot;</span><span class="p">,</span> <span class="s">&quot;commit&quot;</span><span class="p">,</span> <span class="n">vm_path</span><span class="p">]</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;running {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">args</span><span class="p">)))</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;committing changes from {!r} into base image&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">vm_path</span><span class="p">))</span>
+			<span class="n">output</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
+
+			<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;copying base image back into vagrant box...&quot;</span><span class="p">)</span>
+			<span class="c"># since it&#39;s symlinked now, we shouldn&#39;t have to copy anything around</span>
+			<span class="n">info</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">qemu_img_info</span><span class="p">(</span><span class="n">vm_path</span><span class="p">)</span>
+			<span class="n">shutil</span><span class="o">.</span><span class="n">copyfile</span><span class="p">(</span><span class="n">info</span><span class="p">[</span><span class="s">&quot;backing file&quot;</span><span class="p">],</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_vagrant_base</span><span class="p">,</span> <span class="s">&quot;boxes&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_box_name</span><span class="p">,</span> <span class="s">&quot;0&quot;</span><span class="p">,</span> <span class="s">&quot;libvirt&quot;</span><span class="p">,</span> <span class="s">&quot;box.img&quot;</span><span class="p">))</span>
+
+		<span class="c"># create a new vagrant box</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_create_vagrant_box</span><span class="p">(</span><span class="n">vm_path</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dest_name</span><span class="p">)</span>
+	
+	<span class="k">def</span> <span class="nf">_cleanup</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Cleanup everything (remove tmp project files, etc.)</span>
+<span class="sd">		:returns: None</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">args</span> <span class="o">=</span> <span class="p">[</span><span class="s">&quot;vagrant&quot;</span><span class="p">,</span> <span class="s">&quot;destroy&quot;</span><span class="p">]</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;running {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">args</span><span class="p">)))</span>
+		<span class="n">output</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="n">env</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_env</span><span class="p">)</span>
+
+		<span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_project_dir</span><span class="p">)</span>
+
+	<span class="k">def</span> <span class="nf">_create_vagrant_project</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vagrantfile</span><span class="p">,</span> <span class="nb">id</span><span class="o">=</span><span class="s">&quot;tmp&quot;</span><span class="p">,</span> <span class="n">base_name</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Create a project directory in which &quot;vagrant up&quot; can be run. Callers are</span>
+<span class="sd">		responsible for destroying the new project (vagrant destroy) and removing</span>
+<span class="sd">		the directory.</span>
+
+<span class="sd">		:vagrantfile: The contents of the vagrant file</span>
+<span class="sd">		:id: The id of the project, used as part of the project folder name</span>
+<span class="sd">		:returns: The path to the new project directory</span>
+
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="c"># when importing an image, the user is not allowed to specify a vagrantfile</span>
+		<span class="c"># for the initial configuration and setup</span>
+		<span class="k">if</span> <span class="n">vagrantfile</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="n">vagrantfile</span> <span class="o">=</span> <span class="s">&quot;&quot;&quot;</span>
+<span class="s">				Vagrant.configure(&quot;2&quot;) do |config|</span>
+<span class="s">					config.vm.box = &quot;some_box_name&quot;</span>
+<span class="s">				end</span>
+<span class="s">			&quot;&quot;&quot;</span>
+
+		<span class="n">vagrantfile</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_prepare_vagrantfile</span><span class="p">(</span><span class="n">vagrantfile</span><span class="p">,</span> <span class="n">base_name</span><span class="p">,</span> <span class="n">auto_shutdown</span><span class="o">=</span><span class="p">(</span><span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_user_interaction</span><span class="p">))</span>
+
+		<span class="c"># make a project directory</span>
+		<span class="n">tmpd</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="nb">id</span><span class="p">)</span>
+		<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tmpd</span><span class="p">,</span> <span class="s">&quot;Vagrantfile&quot;</span><span class="p">),</span> <span class="s">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+			<span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">vagrantfile</span><span class="p">)</span>
+
+		<span class="k">return</span> <span class="n">tmpd</span>
+
+	<span class="k">def</span> <span class="nf">_create_vagrant_box</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image_path</span><span class="p">,</span> <span class="n">box_name</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">vagrantfile</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">ostype</span><span class="o">=</span><span class="s">&quot;windows&quot;</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Create a vagrant box in ~/.vagrant.d/boxes with the appropriate folder</span>
+<span class="sd">		structure to play nicely with vagrant.</span>
+
+<span class="sd">		:image_path: The path to the image with which the box should be created</span>
+<span class="sd">		:box_name: The name of the box</span>
+<span class="sd">		:bool copy: Copy (True, default) the image, or move (False) the image</span>
+<span class="sd">		:vagrantfile: The contents of the Vagrantfile to be included with the Vagrant box</span>
+<span class="sd">		:username: Username on the VM</span>
+<span class="sd">		:password: Password on the VM</span>
+<span class="sd">		:ostype: OS type (windows/linux), default=windows</span>
+<span class="sd">		:returns: None</span>
+<span class="sd">		:raises: Exception if a box already exists with `box_name`</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">box_folder</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_vagrant_base</span><span class="p">,</span> <span class="s">&quot;boxes&quot;</span><span class="p">,</span> <span class="n">box_name</span><span class="p">)</span>
+		<span class="c"># make sure the box name is unique! it *SHOULD* be a uuid or something</span>
+		<span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">box_folder</span><span class="p">):</span>
+			<span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;vagrant box {!r} already exists!&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">box_name</span><span class="p">))</span>
+
+		<span class="n">libvirt_folder</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">box_folder</span><span class="p">,</span> <span class="s">&quot;0&quot;</span><span class="p">,</span> <span class="s">&quot;libvirt&quot;</span><span class="p">)</span>
+		<span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">libvirt_folder</span><span class="p">)</span>
+
+		<span class="k">if</span> <span class="n">vagrantfile</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="n">comms</span> <span class="o">=</span> <span class="s">&quot;winrm&quot;</span> <span class="k">if</span> <span class="n">ostype</span> <span class="ow">is</span> <span class="s">&quot;windows&quot;</span> <span class="k">else</span> <span class="s">&quot;ssh&quot;</span>
+			<span class="n">vagrantfile</span> <span class="o">=</span> <span class="s">&quot;&quot;&quot;</span>
+<span class="s">				Vagrant.configure(&quot;2&quot;) do |config|</span>
+<span class="s">					config.ssh.insert_key = false</span>
+<span class="s">					config.ssh.username = &quot;{username}&quot;</span>
+<span class="s">					config.ssh.password = &quot;{password}&quot;</span>
+<span class="s">					config.winrm.username = &quot;{username}&quot;</span>
+<span class="s">					config.winrm.password = &quot;{password}&quot;</span>
+<span class="s">					config.vm.communicator = &quot;{comms}&quot;</span>
+<span class="s">					config.vm.synced_folder &quot;.&quot;, &quot;/vagrant&quot;, disabled: true</span>
+<span class="s">					config.vm.guest = :{ostype}</span>
+<span class="s">					config.vm.provider :libvirt do |libvirt|</span>
+<span class="s">					  libvirt.storage :file, :device =&gt; :cdrom, :path =&gt; &quot;{iso_path}&quot;</span>
+<span class="s">					  libvirt.disk_bus = &#39;sata&#39;</span>
+<span class="s">					end</span>
+<span class="s">				end</span>
+<span class="s">			&quot;&quot;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+				<span class="n">username</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_options</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s">&quot;username&quot;</span><span class="p">,</span> <span class="s">&quot;user&quot;</span><span class="p">),</span>
+				<span class="n">password</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_options</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s">&quot;password&quot;</span><span class="p">,</span> <span class="s">&quot;password&quot;</span><span class="p">),</span>
+				<span class="n">ostype</span><span class="o">=</span><span class="n">ostype</span><span class="p">,</span>
+				<span class="n">comms</span><span class="o">=</span><span class="n">comms</span><span class="p">,</span>
+				<span class="n">iso_path</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">DATA_DIR</span><span class="p">,</span> <span class="s">&quot;virtio-drivers.iso&quot;</span><span class="p">)</span>
+			<span class="p">)</span>
+
+		<span class="c"># create Vagrantfile</span>
+		<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">libvirt_folder</span><span class="p">,</span> <span class="s">&quot;Vagrantfile&quot;</span><span class="p">),</span> <span class="s">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+			<span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">vagrantfile</span><span class="p">)</span>
+
+		<span class="n">info</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">qemu_img_info</span><span class="p">(</span><span class="n">image_path</span><span class="p">)</span>
+		<span class="n">virtual_size</span> <span class="o">=</span> <span class="n">info</span><span class="p">[</span><span class="s">&quot;virtual size&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&quot; &quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+		<span class="n">virtual_size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s">r&#39;[^0-9]&#39;</span><span class="p">,</span> <span class="s">&#39;&#39;</span><span class="p">,</span> <span class="n">virtual_size</span><span class="p">))</span>
+
+		<span class="c"># create metadata.json</span>
+		<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">libvirt_folder</span><span class="p">,</span> <span class="s">&quot;metadata.json&quot;</span><span class="p">),</span> <span class="s">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+			<span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;&quot;&quot;</span>
+<span class="s">				{{</span>
+<span class="s">					&quot;provider&quot;:&quot;libvirt&quot;,</span>
+<span class="s">					&quot;format&quot;:&quot;qcow2&quot;,</span>
+<span class="s">					&quot;virtual_size&quot;: {}</span>
+<span class="s">				}}</span>
+<span class="s">			&quot;&quot;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">virtual_size</span><span class="p">))</span>
+
+		<span class="c"># add the image</span>
+		<span class="n">img_dest</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">libvirt_folder</span><span class="p">,</span> <span class="s">&quot;box.img&quot;</span><span class="p">)</span>
+		<span class="n">libvirt_dest</span> <span class="o">=</span> <span class="s">&quot;/var/lib/libvirt/images/{}_vagrant_box_image_0.img&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">box_name</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">copy</span><span class="p">:</span>
+			<span class="n">shutil</span><span class="o">.</span><span class="n">copyfile</span><span class="p">(</span><span class="n">image_path</span><span class="p">,</span> <span class="n">img_dest</span><span class="p">)</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="n">shutil</span><span class="o">.</span><span class="n">move</span><span class="p">(</span><span class="n">image_path</span><span class="p">,</span> <span class="n">img_dest</span><span class="p">)</span>
+	
+	<span class="k">def</span> <span class="nf">_prepare_vagrantfile</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vagrantfile</span><span class="p">,</span> <span class="n">base_name</span><span class="p">,</span> <span class="n">auto_shutdown</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+		<span class="n">vagrantfile</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s">r&#39;(vm\.box\s*=\s*[&quot;</span><span class="se">\&#39;</span><span class="s">])([^&quot;\&quot;]+)([&quot;</span><span class="se">\&#39;</span><span class="s">])&#39;</span><span class="p">,</span> <span class="s">&#39;\g&lt;1&gt;&#39;</span> <span class="o">+</span> <span class="n">base_name</span> <span class="o">+</span> <span class="s">&#39;\g&lt;3&gt;&#39;</span><span class="p">,</span> <span class="n">vagrantfile</span><span class="p">)</span>
+
+		<span class="k">if</span> <span class="n">auto_shutdown</span><span class="p">:</span>
+			<span class="n">parts</span> <span class="o">=</span> <span class="n">vagrantfile</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="s">&quot;end&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+			<span class="c"># TODO how do I detect linux???</span>
+			<span class="n">vagrantfile</span> <span class="o">=</span> <span class="n">parts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="s">&quot;&quot;&quot;</span>
+<span class="s">					config.vm.provision &quot;shell&quot;, inline: &quot;shutdown /s /d p:0:0 /t 0&quot;</span>
+<span class="s">				end</span>
+<span class="s">				&quot;&quot;&quot;</span> <span class="o">+</span> <span class="n">parts</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+		<span class="k">return</span> <span class="n">vagrantfile</span>
+</div>
+<div class="viewcode-block" id="VMManager"><a class="viewcode-back" href="../../../../generated/master.lib.vm.html#master.lib.vm.manage.VMManager">[docs]</a><span class="k">class</span> <span class="nc">VMManager</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;VMManager class is responsible for creating and managing VM images.</span>
+<span class="sd">	</span>
+<span class="sd">	It is intended to be able to handle:</span>
+<span class="sd">	</span>
+<span class="sd">	* converting VM images from various file formats to qcow2</span>
+<span class="sd">	* running Vagrant files on base images to configure VMs</span>
+<span class="sd">	* saving off a snapshot of the configured VM (in qcow2 format with backing files (a snapshot chain)</span>
+<span class="sd">	* exporting VM images into various file formats</span>
+<span class="sd">	* fetching a list of all backing file names/md5s</span>
+<span class="sd">	</span>
+<span class="sd">	This class will block until all operations are complete.&quot;&quot;&quot;</span>
+
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vagrant_base</span><span class="o">=</span><span class="s">&quot;~/.vagrant.d&quot;</span><span class="p">,</span> <span class="n">image_store</span><span class="o">=</span><span class="s">&quot;/var/lib/libvirt/images&quot;</span><span class="p">,</span> <span class="n">parent_log</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="o">**</span><span class="n">opts</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;docstring for VMManager constructor</span>
+<span class="sd">		</span>
+<span class="sd">		:vagrant_base: The vagrant base folder (default = &quot;~/.vagrant.d&quot;)</span>
+<span class="sd">		:image_store: The directory that libvirt images will be stored in</span>
+<span class="sd">		:parent_log: optional parent log of the VMManage instance</span>
+<span class="sd">		:opts: Optionsn for the VMManager</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="nb">super</span><span class="p">(</span><span class="n">VMManager</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">()</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_vagrant_base</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="n">vagrant_base</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_image_store</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="n">image_store</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_libvirt_conn</span> <span class="o">=</span> <span class="bp">None</span>
+
+		<span class="c"># TODO make this based on the # of cores available in the system</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_max_vms</span> <span class="o">=</span> <span class="n">opts</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s">&quot;max_vms&quot;</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_vm_lock</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Semaphore</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_max_vms</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_worker_numbers</span> <span class="o">=</span> <span class="n">deque</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_max_vms</span><span class="p">))</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_workers</span> <span class="o">=</span> <span class="p">{}</span>
+
+		<span class="k">if</span> <span class="n">parent_log</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s">&quot;VMManager&quot;</span><span class="p">)</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_log</span> <span class="o">=</span> <span class="n">parent_log</span><span class="o">.</span><span class="n">getChild</span><span class="p">(</span><span class="s">&quot;VMManager&quot;</span><span class="p">)</span>
+
+	<span class="c"># ---------------------------------</span>
+	<span class="c"># PUBLIC</span>
+	<span class="c"># ---------------------------------</span>
+
+<div class="viewcode-block" id="VMManager.import_image"><a class="viewcode-back" href="../../../../generated/master.lib.vm.html#master.lib.vm.manage.VMManager.import_image">[docs]</a>	<span class="k">def</span> <span class="nf">import_image</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image_path</span><span class="p">,</span> <span class="n">image_name</span><span class="p">,</span> <span class="n">user_interaction</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">iso_path</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">username</span><span class="o">=</span><span class="s">&quot;user&quot;</span><span class="p">,</span> <span class="n">password</span><span class="o">=</span><span class="s">&quot;password&quot;</span><span class="p">,</span> <span class="n">on_success</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Import the image into talus with the name ``image_name``, optionally running ``vagrantfile`` on</span>
+<span class="sd">		the newly created box and applying the changes. If ``user_interaction`` is True, worker and vnc</span>
+<span class="sd">		info will be returned in a dict: ::</span>
+
+<span class="sd">			{</span>
+<span class="sd">				&quot;worker&quot;: WORKER_NUMBER,</span>
+<span class="sd">				&quot;vnc&quot;: {</span>
+<span class="sd">					&quot;uri&quot;: &quot;vnc:///HOSTNAME:PORT&quot;</span>
+<span class="sd">				}</span>
+<span class="sd">			}</span>
+
+<span class="sd">		The worker number may be passed to :meth:`.shutdown_worker` to shutdown a running VM if</span>
+<span class="sd">		``user_interaction`` was set to True.</span>
+
+<span class="sd">		:image_path: The path to the image to be imported</span>
+<span class="sd">		:image_name: The name of the resulting image</span>
+<span class="sd">		:user_interaction: True/False if the user should be allowed to interact with the imported VM (default=False)</span>
+<span class="sd">		:iso_path: Path to an iso to be mounted after booting up (default: None)</span>
+<span class="sd">		:on_success: Callback to be called with the image name on successful completion</span>
+<span class="sd">		:returns: TODO</span>
+
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_vagrant_worker</span><span class="p">(</span>
+			<span class="n">image_name</span><span class="p">,</span>
+			<span class="bp">None</span><span class="p">,</span>
+			<span class="n">user_interaction</span><span class="o">=</span><span class="n">user_interaction</span><span class="p">,</span>
+			<span class="n">import_image_path</span><span class="o">=</span><span class="n">image_path</span><span class="p">,</span>
+			<span class="n">iso_path</span><span class="o">=</span><span class="n">iso_path</span><span class="p">,</span>
+			<span class="n">username</span><span class="o">=</span><span class="n">username</span><span class="p">,</span>
+			<span class="n">password</span><span class="o">=</span><span class="n">password</span><span class="p">,</span>
+			<span class="n">on_success</span><span class="o">=</span><span class="n">on_success</span>
+		<span class="p">)</span>
+	</div>
+<div class="viewcode-block" id="VMManager.delete_image"><a class="viewcode-back" href="../../../../generated/master.lib.vm.html#master.lib.vm.manage.VMManager.delete_image">[docs]</a>	<span class="k">def</span> <span class="nf">delete_image</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image_name</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Delete the image specified by ``image_name``. Note that this WILL NOT check for</span>
+<span class="sd">		images that use ``image_name`` as their base.</span>
+
+<span class="sd">		:image_name: The name of the image to delete</span>
+<span class="sd">		:returns: None</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">vagrant_box_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_vagrant_base</span><span class="p">,</span> <span class="s">&quot;boxes&quot;</span><span class="p">,</span> <span class="n">image_name</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">vagrant_box_path</span><span class="p">):</span>
+			<span class="c"># --force so it doesn&#39;t prompt for confirmation</span>
+			<span class="n">args</span> <span class="o">=</span> <span class="p">[</span><span class="s">&quot;vagrant&quot;</span><span class="p">,</span> <span class="s">&quot;box&quot;</span><span class="p">,</span> <span class="s">&quot;remove&quot;</span><span class="p">,</span> <span class="s">&quot;--force&quot;</span><span class="p">,</span> <span class="n">image_name</span><span class="p">]</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;running {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">args</span><span class="p">)))</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;deleting image named {!r}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">image_name</span><span class="p">))</span>
+			<span class="n">output</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
+
+			<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;removing vagrant box path: {!r}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">vagrant_box_path</span><span class="p">))</span>
+			<span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">vagrant_box_path</span><span class="p">)</span>
+
+		<span class="c"># now also delete it from the libvirt pool</span>
+		<span class="n">conn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_libvirt</span><span class="p">()</span>
+		<span class="n">default_pool</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">storagePoolLookupByName</span><span class="p">(</span><span class="s">&quot;default&quot;</span><span class="p">)</span>
+
+		<span class="k">try</span><span class="p">:</span>
+			<span class="n">volume_name</span> <span class="o">=</span> <span class="n">image_name</span> <span class="o">+</span> <span class="s">&quot;_vagrant_box_image_0.img&quot;</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;deleting libvirt volume {!r}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">volume_name</span><span class="p">))</span>
+			<span class="n">volume</span> <span class="o">=</span> <span class="n">default_pool</span><span class="o">.</span><span class="n">storageVolLookupByName</span><span class="p">(</span><span class="n">volume_name</span><span class="p">)</span>
+			<span class="k">if</span> <span class="n">volume</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+				<span class="n">volume</span><span class="o">.</span><span class="n">delete</span><span class="p">()</span>
+		<span class="k">except</span> <span class="n">libvirt</span><span class="o">.</span><span class="n">libvirtError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+			<span class="k">pass</span>
+		<span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+			<span class="k">pass</span>
+	</div>
+<div class="viewcode-block" id="VMManager.export_image"><a class="viewcode-back" href="../../../../generated/master.lib.vm.html#master.lib.vm.manage.VMManager.export_image">[docs]</a>	<span class="k">def</span> <span class="nf">export_image</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image_name</span><span class="p">,</span> <span class="n">output_type</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Export the image specified by `image_name` to `output_type` VM image. Supported output</span>
+<span class="sd">		types are qcow2, ova, vmdk, and vid. (TODO: vagrant box output? &lt;name&gt;.box?)</span>
+
+<span class="sd">		:image_name: Name of the image to export (probably a UUID)</span>
+<span class="sd">		:output_type: Optionally specify the output format. Defaults to qcow2</span>
+<span class="sd">		:returns: Path to an exported VM image</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="c"># TODO should we allow this to be streamed?? ... nah</span>
+		<span class="k">pass</span>
+	</div>
+<div class="viewcode-block" id="VMManager.configure_image"><a class="viewcode-back" href="../../../../generated/master.lib.vm.html#master.lib.vm.manage.VMManager.configure_image">[docs]</a>	<span class="k">def</span> <span class="nf">configure_image</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">box_name</span><span class="p">,</span> <span class="n">vagrantfile</span><span class="p">,</span> <span class="n">user_interaction</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">on_success</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Configure the existing vagrant box with the supplied vagrantfile. If ``user_interaction`` is</span>
+<span class="sd">		True, a dict will be returned with vm worker info in the format: ::</span>
+
+<span class="sd">			{</span>
+<span class="sd">				&quot;worker&quot;: WORKER_NUMBER,</span>
+<span class="sd">				&quot;vnc&quot;: {</span>
+<span class="sd">					&quot;uri&quot;: &quot;vnc:///HOSTNAME:PORT&quot;</span>
+<span class="sd">				}</span>
+<span class="sd">			}</span>
+
+<span class="sd">		The worker number may be passed to :meth:`.shutdown_worker` to shutdown a running VM if</span>
+<span class="sd">		``user_interaction`` was set to True.</span>
+
+<span class="sd">		:box_name: The name of the box to configure</span>
+<span class="sd">		:vagrantfile: The name of the vagrantfile to configure</span>
+<span class="sd">		:user_interaction: If user-interaction is expected (e.g. if only doing auto-updates w/ a Vagrantfile, set to False)</span>
+<span class="sd">		:returns: None</span>
+
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_vagrant_worker</span><span class="p">(</span>
+			<span class="n">box_name</span><span class="p">,</span>
+			<span class="n">vagrantfile</span><span class="p">,</span>
+			<span class="n">dest_name</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="c"># update the existing vagrant box image!</span>
+			<span class="n">user_interaction</span><span class="o">=</span><span class="n">user_interaction</span><span class="p">,</span>
+			<span class="n">on_success</span><span class="o">=</span><span class="n">on_success</span>
+		<span class="p">)</span>
+	</div>
+<div class="viewcode-block" id="VMManager.create_image"><a class="viewcode-back" href="../../../../generated/master.lib.vm.html#master.lib.vm.manage.VMManager.create_image">[docs]</a>	<span class="k">def</span> <span class="nf">create_image</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vagrantfile</span><span class="p">,</span> <span class="n">base_name</span><span class="p">,</span> <span class="n">dest_name</span><span class="p">,</span> <span class="n">user_interaction</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">on_success</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Use the `vagrantfile` to create a new image using the vagrant</span>
+<span class="sd">		box specified by `base_name`. If ``user_interaction`` is</span>
+<span class="sd">		True, a dict will be returned with vm worker info in the format: ::</span>
+
+<span class="sd">			{</span>
+<span class="sd">				&quot;worker&quot;: WORKER_NUMBER,</span>
+<span class="sd">				&quot;vnc&quot;: {</span>
+<span class="sd">					&quot;uri&quot;: &quot;vnc:///HOSTNAME:PORT&quot;</span>
+<span class="sd">				}</span>
+<span class="sd">			}</span>
+
+<span class="sd">		The worker number may be passed to :meth:`.shutdown_worker` to shutdown a running VM if</span>
+<span class="sd">		``user_interaction`` was set to True.</span>
+
+<span class="sd">		:vagrantfile: Contents of the Vagrant file with a $$BASE_IMAGE$$ placeholder for the base box</span>
+<span class="sd">		:base_name: The name of the base vagrant box</span>
+<span class="sd">		:dest_name: The name of the new vagrant box</span>
+<span class="sd">		:user_interaction: If user interaction will be allowed (will not immediately cleanup, and a vnc url will be returned)</span>
+<span class="sd">		:returns: A VM info (including vnc connection info) if ``user_interaction`` is True; else returns None</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_vagrant_worker</span><span class="p">(</span>
+			<span class="n">base_name</span><span class="p">,</span>
+			<span class="n">vagrantfile</span><span class="p">,</span>
+			<span class="n">dest_name</span><span class="o">=</span><span class="n">dest_name</span><span class="p">,</span>
+			<span class="n">user_interaction</span><span class="o">=</span><span class="n">user_interaction</span><span class="p">,</span>
+			<span class="n">on_success</span><span class="o">=</span><span class="n">on_success</span>
+		<span class="p">)</span>
+	</div>
+<div class="viewcode-block" id="VMManager.shutdown_vagrant_vm"><a class="viewcode-back" href="../../../../generated/master.lib.vm.html#master.lib.vm.manage.VMManager.shutdown_vagrant_vm">[docs]</a>	<span class="k">def</span> <span class="nf">shutdown_vagrant_vm</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">worker_num</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Shutdown the VM specified by worker_num.</span>
+
+<span class="sd">		:worker_num: Number of the worker to shutdown (returned if user_interaction is True)</span>
+<span class="sd">		:returns: None</span>
+
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_workers</span><span class="p">[</span><span class="n">worker_num</span><span class="p">]</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+		<span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_workers</span><span class="p">[</span><span class="n">worker_num</span><span class="p">]</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_worker_numbers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">worker_num</span><span class="p">)</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_vm_lock</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
+	
+	<span class="c"># ---------------------------------</span>
+	<span class="c"># PRIVATE</span>
+	<span class="c"># ---------------------------------</span>
+</div>
+	<span class="k">def</span> <span class="nf">_wait_for_worker_to_exit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">worker</span><span class="p">):</span>
+		<span class="n">worker</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="mi">2</span><span class="o">**</span><span class="mi">31</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;worker exited&quot;</span><span class="p">)</span>
+
+		<span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_workers</span><span class="p">[</span><span class="n">worker</span><span class="o">.</span><span class="n">_idx</span><span class="p">]</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_worker_numbers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">worker</span><span class="o">.</span><span class="n">_idx</span><span class="p">)</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;releasing vm_lock&quot;</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_vm_lock</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
+
+	<span class="k">def</span> <span class="nf">_run_vagrant_worker</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">base_name</span><span class="p">,</span> <span class="n">vagrantfile</span><span class="p">,</span> <span class="n">dest_name</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">user_interaction</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">import_image_path</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">iso_path</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">on_success</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Run the vagrant worker with the supplied args. If dest_name is None, the existing image</span>
+<span class="sd">		will be updated with the changes.</span>
+
+<span class="sd">		:base_name: Base name of the Vagrant box</span>
+<span class="sd">		:vagrantfile: Contents of the vagrant file to run on the box</span>
+<span class="sd">		:dest_name: Optional name of the new box that is to be created after modifying the base box</span>
+<span class="sd">		:user_interaction: True/False if user interaction is needed</span>
+<span class="sd">		:import_image_path: The path to the VM image to be converted and imported</span>
+<span class="sd">		:returns: None if no user interaction is needed, else dict of worker number and vnc info</span>
+
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="c"># make sure we don&#39;t just will-nilly create too many VMs</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_vm_lock</span><span class="o">.</span><span class="n">acquire</span><span class="p">()</span>
+
+		<span class="n">worker_num</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_next_worker_number</span><span class="p">()</span>
+		<span class="n">worker</span> <span class="o">=</span> <span class="n">VagrantWorker</span><span class="p">(</span>
+			<span class="n">base_name</span><span class="p">,</span>
+			<span class="n">vagrantfile</span><span class="p">,</span>
+			<span class="n">worker_num</span><span class="p">,</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="p">,</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_vagrant_base</span><span class="p">,</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_image_store</span><span class="p">,</span>
+			<span class="n">dest_name</span><span class="o">=</span><span class="n">dest_name</span><span class="p">,</span>
+			<span class="n">import_image_path</span><span class="o">=</span><span class="n">import_image_path</span><span class="p">,</span>
+			<span class="n">iso_path</span><span class="o">=</span><span class="n">iso_path</span><span class="p">,</span>
+			<span class="n">on_success</span><span class="o">=</span><span class="n">on_success</span><span class="p">,</span>
+			<span class="n">user_interaction</span><span class="o">=</span><span class="n">user_interaction</span><span class="p">,</span>
+			<span class="o">**</span><span class="n">options</span>
+		<span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_workers</span><span class="p">[</span><span class="n">worker_num</span><span class="p">]</span> <span class="o">=</span> <span class="n">worker</span>
+		<span class="n">worker</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+		<span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_wait_for_worker_to_exit</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">[</span><span class="n">worker</span><span class="p">])</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+		<span class="n">ret</span> <span class="o">=</span> <span class="bp">None</span>
+		<span class="k">if</span> <span class="n">user_interaction</span><span class="p">:</span>
+			<span class="n">worker</span><span class="o">.</span><span class="n">wait_for_ready</span><span class="p">()</span>
+			<span class="n">vnc_info</span> <span class="o">=</span> <span class="n">worker</span><span class="o">.</span><span class="n">get_vnc_info</span><span class="p">()</span>
+			<span class="n">ret</span> <span class="o">=</span> <span class="p">{</span>
+				<span class="s">&quot;worker&quot;</span><span class="p">:</span> <span class="n">worker_num</span><span class="p">,</span>
+				<span class="s">&quot;vnc&quot;</span><span class="p">:</span> <span class="n">vnc_info</span>
+			<span class="p">}</span>
+
+		<span class="c"># else we just let the VagrantWorker thread do its thing without</span>
+		<span class="c"># waiting for it</span>
+
+		<span class="k">return</span> <span class="n">ret</span>
+
+	<span class="k">def</span> <span class="nf">_next_worker_number</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_worker_numbers</span><span class="o">.</span><span class="n">popleft</span><span class="p">()</span>
+
+	<span class="k">def</span> <span class="nf">_libvirt</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Return a libvirt connection</span>
+<span class="sd">		:returns: TODO</span>
+
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_libvirt_conn</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_libvirt_conn</span> <span class="o">=</span> <span class="n">libvirt</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s">&quot;qemu:///system&quot;</span><span class="p">)</span>
+		<span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_libvirt_conn</span></div>
+</pre></div>
+
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015, Optiv Labs.
+    </p>
+  </div>
+
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+  
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../../',
+            VERSION:'0.0.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

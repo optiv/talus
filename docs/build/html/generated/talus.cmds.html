@@ -1,0 +1,720 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>talus.cmds package &mdash; Talus 0.0.1 documentation</title>
+  
+
+  
+  
+
+  
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Roboto+Slab:400,700|Inconsolata:400,700&subset=latin,cyrillic' rel='stylesheet' type='text/css'>
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="Talus 0.0.1 documentation" href="../index.html"/> 
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-nav-search">
+        
+          <a href="../index.html" class="fa fa-home"> Talus</a>
+        
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+        
+          
+          
+              <ul class="simple">
+</ul>
+
+          
+        
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../index.html">Talus</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../index.html">Docs</a> &raquo;</li>
+      
+    <li>talus.cmds package</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          <a href="../_sources/generated/talus.cmds.txt" rel="nofollow"> View page source</a>
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document">
+            
+  <div class="section" id="talus-cmds-package">
+<h1>talus.cmds package<a class="headerlink" href="#talus-cmds-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-talus.cmds.code">
+<span id="talus-cmds-code-module"></span><h2>talus.cmds.code module<a class="headerlink" href="#module-talus.cmds.code" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="talus.cmds.code.CodeCmd">
+<em class="property">class </em><code class="descclassname">talus.cmds.code.</code><code class="descname">CodeCmd</code><span class="sig-paren">(</span><em>talus_host=None</em>, <em>talus_client=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/cmds/code.html#CodeCmd"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.cmds.code.CodeCmd" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#talus.cmds.TalusCmdBase" title="talus.cmds.TalusCmdBase"><code class="xref py py-class docutils literal"><span class="pre">talus.cmds.TalusCmdBase</span></code></a></p>
+<p>The Talus code command processor</p>
+<dl class="attribute">
+<dt id="talus.cmds.code.CodeCmd.command_name">
+<code class="descname">command_name</code><em class="property"> = 'code'</em><a class="headerlink" href="#talus.cmds.code.CodeCmd.command_name" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="talus.cmds.code.CodeCmd.do_create">
+<code class="descname">do_create</code><span class="sig-paren">(</span><em>args</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/cmds/code.html#CodeCmd.do_create"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.cmds.code.CodeCmd.do_create" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create new code in the repository. This will create the code in the talus
+repository, as well as in the database.</p>
+<p>code create NAME -t or -c</p>
+<blockquote>
+<div>-t,&#8211;tool    Create a tool</div></blockquote>
+<p>-c,&#8211;component    Create a component</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="talus.cmds.code.CodeCmd.do_info">
+<code class="descname">do_info</code><span class="sig-paren">(</span><em>args</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/cmds/code.html#CodeCmd.do_info"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.cmds.code.CodeCmd.do_info" title="Permalink to this definition">¶</a></dt>
+<dd><p>List the details of a code item (tool or component).</p>
+<p>code info NAME_OR_ID</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="talus.cmds.code.CodeCmd.do_list">
+<code class="descname">do_list</code><span class="sig-paren">(</span><em>args</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/cmds/code.html#CodeCmd.do_list"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.cmds.code.CodeCmd.do_list" title="Permalink to this definition">¶</a></dt>
+<dd><p>List existing code in Talus. By default it will list both
+components and tools. Note that -t and -c are mutually exclusive</p>
+<p>code list [-t or -c]</p>
+<blockquote>
+<div>-t,&#8211;tools    List tools (default=False)</div></blockquote>
+<p>-c,&#8211;components    List components (default=False)</p>
+<p>Examples:</p>
+<p>List all components defined in Talus</p>
+<blockquote>
+<div>code list -t component</div></blockquote>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-talus.cmds.images">
+<span id="talus-cmds-images-module"></span><h2>talus.cmds.images module<a class="headerlink" href="#module-talus.cmds.images" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="talus.cmds.images.ImageCmd">
+<em class="property">class </em><code class="descclassname">talus.cmds.images.</code><code class="descname">ImageCmd</code><span class="sig-paren">(</span><em>talus_host=None</em>, <em>talus_client=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/cmds/images.html#ImageCmd"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.cmds.images.ImageCmd" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#talus.cmds.TalusCmdBase" title="talus.cmds.TalusCmdBase"><code class="xref py py-class docutils literal"><span class="pre">talus.cmds.TalusCmdBase</span></code></a></p>
+<p>The Talus images command processor</p>
+<dl class="attribute">
+<dt id="talus.cmds.images.ImageCmd.command_name">
+<code class="descname">command_name</code><em class="property"> = 'image'</em><a class="headerlink" href="#talus.cmds.images.ImageCmd.command_name" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="talus.cmds.images.ImageCmd.do_configure">
+<code class="descname">do_configure</code><span class="sig-paren">(</span><em>args</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/cmds/images.html#ImageCmd.do_configure"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.cmds.images.ImageCmd.do_configure" title="Permalink to this definition">¶</a></dt>
+<dd><p>Configure an existing image in talus</p>
+<p>configure ID_OR_NAME [-v PATH_TO_VAGRANTFILE] [-i]</p>
+<blockquote>
+<div>id_or_name    The ID or name of the image that is to be configured (required)</div></blockquote>
+<p>-i,&#8211;interactive    To interact with the imported image for setup (default: False)
+-v,&#8211;vagrantfile    The path to the vagrantfile that should be used to configure the image (default=None)</p>
+<p>Examples:</p>
+<p>To configure an image named &#8220;Windows 7 x64 Test&#8221;, using a vagrantfile found
+at <cite>~/vagrantfiles/UpdateIE</cite> with no interaction:</p>
+<blockquote>
+<div>configure &#8220;Windows 7 x64 Test&#8221; &#8211;vagrantfile ~/vagrantfiles/UpdateIE</div></blockquote>
+</dd></dl>
+
+<dl class="method">
+<dt id="talus.cmds.images.ImageCmd.do_create">
+<code class="descname">do_create</code><span class="sig-paren">(</span><em>args</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/cmds/images.html#ImageCmd.do_create"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.cmds.images.ImageCmd.do_create" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a new image in talus using an existing base image. Anything not explicitly
+specified will be inherited from the base image, except for the name, which is required.</p>
+<p>create -n NAME -b BASEID_NAME [-d DESC] [-t TAG1,TAG2,..] [-u USER] [-p PASS] [-o OSID] [-i]</p>
+<blockquote>
+<div><blockquote>
+<div>-o,&#8211;os    ID or name of the operating system model</div></blockquote>
+<p>-b,&#8211;base    ID or name of the base image
+-n,&#8211;name    The name of the resulting image (default: basename(FILE))</p>
+<blockquote>
+<div>-d,&#8211;desc    A description of the image (default: &#8220;&#8221;)
+-t,&#8211;tags    Tags associated with the image (default: [])</div></blockquote>
+</div></blockquote>
+<p>-v,&#8211;vagrantfile    A vagrant file that will be used to congfigure the image
+-i,&#8211;interactive    To interact with the imported image for setup (default: False)</p>
+<p>Examples:</p>
+<p>To create a new image based on the image with id 222222222222222222222222 and adding
+a new description and allowing for manual user setup:</p>
+<blockquote>
+<div>image create -b 222222222222222222222222 -d &#8220;some new description&#8221; -i</div></blockquote>
+</dd></dl>
+
+<dl class="method">
+<dt id="talus.cmds.images.ImageCmd.do_delete">
+<code class="descname">do_delete</code><span class="sig-paren">(</span><em>args</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/cmds/images.html#ImageCmd.do_delete"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.cmds.images.ImageCmd.do_delete" title="Permalink to this definition">¶</a></dt>
+<dd><p>Attempt to delete the specified image. This may fail if the image is the
+base image for another image.</p>
+<p>delete id_or_name</p>
+<p>id_or_name    The ID or name of the image that is to be deleted</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="talus.cmds.images.ImageCmd.do_import">
+<code class="descname">do_import</code><span class="sig-paren">(</span><em>args</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/cmds/images.html#ImageCmd.do_import"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.cmds.images.ImageCmd.do_import" title="Permalink to this definition">¶</a></dt>
+<dd><p>Import an image into Talus</p>
+<blockquote>
+<div><p>import FILE -n NAME -o OSID [-d DESC] [-t TAG1,TAG2,..] [-u USER] [-p PASS] [-i]</p>
+<blockquote>
+<div><blockquote>
+<div><dl class="docutils">
+<dt>FILE    The file to import</dt>
+<dd>-o,&#8211;os    ID or name of the operating system model</dd>
+</dl>
+</div></blockquote>
+<dl class="docutils">
+<dt>-n,&#8211;name    The name of the resulting image (default: basename(FILE))</dt>
+<dd><blockquote class="first">
+<div>-d,&#8211;desc    A description of the image (default: &#8220;&#8221;)
+-t,&#8211;tags    Tags associated with the image (default: [])</div></blockquote>
+<p class="last">-f,&#8211;file-id    The id of an already-uploaded file (NOT A NORMAL USE CASE)</p>
+</dd>
+</dl>
+</div></blockquote>
+</div></blockquote>
+<p>-u,&#8211;username    The username to be used in the image (default: user)
+-p,&#8211;password    The password to be used in the image (default: password)</p>
+<blockquote>
+<div><p>-i,&#8211;interactive    To interact with the imported image for setup (default: False)</p>
+<p>Examples:</p>
+<p>To import an image from VMWare at <code class="docutils literal"><span class="pre">~/images/win7pro.vmdk</span></code> named &#8220;win 7 pro test&#8221;
+and to be given a chance to perform some manual setup/checks:</p>
+<blockquote>
+<div>image import ~/images/win7pro.vmdk -n &#8220;win 7 pro test&#8221; -i -o &#8220;win7pro&#8221; -t windows7,x64,IE8</div></blockquote>
+</div></blockquote>
+</dd></dl>
+
+<dl class="method">
+<dt id="talus.cmds.images.ImageCmd.do_info">
+<code class="descname">do_info</code><span class="sig-paren">(</span><em>args</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/cmds/images.html#ImageCmd.do_info"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.cmds.images.ImageCmd.do_info" title="Permalink to this definition">¶</a></dt>
+<dd><p>List detailed information about an image</p>
+<p>info ID_OR_NAME</p>
+<p>Examples:</p>
+<p>List info about the image named &#8220;Win 7 Pro&#8221;</p>
+<blockquote>
+<div>image info &#8220;Win 7 Pro&#8221;</div></blockquote>
+</dd></dl>
+
+<dl class="method">
+<dt id="talus.cmds.images.ImageCmd.do_list">
+<code class="descname">do_list</code><span class="sig-paren">(</span><em>args</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/cmds/images.html#ImageCmd.do_list"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.cmds.images.ImageCmd.do_list" title="Permalink to this definition">¶</a></dt>
+<dd><p>List existing images in Talus</p>
+<p>image list</p>
+<p>Examples:</p>
+<p>List all images in Talus:</p>
+<blockquote>
+<div>image list</div></blockquote>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-talus.cmds.jobs">
+<span id="talus-cmds-jobs-module"></span><h2>talus.cmds.jobs module<a class="headerlink" href="#module-talus.cmds.jobs" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="talus.cmds.jobs.JobCmd">
+<em class="property">class </em><code class="descclassname">talus.cmds.jobs.</code><code class="descname">JobCmd</code><span class="sig-paren">(</span><em>talus_host=None</em>, <em>talus_client=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/cmds/jobs.html#JobCmd"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.cmds.jobs.JobCmd" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#talus.cmds.TalusCmdBase" title="talus.cmds.TalusCmdBase"><code class="xref py py-class docutils literal"><span class="pre">talus.cmds.TalusCmdBase</span></code></a></p>
+<p>The Talus job command processor</p>
+<dl class="attribute">
+<dt id="talus.cmds.jobs.JobCmd.command_name">
+<code class="descname">command_name</code><em class="property"> = 'job'</em><a class="headerlink" href="#talus.cmds.jobs.JobCmd.command_name" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="talus.cmds.jobs.JobCmd.do_cancel">
+<code class="descname">do_cancel</code><span class="sig-paren">(</span><em>args</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/cmds/jobs.html#JobCmd.do_cancel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.cmds.jobs.JobCmd.do_cancel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Cancel the job by name or ID in talus</p>
+<p>job cancel JOB_NAME_OR_ID</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="talus.cmds.jobs.JobCmd.do_create">
+<code class="descname">do_create</code><span class="sig-paren">(</span><em>args</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/cmds/jobs.html#JobCmd.do_create"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.cmds.jobs.JobCmd.do_create" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a new job in Talus</p>
+<p>job create TASK_NAME_OR_ID -i IMAGE [-n NAME] [-p PARAMS] [-q QUEUE] [&#8211;priority (0-100)] [&#8211;network]</p>
+<blockquote>
+<div><blockquote>
+<div><blockquote>
+<div>-n,&#8211;name    The name of the job (defaults to name of the task + timestamp)</div></blockquote>
+<table class="docutils option-list" frame="void" rules="none">
+<col class="option" />
+<col class="description" />
+<tbody valign="top">
+<tr><td class="option-group">
+<kbd><span class="option">--priority</span></kbd></td>
+<td><dl class="first docutils">
+<dt>The priority for the job (0-100, defaults to 50)</dt>
+<dd><table class="first last docutils option-list" frame="void" rules="none">
+<col class="option" />
+<col class="description" />
+<tbody valign="top">
+<tr><td class="option-group">
+<kbd><span class="option">--network</span></kbd></td>
+<td><p class="first">The network for the image (&#8216;all&#8217; or &#8216;whitelist&#8217;). Whitelist values may
+also be a &#8216;whitelist:&lt;domain_or_ip&gt;,&lt;domain_or_ip&gt;&#8217; to add domains</p>
+<blockquote class="last">
+<div>to the whitelist. Not specifying additional whitelist hosts results
+in a host-only network filter, plus talus-essential hosts.</div></blockquote>
+</td></tr>
+</tbody>
+</table>
+</dd>
+</dl>
+<p class="last">-q,&#8211;queue    The queue the job should be inserted into (default: jobs)
+-i,&#8211;image    The image the job should run in (name or id)</p>
+</td></tr>
+</tbody>
+</table>
+<dl class="docutils">
+<dt>-l,&#8211;limit    The limit for the task. What the limit means is defined by how the tool</dt>
+<dd>reports progress. If the tool does not report progress, then the limit
+means the number of total VMs to run.</dd>
+</dl>
+</div></blockquote>
+<p>-p,&#8211;params    Params for the task (defaults to the default params of the task)</p>
+</div></blockquote>
+<p>-f,&#8211;params-file    The file that contains the params of the job</p>
+<p>Examples:</p>
+<p>To run the task &#8220;CalcFuzzer&#8221; while only updating the <code class="docutils literal"><span class="pre">chars</span></code> parameter:</p>
+<blockquote>
+<div>job create &#8220;CalcFuzzer&#8221; -p &#8216;{&#8220;chars&#8221;: &#8220;013579+-()/<a href="#id1"><span class="problematic" id="id2">*</span></a>&#8220;}&#8217;</div></blockquote>
+</dd></dl>
+
+<dl class="method">
+<dt id="talus.cmds.jobs.JobCmd.do_list">
+<code class="descname">do_list</code><span class="sig-paren">(</span><em>args</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/cmds/jobs.html#JobCmd.do_list"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.cmds.jobs.JobCmd.do_list" title="Permalink to this definition">¶</a></dt>
+<dd><p>List existing jobs in Talus.</p>
+<p>job list</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-talus.cmds.oses">
+<span id="talus-cmds-oses-module"></span><h2>talus.cmds.oses module<a class="headerlink" href="#module-talus.cmds.oses" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="talus.cmds.oses.OsCmd">
+<em class="property">class </em><code class="descclassname">talus.cmds.oses.</code><code class="descname">OsCmd</code><span class="sig-paren">(</span><em>talus_host=None</em>, <em>talus_client=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/cmds/oses.html#OsCmd"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.cmds.oses.OsCmd" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#talus.cmds.TalusCmdBase" title="talus.cmds.TalusCmdBase"><code class="xref py py-class docutils literal"><span class="pre">talus.cmds.TalusCmdBase</span></code></a></p>
+<p>The Talus code command processor</p>
+<dl class="attribute">
+<dt id="talus.cmds.oses.OsCmd.command_name">
+<code class="descname">command_name</code><em class="property"> = 'os'</em><a class="headerlink" href="#talus.cmds.oses.OsCmd.command_name" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="talus.cmds.oses.OsCmd.do_create">
+<code class="descname">do_create</code><span class="sig-paren">(</span><em>args</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/cmds/oses.html#OsCmd.do_create"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.cmds.oses.OsCmd.do_create" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a new operating system model in Talus</p>
+<p>create -n NAME [&#8211;type TYPE] [-t TAG1,TAG2,..] [-v VERSION]</p>
+<blockquote>
+<div>-n,&#8211;name    The name of the new OS model (required, no default)
+-t,&#8211;type    The type of the OS mdoel (default: &#8220;windows&#8221;)
+-a,&#8211;arch    The architecture of the OS (default: &#8220;x64&#8221;)</div></blockquote>
+<p>-v,&#8211;version    The version of the new OS model (default: &#8220;&#8221;)</p>
+<p>Examples:</p>
+<p>To create a new operating system model for an x64 Windows 7 OS:</p>
+<blockquote>
+<div>os create -n &#8220;Windows 7 x64&#8221; -t windows -v 7 -a x64</div></blockquote>
+</dd></dl>
+
+<dl class="method">
+<dt id="talus.cmds.oses.OsCmd.do_delete">
+<code class="descname">do_delete</code><span class="sig-paren">(</span><em>args</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/cmds/oses.html#OsCmd.do_delete"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.cmds.oses.OsCmd.do_delete" title="Permalink to this definition">¶</a></dt>
+<dd><p>Delete an operating system model in Talus</p>
+<p>os delete &lt;OS_ID_OR_NAME&gt;</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="talus.cmds.oses.OsCmd.do_list">
+<code class="descname">do_list</code><span class="sig-paren">(</span><em>args</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/cmds/oses.html#OsCmd.do_list"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.cmds.oses.OsCmd.do_list" title="Permalink to this definition">¶</a></dt>
+<dd><p>List all operating system models defined in Talus</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-talus.cmds.results">
+<span id="talus-cmds-results-module"></span><h2>talus.cmds.results module<a class="headerlink" href="#module-talus.cmds.results" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="talus.cmds.results.ResultCmd">
+<em class="property">class </em><code class="descclassname">talus.cmds.results.</code><code class="descname">ResultCmd</code><span class="sig-paren">(</span><em>talus_host=None</em>, <em>talus_client=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/cmds/results.html#ResultCmd"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.cmds.results.ResultCmd" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#talus.cmds.TalusCmdBase" title="talus.cmds.TalusCmdBase"><code class="xref py py-class docutils literal"><span class="pre">talus.cmds.TalusCmdBase</span></code></a></p>
+<p>The talus result command processor</p>
+<dl class="attribute">
+<dt id="talus.cmds.results.ResultCmd.command_name">
+<code class="descname">command_name</code><em class="property"> = 'result'</em><a class="headerlink" href="#talus.cmds.results.ResultCmd.command_name" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="talus.cmds.results.ResultCmd.do_list">
+<code class="descname">do_list</code><span class="sig-paren">(</span><em>args</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/cmds/results.html#ResultCmd.do_list"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.cmds.results.ResultCmd.do_list" title="Permalink to this definition">¶</a></dt>
+<dd><p>List results in talus for a specific job. Fields to be searched for must
+be turned into parameter format (E.g. <code class="docutils literal"><span class="pre">--search-item</span> <span class="pre">&quot;some</span> <span class="pre">value&quot;</span></code> format would search
+for a result with the field <code class="docutils literal"><span class="pre">search_item</span></code> equaling <code class="docutils literal"><span class="pre">some</span> <span class="pre">value</span></code>).</p>
+<p>result list &#8211;search-item &#8220;search value&#8221; [&#8211;search-item2 &#8220;search value2&#8221; ...]</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-talus.cmds.slaves">
+<span id="talus-cmds-slaves-module"></span><h2>talus.cmds.slaves module<a class="headerlink" href="#module-talus.cmds.slaves" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="talus.cmds.slaves.SlaveCmd">
+<em class="property">class </em><code class="descclassname">talus.cmds.slaves.</code><code class="descname">SlaveCmd</code><span class="sig-paren">(</span><em>talus_host=None</em>, <em>talus_client=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/cmds/slaves.html#SlaveCmd"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.cmds.slaves.SlaveCmd" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#talus.cmds.TalusCmdBase" title="talus.cmds.TalusCmdBase"><code class="xref py py-class docutils literal"><span class="pre">talus.cmds.TalusCmdBase</span></code></a></p>
+<p>The Talus slave command processor</p>
+<dl class="attribute">
+<dt id="talus.cmds.slaves.SlaveCmd.command_name">
+<code class="descname">command_name</code><em class="property"> = 'slave'</em><a class="headerlink" href="#talus.cmds.slaves.SlaveCmd.command_name" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="talus.cmds.slaves.SlaveCmd.do_info">
+<code class="descname">do_info</code><span class="sig-paren">(</span><em>args</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/cmds/slaves.html#SlaveCmd.do_info"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.cmds.slaves.SlaveCmd.do_info" title="Permalink to this definition">¶</a></dt>
+<dd><p>List information about a slave</p>
+<p>talus slave info ID_OR_HOSTNAME_OR_IP</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="talus.cmds.slaves.SlaveCmd.do_list">
+<code class="descname">do_list</code><span class="sig-paren">(</span><em>args</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/cmds/slaves.html#SlaveCmd.do_list"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.cmds.slaves.SlaveCmd.do_list" title="Permalink to this definition">¶</a></dt>
+<dd><p>List existing slaves connected to Talus.</p>
+<p>slave list</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-talus.cmds.tasks">
+<span id="talus-cmds-tasks-module"></span><h2>talus.cmds.tasks module<a class="headerlink" href="#module-talus.cmds.tasks" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="talus.cmds.tasks.TaskCmd">
+<em class="property">class </em><code class="descclassname">talus.cmds.tasks.</code><code class="descname">TaskCmd</code><span class="sig-paren">(</span><em>talus_host=None</em>, <em>talus_client=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/cmds/tasks.html#TaskCmd"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.cmds.tasks.TaskCmd" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#talus.cmds.TalusCmdBase" title="talus.cmds.TalusCmdBase"><code class="xref py py-class docutils literal"><span class="pre">talus.cmds.TalusCmdBase</span></code></a></p>
+<p>The Talus task command processor</p>
+<dl class="attribute">
+<dt id="talus.cmds.tasks.TaskCmd.command_name">
+<code class="descname">command_name</code><em class="property"> = 'task'</em><a class="headerlink" href="#talus.cmds.tasks.TaskCmd.command_name" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="talus.cmds.tasks.TaskCmd.do_clone">
+<code class="descname">do_clone</code><span class="sig-paren">(</span><em>args</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/cmds/tasks.html#TaskCmd.do_clone"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.cmds.tasks.TaskCmd.do_clone" title="Permalink to this definition">¶</a></dt>
+<dd><p>Clone an existing task</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="talus.cmds.tasks.TaskCmd.do_create">
+<code class="descname">do_create</code><span class="sig-paren">(</span><em>args</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/cmds/tasks.html#TaskCmd.do_create"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.cmds.tasks.TaskCmd.do_create" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a new task in Talus</p>
+<p>create -n NAME -t TOOL_ID_OR_NAME -p PARAMS -l LIMIT</p>
+<blockquote>
+<div><blockquote>
+<div><blockquote>
+<div><blockquote>
+<div><blockquote>
+<div>-n,&#8211;name    The name of the new task (required, no default)
+-t,&#8211;tool    The name or id of the tool to be run by the task (required, no default)</div></blockquote>
+<dl class="docutils">
+<dt>-l,&#8211;limit    The limit for the task. What the limit means is defined by how the tool</dt>
+<dd><dl class="first last docutils">
+<dt>reports progress. If the tool does not report progress, then the limit</dt>
+<dd>means the number of total VMs to run.</dd>
+</dl>
+</dd>
+</dl>
+</div></blockquote>
+<p>-p,&#8211;params    The params of the task</p>
+</div></blockquote>
+<p>-v,&#8211;version    The version the task should be pinned at, else the current HEAD (default=None)</p>
+</div></blockquote>
+<p>-f,&#8211;params-file    The file that contains the params of the task</p>
+</div></blockquote>
+<p>To create a new task that uses the tool &#8220;BrowserFuzzer&#8221;:</p>
+<blockquote>
+<div>task create -n &#8220;IE Fuzzer&#8221; -t &#8220;BrowserFuzzer&#8221; -p &#8220;{...json params...}&#8221;</div></blockquote>
+<p>To create a new task that also uses the &#8220;BrowserFuzzer&#8221; tool but reads in the params
+from a file:</p>
+<blockquote>
+<div>task create -n &#8220;IE Fuzzer&#8221; -t &#8220;BrowserFuzzer&#8221; -f ie_fuzz_params.json</div></blockquote>
+</dd></dl>
+
+<dl class="method">
+<dt id="talus.cmds.tasks.TaskCmd.do_delete">
+<code class="descname">do_delete</code><span class="sig-paren">(</span><em>args</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/cmds/tasks.html#TaskCmd.do_delete"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.cmds.tasks.TaskCmd.do_delete" title="Permalink to this definition">¶</a></dt>
+<dd><p>Delete an existing task</p>
+<p>task delete &lt;TASK_ID_OR_NAME&gt;</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="talus.cmds.tasks.TaskCmd.do_info">
+<code class="descname">do_info</code><span class="sig-paren">(</span><em>args</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/cmds/tasks.html#TaskCmd.do_info"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.cmds.tasks.TaskCmd.do_info" title="Permalink to this definition">¶</a></dt>
+<dd><p>List details about a task</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="talus.cmds.tasks.TaskCmd.do_list">
+<code class="descname">do_list</code><span class="sig-paren">(</span><em>args</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/cmds/tasks.html#TaskCmd.do_list"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.cmds.tasks.TaskCmd.do_list" title="Permalink to this definition">¶</a></dt>
+<dd><p>List all tasks in</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="talus.cmds.tasks.TaskCmd.do_run">
+<code class="descname">do_run</code><span class="sig-paren">(</span><em>args</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/cmds/tasks.html#TaskCmd.do_run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.cmds.tasks.TaskCmd.do_run" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run an existing task</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-talus.cmds">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-talus.cmds" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="talus.cmds.TalusCmd">
+<em class="property">class </em><code class="descclassname">talus.cmds.</code><code class="descname">TalusCmd</code><span class="sig-paren">(</span><em>talus_host=None</em>, <em>talus_client=None</em>, <em>one_shot=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/cmds.html#TalusCmd"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.cmds.TalusCmd" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#talus.cmds.TalusCmdBase" title="talus.cmds.TalusCmdBase"><code class="xref py py-class docutils literal"><span class="pre">talus.cmds.TalusCmdBase</span></code></a></p>
+<p>The main talus command. This is what is invoked when dropping
+into a shell or when run from the command line</p>
+<dl class="attribute">
+<dt id="talus.cmds.TalusCmd.command_name">
+<code class="descname">command_name</code><em class="property"> = '&lt;ROOT&gt;'</em><a class="headerlink" href="#talus.cmds.TalusCmd.command_name" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="talus.cmds.TalusCmd.do_code">
+<code class="descname">do_code</code><span class="sig-paren">(</span><em>args</em><span class="sig-paren">)</span><a class="headerlink" href="#talus.cmds.TalusCmd.do_code" title="Permalink to this definition">¶</a></dt>
+<dd><p>The Talus code command processor</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="talus.cmds.TalusCmd.do_image">
+<code class="descname">do_image</code><span class="sig-paren">(</span><em>args</em><span class="sig-paren">)</span><a class="headerlink" href="#talus.cmds.TalusCmd.do_image" title="Permalink to this definition">¶</a></dt>
+<dd><p>The Talus images command processor</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="talus.cmds.TalusCmd.do_job">
+<code class="descname">do_job</code><span class="sig-paren">(</span><em>args</em><span class="sig-paren">)</span><a class="headerlink" href="#talus.cmds.TalusCmd.do_job" title="Permalink to this definition">¶</a></dt>
+<dd><p>The Talus job command processor</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="talus.cmds.TalusCmd.do_os">
+<code class="descname">do_os</code><span class="sig-paren">(</span><em>args</em><span class="sig-paren">)</span><a class="headerlink" href="#talus.cmds.TalusCmd.do_os" title="Permalink to this definition">¶</a></dt>
+<dd><p>The Talus code command processor</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="talus.cmds.TalusCmd.do_result">
+<code class="descname">do_result</code><span class="sig-paren">(</span><em>args</em><span class="sig-paren">)</span><a class="headerlink" href="#talus.cmds.TalusCmd.do_result" title="Permalink to this definition">¶</a></dt>
+<dd><p>The talus result command processor</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="talus.cmds.TalusCmd.do_slave">
+<code class="descname">do_slave</code><span class="sig-paren">(</span><em>args</em><span class="sig-paren">)</span><a class="headerlink" href="#talus.cmds.TalusCmd.do_slave" title="Permalink to this definition">¶</a></dt>
+<dd><p>The Talus slave command processor</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="talus.cmds.TalusCmd.do_task">
+<code class="descname">do_task</code><span class="sig-paren">(</span><em>args</em><span class="sig-paren">)</span><a class="headerlink" href="#talus.cmds.TalusCmd.do_task" title="Permalink to this definition">¶</a></dt>
+<dd><p>The Talus task command processor</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="talus.cmds.TalusCmdBase">
+<em class="property">class </em><code class="descclassname">talus.cmds.</code><code class="descname">TalusCmdBase</code><span class="sig-paren">(</span><em>talus_host=None</em>, <em>talus_client=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/cmds.html#TalusCmdBase"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.cmds.TalusCmdBase" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code>, <code class="xref py py-class docutils literal"><span class="pre">cmd.Cmd</span></code></p>
+<dl class="attribute">
+<dt id="talus.cmds.TalusCmdBase.command_name">
+<code class="descname">command_name</code><em class="property"> = ''</em><a class="headerlink" href="#talus.cmds.TalusCmdBase.command_name" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="talus.cmds.TalusCmdBase.do_help">
+<code class="descname">do_help</code><span class="sig-paren">(</span><em>args</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/cmds.html#TalusCmdBase.do_help"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.cmds.TalusCmdBase.do_help" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="talus.cmds.TalusCmdBase.do_quit">
+<code class="descname">do_quit</code><span class="sig-paren">(</span><em>args</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/cmds.html#TalusCmdBase.do_quit"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.cmds.TalusCmdBase.do_quit" title="Permalink to this definition">¶</a></dt>
+<dd><p>Quit the program</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="talus.cmds.TalusCmdBase.emptyline">
+<code class="descname">emptyline</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/cmds.html#TalusCmdBase.emptyline"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.cmds.TalusCmdBase.emptyline" title="Permalink to this definition">¶</a></dt>
+<dd><p>don&#8217;t repeat the last successful command</p>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="talus.cmds.TalusCmdBase.get_command_helps">
+<em class="property">classmethod </em><code class="descname">get_command_helps</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/cmds.html#TalusCmdBase.get_command_helps"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.cmds.TalusCmdBase.get_command_helps" title="Permalink to this definition">¶</a></dt>
+<dd><p>Look for methods in this class starting with <a href="#id3"><span class="problematic" id="id4">do_</span></a>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">A dict of commands and their help values. E.g. <code class="docutils literal"><span class="pre">{&quot;list&quot;:</span> <span class="pre">&quot;List</span> <span class="pre">all</span> <span class="pre">the</span> <span class="pre">images&quot;}</span></code></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="talus.cmds.TalusCmdBase.get_help">
+<em class="property">classmethod </em><code class="descname">get_help</code><span class="sig-paren">(</span><em>args=None</em>, <em>abbrev=False</em>, <em>examples=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/cmds.html#TalusCmdBase.get_help"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.cmds.TalusCmdBase.get_help" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="talus.cmds.TalusCmdBase.onecmd">
+<code class="descname">onecmd</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/cmds.html#TalusCmdBase.onecmd"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.cmds.TalusCmdBase.onecmd" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="talus.cmds.TalusMetaClass">
+<em class="property">class </em><code class="descclassname">talus.cmds.</code><code class="descname">TalusMetaClass</code><span class="sig-paren">(</span><em>name</em>, <em>bases</em>, <em>namespace</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/cmds.html#TalusMetaClass"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.cmds.TalusMetaClass" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">type</span></code></p>
+</dd></dl>
+
+<dl class="function">
+<dt id="talus.cmds.define_root_commands">
+<code class="descclassname">talus.cmds.</code><code class="descname">define_root_commands</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/cmds.html#define_root_commands"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.cmds.define_root_commands" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="talus.cmds.make_cmd_handler">
+<code class="descclassname">talus.cmds.</code><code class="descname">make_cmd_handler</code><span class="sig-paren">(</span><em>cls</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/talus/cmds.html#make_cmd_handler"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#talus.cmds.make_cmd_handler" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015, Optiv Labs.
+    </p>
+  </div>
+
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+  
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../',
+            VERSION:'0.0.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../_static/jquery.js"></script>
+      <script type="text/javascript" src="../_static/underscore.js"></script>
+      <script type="text/javascript" src="../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

@@ -1,0 +1,17 @@
+client package
+==============
+
+Subpackages
+-----------
+
+.. toctree::
+
+    client.talus
+
+Module contents
+---------------
+
+.. automodule:: client
+    :members:
+    :undoc-members:
+    :show-inheritance:

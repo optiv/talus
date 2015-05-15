@@ -1,0 +1,277 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>master.lib.mongo_oplog_watcher &mdash; Talus 0.0.1 documentation</title>
+  
+
+  
+  
+
+  
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Roboto+Slab:400,700|Inconsolata:400,700&subset=latin,cyrillic' rel='stylesheet' type='text/css'>
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="Talus 0.0.1 documentation" href="../../../index.html"/>
+        <link rel="up" title="master" href="../../master.html"/> 
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-nav-search">
+        
+          <a href="../../../index.html" class="fa fa-home"> Talus</a>
+        
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+        
+          
+          
+              <ul class="simple">
+</ul>
+
+          
+        
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../../../index.html">Talus</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../../../index.html">Docs</a> &raquo;</li>
+      
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+      
+          <li><a href="../../master.html">master</a> &raquo;</li>
+      
+    <li>master.lib.mongo_oplog_watcher</li>
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document">
+            
+  <h1>Source code for master.lib.mongo_oplog_watcher</h1><div class="highlight"><pre>
+<span class="c">#!/usr/bin/python</span>
+
+<span class="kn">import</span> <span class="nn">pymongo</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">threading</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">from</span> <span class="nn">pprint</span> <span class="kn">import</span> <span class="n">pprint</span> <span class="c"># pretty printer</span>
+<span class="kn">from</span> <span class="nn">pymongo.errors</span> <span class="kn">import</span> <span class="n">AutoReconnect</span>
+
+<div class="viewcode-block" id="OplogWatcher"><a class="viewcode-back" href="../../../generated/master.lib.html#master.lib.mongo_oplog_watcher.OplogWatcher">[docs]</a><span class="k">class</span> <span class="nc">OplogWatcher</span><span class="p">(</span><span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">db</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">collection</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">poll_time</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">connection</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">collection</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">db</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;must specify db if you specify a collection&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ns_filter</span> <span class="o">=</span> <span class="n">db</span> <span class="o">+</span> <span class="s">&#39;.&#39;</span> <span class="o">+</span> <span class="n">collection</span>
+        <span class="k">elif</span> <span class="n">db</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ns_filter</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">r&#39;^</span><span class="si">%s</span><span class="s">\.&#39;</span> <span class="o">%</span> <span class="n">db</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ns_filter</span> <span class="o">=</span> <span class="bp">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">poll_time</span> <span class="o">=</span> <span class="n">poll_time</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">connection</span> <span class="o">=</span> <span class="n">connection</span> <span class="ow">or</span> <span class="n">pymongo</span><span class="o">.</span><span class="n">Connection</span><span class="p">()</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">_running</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Event</span><span class="p">()</span>
+
+        <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">__get_id</span><span class="p">(</span><span class="n">op</span><span class="p">):</span>
+        <span class="nb">id</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="n">o2</span> <span class="o">=</span> <span class="n">op</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;o2&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">o2</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="nb">id</span> <span class="o">=</span> <span class="n">o2</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;_id&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">id</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="nb">id</span> <span class="o">=</span> <span class="n">op</span><span class="p">[</span><span class="s">&#39;o&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;_id&#39;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="nb">id</span>
+    
+<div class="viewcode-block" id="OplogWatcher.stop"><a class="viewcode-back" href="../../../generated/master.lib.html#master.lib.mongo_oplog_watcher.OplogWatcher.stop">[docs]</a>    <span class="k">def</span> <span class="nf">stop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Stop the running thread</span>
+<span class="sd">        :returns: None</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_running</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="OplogWatcher.run"><a class="viewcode-back" href="../../../generated/master.lib.html#master.lib.mongo_oplog_watcher.OplogWatcher.run">[docs]</a>    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_running</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
+
+        <span class="n">oplog</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">local</span><span class="p">[</span><span class="s">&#39;oplog.rs&#39;</span><span class="p">]</span>
+        <span class="n">ts</span> <span class="o">=</span> <span class="n">oplog</span><span class="o">.</span><span class="n">find</span><span class="p">()</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="s">&#39;$natural&#39;</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="s">&#39;ts&#39;</span><span class="p">]</span>
+        <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">_running</span><span class="o">.</span><span class="n">is_set</span><span class="p">():</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ns_filter</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span> 
+                <span class="nb">filter</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">filter</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;ns&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ns_filter</span><span class="p">}</span>
+            <span class="nb">filter</span><span class="p">[</span><span class="s">&#39;ts&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;$gt&#39;</span><span class="p">:</span> <span class="n">ts</span><span class="p">}</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">cursor</span> <span class="o">=</span> <span class="n">oplog</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="nb">filter</span><span class="p">,</span> <span class="n">tailable</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">await_data</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+                <span class="k">while</span> <span class="n">cursor</span><span class="o">.</span><span class="n">alive</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_running</span><span class="o">.</span><span class="n">is_set</span><span class="p">():</span>
+                    <span class="k">for</span> <span class="n">op</span> <span class="ow">in</span> <span class="n">cursor</span><span class="p">:</span>
+                        <span class="n">ts</span> <span class="o">=</span> <span class="n">op</span><span class="p">[</span><span class="s">&#39;ts&#39;</span><span class="p">]</span>
+                        <span class="nb">id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__get_id</span><span class="p">(</span><span class="n">op</span><span class="p">)</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">all_with_noop</span><span class="p">(</span><span class="n">ns</span><span class="o">=</span><span class="n">op</span><span class="p">[</span><span class="s">&#39;ns&#39;</span><span class="p">],</span> <span class="n">ts</span><span class="o">=</span><span class="n">ts</span><span class="p">,</span> <span class="n">op</span><span class="o">=</span><span class="n">op</span><span class="p">[</span><span class="s">&#39;op&#39;</span><span class="p">],</span> <span class="nb">id</span><span class="o">=</span><span class="nb">id</span><span class="p">,</span> <span class="n">raw</span><span class="o">=</span><span class="n">op</span><span class="p">)</span>
+            <span class="k">except</span> <span class="n">AutoReconnect</span><span class="p">:</span>
+                <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">poll_time</span><span class="p">)</span>
+
+		<span class="k">try</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+		<span class="k">except</span><span class="p">:</span>
+			<span class="k">pass</span>
+</div>
+<div class="viewcode-block" id="OplogWatcher.all_with_noop"><a class="viewcode-back" href="../../../generated/master.lib.html#master.lib.mongo_oplog_watcher.OplogWatcher.all_with_noop">[docs]</a>    <span class="k">def</span> <span class="nf">all_with_noop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ns</span><span class="p">,</span> <span class="n">ts</span><span class="p">,</span> <span class="n">op</span><span class="p">,</span> <span class="nb">id</span><span class="p">,</span> <span class="n">raw</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">op</span> <span class="o">==</span> <span class="s">&#39;n&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">noop</span><span class="p">(</span><span class="n">ts</span><span class="o">=</span><span class="n">ts</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">ns</span><span class="o">=</span><span class="n">ns</span><span class="p">,</span> <span class="n">ts</span><span class="o">=</span><span class="n">ts</span><span class="p">,</span> <span class="n">op</span><span class="o">=</span><span class="n">op</span><span class="p">,</span> <span class="nb">id</span><span class="o">=</span><span class="nb">id</span><span class="p">,</span> <span class="n">raw</span><span class="o">=</span><span class="n">raw</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="OplogWatcher.all"><a class="viewcode-back" href="../../../generated/master.lib.html#master.lib.mongo_oplog_watcher.OplogWatcher.all">[docs]</a>    <span class="k">def</span> <span class="nf">all</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ns</span><span class="p">,</span> <span class="n">ts</span><span class="p">,</span> <span class="n">op</span><span class="p">,</span> <span class="nb">id</span><span class="p">,</span> <span class="n">raw</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">op</span> <span class="o">==</span> <span class="s">&#39;i&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">ns</span><span class="o">=</span><span class="n">ns</span><span class="p">,</span> <span class="n">ts</span><span class="o">=</span><span class="n">ts</span><span class="p">,</span> <span class="nb">id</span><span class="o">=</span><span class="nb">id</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="n">raw</span><span class="p">[</span><span class="s">&#39;o&#39;</span><span class="p">],</span> <span class="n">raw</span><span class="o">=</span><span class="n">raw</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">op</span> <span class="o">==</span> <span class="s">&#39;u&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">ns</span><span class="o">=</span><span class="n">ns</span><span class="p">,</span> <span class="n">ts</span><span class="o">=</span><span class="n">ts</span><span class="p">,</span> <span class="nb">id</span><span class="o">=</span><span class="nb">id</span><span class="p">,</span> <span class="n">mod</span><span class="o">=</span><span class="n">raw</span><span class="p">[</span><span class="s">&#39;o&#39;</span><span class="p">],</span> <span class="n">raw</span><span class="o">=</span><span class="n">raw</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">op</span> <span class="o">==</span> <span class="s">&#39;d&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="n">ns</span><span class="o">=</span><span class="n">ns</span><span class="p">,</span> <span class="n">ts</span><span class="o">=</span><span class="n">ts</span><span class="p">,</span> <span class="nb">id</span><span class="o">=</span><span class="nb">id</span><span class="p">,</span> <span class="n">raw</span><span class="o">=</span><span class="n">raw</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">op</span> <span class="o">==</span> <span class="s">&#39;c&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="n">ns</span><span class="o">=</span><span class="n">ns</span><span class="p">,</span> <span class="n">ts</span><span class="o">=</span><span class="n">ts</span><span class="p">,</span> <span class="n">cmd</span><span class="o">=</span><span class="n">raw</span><span class="p">[</span><span class="s">&#39;o&#39;</span><span class="p">],</span> <span class="n">raw</span><span class="o">=</span><span class="n">raw</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">op</span> <span class="o">==</span> <span class="s">&#39;db&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">db_declare</span><span class="p">(</span><span class="n">ns</span><span class="o">=</span><span class="n">ns</span><span class="p">,</span> <span class="n">ts</span><span class="o">=</span><span class="n">ts</span><span class="p">,</span> <span class="n">raw</span><span class="o">=</span><span class="n">raw</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="OplogWatcher.noop"><a class="viewcode-back" href="../../../generated/master.lib.html#master.lib.mongo_oplog_watcher.OplogWatcher.noop">[docs]</a>    <span class="k">def</span> <span class="nf">noop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ts</span><span class="p">):</span>
+        <span class="k">pass</span>
+</div>
+<div class="viewcode-block" id="OplogWatcher.insert"><a class="viewcode-back" href="../../../generated/master.lib.html#master.lib.mongo_oplog_watcher.OplogWatcher.insert">[docs]</a>    <span class="k">def</span> <span class="nf">insert</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ns</span><span class="p">,</span> <span class="n">ts</span><span class="p">,</span> <span class="nb">id</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">raw</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">):</span>
+        <span class="k">pass</span>
+</div>
+<div class="viewcode-block" id="OplogWatcher.update"><a class="viewcode-back" href="../../../generated/master.lib.html#master.lib.mongo_oplog_watcher.OplogWatcher.update">[docs]</a>    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ns</span><span class="p">,</span> <span class="n">ts</span><span class="p">,</span> <span class="nb">id</span><span class="p">,</span> <span class="n">mod</span><span class="p">,</span> <span class="n">raw</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">):</span>
+        <span class="k">pass</span>
+</div>
+<div class="viewcode-block" id="OplogWatcher.delete"><a class="viewcode-back" href="../../../generated/master.lib.html#master.lib.mongo_oplog_watcher.OplogWatcher.delete">[docs]</a>    <span class="k">def</span> <span class="nf">delete</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ns</span><span class="p">,</span> <span class="n">ts</span><span class="p">,</span> <span class="nb">id</span><span class="p">,</span> <span class="n">raw</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">):</span>
+        <span class="k">pass</span>
+</div>
+<div class="viewcode-block" id="OplogWatcher.command"><a class="viewcode-back" href="../../../generated/master.lib.html#master.lib.mongo_oplog_watcher.OplogWatcher.command">[docs]</a>    <span class="k">def</span> <span class="nf">command</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ns</span><span class="p">,</span> <span class="n">ts</span><span class="p">,</span> <span class="n">cmd</span><span class="p">,</span> <span class="n">raw</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">):</span>
+        <span class="k">pass</span>
+</div>
+<div class="viewcode-block" id="OplogWatcher.db_declare"><a class="viewcode-back" href="../../../generated/master.lib.html#master.lib.mongo_oplog_watcher.OplogWatcher.db_declare">[docs]</a>    <span class="k">def</span> <span class="nf">db_declare</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ns</span><span class="p">,</span> <span class="n">ts</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">):</span>
+        <span class="k">pass</span>
+</div></div>
+<div class="viewcode-block" id="OplogPrinter"><a class="viewcode-back" href="../../../generated/master.lib.html#master.lib.mongo_oplog_watcher.OplogPrinter">[docs]</a><span class="k">class</span> <span class="nc">OplogPrinter</span><span class="p">(</span><span class="n">OplogWatcher</span><span class="p">):</span>
+<div class="viewcode-block" id="OplogPrinter.all"><a class="viewcode-back" href="../../../generated/master.lib.html#master.lib.mongo_oplog_watcher.OplogPrinter.all">[docs]</a>    <span class="k">def</span> <span class="nf">all</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">):</span>
+        <span class="n">pprint</span> <span class="p">(</span><span class="n">kw</span><span class="p">)</span>
+        <span class="k">print</span> <span class="c">#newline</span>
+</div></div>
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">OplogPrinter</span><span class="p">()</span>
+</pre></div>
+
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015, Optiv Labs.
+    </p>
+  </div>
+
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+  
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../',
+            VERSION:'0.0.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

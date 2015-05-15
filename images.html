@@ -1,0 +1,209 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Talus Image Documentation &mdash; Talus 0.0.1 documentation</title>
+  
+
+  
+  
+
+  
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Roboto+Slab:400,700|Inconsolata:400,700&subset=latin,cyrillic' rel='stylesheet' type='text/css'>
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="Talus 0.0.1 documentation" href="index.html"/> 
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-nav-search">
+        
+          <a href="index.html" class="fa fa-home"> Talus</a>
+        
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+        
+          
+          
+              <ul class="simple">
+</ul>
+
+          
+        
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="index.html">Talus</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="index.html">Docs</a> &raquo;</li>
+      
+    <li>Talus Image Documentation</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          <a href="_sources/images.txt" rel="nofollow"> View page source</a>
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document">
+            
+  <div class="section" id="talus-image-documentation">
+<h1>Talus Image Documentation<a class="headerlink" href="#talus-image-documentation" title="Permalink to this headline">¶</a></h1>
+<p>Talus uses Vagrant with the vagrant-libvirt provider to manage and configure VMs.
+Once a VM is configured and in the Talus system, libvirt will be directly used to start/stop/shutdown
+VMs on slave machines instead of Vagrant. Vagrant is solely a configuration tool.</p>
+<div class="section" id="vagrant-benefits">
+<h2>Vagrant Benefits<a class="headerlink" href="#vagrant-benefits" title="Permalink to this headline">¶</a></h2>
+<p>Using Vagrant as the VM configurator allows Talus to easily reconfigure a VM before
+running a task. This is beneficial when needing to perform some updates on an image before
+running a task (e.g. to ensure that all products work with the latest vendor patches).</p>
+</div>
+<div class="section" id="vm-configuration">
+<h2>VM Configuration<a class="headerlink" href="#vm-configuration" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="linux">
+<h3>Linux<a class="headerlink" href="#linux" title="Permalink to this headline">¶</a></h3>
+</div>
+<div class="section" id="windows">
+<h3>Windows<a class="headerlink" href="#windows" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="libvirt-requirements">
+<h4>Libvirt Requirements<a class="headerlink" href="#libvirt-requirements" title="Permalink to this headline">¶</a></h4>
+<p>The <code class="docutils literal"><span class="pre">virtio</span></code> drivers must be installed.</p>
+</div>
+<div class="section" id="vagrant-requirements">
+<h4>Vagrant Requirements<a class="headerlink" href="#vagrant-requirements" title="Permalink to this headline">¶</a></h4>
+<p>Talus will use <code class="docutils literal"><span class="pre">WinRM</span></code> (windows remote management).to configure the VM. This must be explicitly
+turned on inside the VM before uploading. Below are the steps you should take to configure a windows
+VM for working with Vagrant (mostly taken from &#8220;here&#8221;:<a class="reference external" href="https://github.com/WinRb/vagrant-windows#winrm-configuration">https://github.com/WinRb/vagrant-windows#winrm-configuration</a>):</p>
+<div class="highlight-python"><div class="highlight"><pre>winrm quickconfig -q
+winrm set winrm/config/winrs @{MaxMemoryPerShellMB=&quot;512&quot;}
+winrm set winrm/config @{MaxTimeoutms=&quot;1800000&quot;}
+winrm set winrm/config/service @{AllowUnencrypted=&quot;true&quot;}
+winrm set winrm/config/service/auth @{Basic=&quot;true&quot;}
+sc config WinRM start= auto
+</pre></div>
+</div>
+<p>Also note that all created networks in the VM must be set the &#8220;Work&#8221; network. This can be set to be the
+default action by going to:</p>
+<div class="highlight-python"><div class="highlight"><pre>Open &quot;gpedit.msc&quot; -&gt; Go to Computer Configration –&gt; Windows Settings –&gt; Security Settings –&gt; Network list manager
+</pre></div>
+</div>
+<p>and setting the appropriate options</p>
+<p>The above commands must be run in an Administrator shell. Also, the network must not be set to public (use Work/Private/whatev)</p>
+<p>It may also help to attempt to shrink the size of the VM using <code class="docutils literal"><span class="pre">sdelete</span></code></p>
+<div class="highlight-python"><div class="highlight"><pre>sdelete -z C:
+</pre></div>
+</div>
+<p>Some additional tips specifically for VMWare Fusion &#8220;here&#8221;:<a class="reference external" href="http://codyburleson.com/2013/01/05/how-to-shrink-a-windows-vm-on-vmware-fusion-for-mac/">http://codyburleson.com/2013/01/05/how-to-shrink-a-windows-vm-on-vmware-fusion-for-mac/</a></p>
+</div>
+</div>
+</div>
+</div>
+
+
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015, Optiv Labs.
+    </p>
+  </div>
+
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+  
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'0.0.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

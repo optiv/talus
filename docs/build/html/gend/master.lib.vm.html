@@ -1,0 +1,445 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>master.lib.vm package &mdash; Talus 0.0.1 documentation</title>
+  
+
+  
+  
+
+  
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Roboto+Slab:400,700|Inconsolata:400,700&subset=latin,cyrillic' rel='stylesheet' type='text/css'>
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="Talus 0.0.1 documentation" href="../index.html"/> 
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-nav-search">
+        
+          <a href="../index.html" class="fa fa-home"> Talus</a>
+        
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+        
+          
+          
+              <ul class="simple">
+</ul>
+
+          
+        
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../index.html">Talus</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../index.html">Docs</a> &raquo;</li>
+      
+    <li>master.lib.vm package</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          <a href="../_sources/gend/master.lib.vm.txt" rel="nofollow"> View page source</a>
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document">
+            
+  <div class="section" id="master-lib-vm-package">
+<h1>master.lib.vm package<a class="headerlink" href="#master-lib-vm-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-master.lib.vm.manage">
+<span id="master-lib-vm-manage-module"></span><h2>master.lib.vm.manage module<a class="headerlink" href="#module-master.lib.vm.manage" title="Permalink to this headline">¶</a></h2>
+<p>The manage module contains classes to manage VM creation,
+conversion, snapshots, and exporting</p>
+<dl class="class">
+<dt id="master.lib.vm.manage.LibvirtWorker">
+<em class="property">class </em><code class="descclassname">master.lib.vm.manage.</code><code class="descname">LibvirtWorker</code><span class="sig-paren">(</span><em>image_path</em>, <em>idx</em>, <em>log</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/master/lib/vm/manage.html#LibvirtWorker"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#master.lib.vm.manage.LibvirtWorker" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="../generated/master.lib.vm.html#master.lib.vm.manage.VMWorker" title="master.lib.vm.manage.VMWorker"><code class="xref py py-class docutils literal"><span class="pre">master.lib.vm.manage.VMWorker</span></code></a></p>
+<p>A worker for managing a running libvirt vms directly (not via vagrant)</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="master.lib.vm.manage.VMManager">
+<em class="property">class </em><code class="descclassname">master.lib.vm.manage.</code><code class="descname">VMManager</code><span class="sig-paren">(</span><em>vagrant_base='~/.vagrant.d'</em>, <em>image_store='/var/lib/libvirt/images'</em>, <em>parent_log=None</em>, <em>**opts</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/master/lib/vm/manage.html#VMManager"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#master.lib.vm.manage.VMManager" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<p>VMManager class is responsible for creating and managing VM images.</p>
+<p>It is intended to be able to handle:</p>
+<ul class="simple">
+<li>converting VM images from various file formats to qcow2</li>
+<li>running Vagrant files on base images to configure VMs</li>
+<li>saving off a snapshot of the configured VM (in qcow2 format with backing files (a snapshot chain)</li>
+<li>exporting VM images into various file formats</li>
+<li>fetching a list of all backing file names/md5s</li>
+</ul>
+<p>This class will block until all operations are complete.</p>
+<dl class="method">
+<dt id="master.lib.vm.manage.VMManager.configure_image">
+<code class="descname">configure_image</code><span class="sig-paren">(</span><em>box_name</em>, <em>vagrantfile</em>, <em>user_interaction=False</em>, <em>on_success=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/master/lib/vm/manage.html#VMManager.configure_image"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#master.lib.vm.manage.VMManager.configure_image" title="Permalink to this definition">¶</a></dt>
+<dd><p>Configure the existing vagrant box with the supplied vagrantfile. If <code class="docutils literal"><span class="pre">user_interaction</span></code> is
+True, a dict will be returned with vm worker info in the format:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="p">{</span>
+        <span class="s">&quot;worker&quot;</span><span class="p">:</span> <span class="n">WORKER_NUMBER</span><span class="p">,</span>
+        <span class="s">&quot;vnc&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s">&quot;uri&quot;</span><span class="p">:</span> <span class="s">&quot;vnc:///HOSTNAME:PORT&quot;</span>
+        <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The worker number may be passed to <code class="xref py py-meth docutils literal"><span class="pre">shutdown_worker()</span></code> to shutdown a running VM if
+<code class="docutils literal"><span class="pre">user_interaction</span></code> was set to True.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Box_name:</th><td class="field-body">The name of the box to configure</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Vagrantfile:</th><td class="field-body">The name of the vagrantfile to configure</td>
+</tr>
+<tr class="field-odd field"><th class="field-name" colspan="2">User_interaction:</th></tr>
+<tr class="field-odd field"><td>&nbsp;</td><td class="field-body">If user-interaction is expected (e.g. if only doing auto-updates w/ a Vagrantfile, set to False)</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="master.lib.vm.manage.VMManager.create_image">
+<code class="descname">create_image</code><span class="sig-paren">(</span><em>vagrantfile</em>, <em>base_name</em>, <em>dest_name</em>, <em>user_interaction=False</em>, <em>on_success=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/master/lib/vm/manage.html#VMManager.create_image"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#master.lib.vm.manage.VMManager.create_image" title="Permalink to this definition">¶</a></dt>
+<dd><p>Use the <cite>vagrantfile</cite> to create a new image using the vagrant
+box specified by <cite>base_name</cite>. If <code class="docutils literal"><span class="pre">user_interaction</span></code> is
+True, a dict will be returned with vm worker info in the format:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="p">{</span>
+        <span class="s">&quot;worker&quot;</span><span class="p">:</span> <span class="n">WORKER_NUMBER</span><span class="p">,</span>
+        <span class="s">&quot;vnc&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s">&quot;uri&quot;</span><span class="p">:</span> <span class="s">&quot;vnc:///HOSTNAME:PORT&quot;</span>
+        <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The worker number may be passed to <code class="xref py py-meth docutils literal"><span class="pre">shutdown_worker()</span></code> to shutdown a running VM if
+<code class="docutils literal"><span class="pre">user_interaction</span></code> was set to True.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Vagrantfile:</th><td class="field-body">Contents of the Vagrant file with a $$BASE_IMAGE$$ placeholder for the base box</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Base_name:</th><td class="field-body">The name of the base vagrant box</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Dest_name:</th><td class="field-body">The name of the new vagrant box</td>
+</tr>
+<tr class="field-even field"><th class="field-name" colspan="2">User_interaction:</th></tr>
+<tr class="field-even field"><td>&nbsp;</td><td class="field-body">If user interaction will be allowed (will not immediately cleanup, and a vnc url will be returned)</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">A VM info (including vnc connection info) if <code class="docutils literal"><span class="pre">user_interaction</span></code> is True; else returns None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="master.lib.vm.manage.VMManager.delete_image">
+<code class="descname">delete_image</code><span class="sig-paren">(</span><em>image_name</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/master/lib/vm/manage.html#VMManager.delete_image"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#master.lib.vm.manage.VMManager.delete_image" title="Permalink to this definition">¶</a></dt>
+<dd><p>Delete the image specified by <code class="docutils literal"><span class="pre">image_name</span></code>. Note that this WILL NOT check for
+images that use <code class="docutils literal"><span class="pre">image_name</span></code> as their base.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Image_name:</th><td class="field-body">The name of the image to delete</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="master.lib.vm.manage.VMManager.export_image">
+<code class="descname">export_image</code><span class="sig-paren">(</span><em>image_name</em>, <em>output_type=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/master/lib/vm/manage.html#VMManager.export_image"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#master.lib.vm.manage.VMManager.export_image" title="Permalink to this definition">¶</a></dt>
+<dd><p>Export the image specified by <cite>image_name</cite> to <cite>output_type</cite> VM image. Supported output
+types are qcow2, ova, vmdk, and vid. (TODO: vagrant box output? &lt;name&gt;.box?)</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Image_name:</th><td class="field-body">Name of the image to export (probably a UUID)</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Output_type:</th><td class="field-body">Optionally specify the output format. Defaults to qcow2</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Path to an exported VM image</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="master.lib.vm.manage.VMManager.import_image">
+<code class="descname">import_image</code><span class="sig-paren">(</span><em>image_path</em>, <em>image_name</em>, <em>user_interaction=False</em>, <em>iso_path=None</em>, <em>username='user'</em>, <em>password='password'</em>, <em>on_success=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/master/lib/vm/manage.html#VMManager.import_image"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#master.lib.vm.manage.VMManager.import_image" title="Permalink to this definition">¶</a></dt>
+<dd><p>Import the image into talus with the name <code class="docutils literal"><span class="pre">image_name</span></code>, optionally running <code class="docutils literal"><span class="pre">vagrantfile</span></code> on
+the newly created box and applying the changes. If <code class="docutils literal"><span class="pre">user_interaction</span></code> is True, worker and vnc
+info will be returned in a dict:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="p">{</span>
+        <span class="s">&quot;worker&quot;</span><span class="p">:</span> <span class="n">WORKER_NUMBER</span><span class="p">,</span>
+        <span class="s">&quot;vnc&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s">&quot;uri&quot;</span><span class="p">:</span> <span class="s">&quot;vnc:///HOSTNAME:PORT&quot;</span>
+        <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The worker number may be passed to <code class="xref py py-meth docutils literal"><span class="pre">shutdown_worker()</span></code> to shutdown a running VM if
+<code class="docutils literal"><span class="pre">user_interaction</span></code> was set to True.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Image_path:</th><td class="field-body">The path to the image to be imported</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Image_name:</th><td class="field-body">The name of the resulting image</td>
+</tr>
+<tr class="field-odd field"><th class="field-name" colspan="2">User_interaction:</th></tr>
+<tr class="field-odd field"><td>&nbsp;</td><td class="field-body">True/False if the user should be allowed to interact with the imported VM (default=False)</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Iso_path:</th><td class="field-body">Path to an iso to be mounted after booting up (default: None)</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">On_success:</th><td class="field-body">Callback to be called with the image name on successful completion</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">TODO</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="master.lib.vm.manage.VMManager.shutdown_vagrant_vm">
+<code class="descname">shutdown_vagrant_vm</code><span class="sig-paren">(</span><em>worker_num</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/master/lib/vm/manage.html#VMManager.shutdown_vagrant_vm"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#master.lib.vm.manage.VMManager.shutdown_vagrant_vm" title="Permalink to this definition">¶</a></dt>
+<dd><p>Shutdown the VM specified by worker_num.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Worker_num:</th><td class="field-body">Number of the worker to shutdown (returned if user_interaction is True)</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="master.lib.vm.manage.VMWorker">
+<em class="property">class </em><code class="descclassname">master.lib.vm.manage.</code><code class="descname">VMWorker</code><span class="sig-paren">(</span><em>idx</em>, <em>log</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/master/lib/vm/manage.html#VMWorker"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#master.lib.vm.manage.VMWorker" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">threading.Thread</span></code></p>
+<p>A threaded class that manages individual VMs</p>
+<dl class="method">
+<dt id="master.lib.vm.manage.VMWorker.get_vnc_info">
+<code class="descname">get_vnc_info</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/master/lib/vm/manage.html#VMWorker.get_vnc_info"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#master.lib.vm.manage.VMWorker.get_vnc_info" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the vnc info for the worker
+:returns: TODO</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="master.lib.vm.manage.VMWorker.run">
+<code class="descname">run</code><span class="sig-paren">(</span><em>user_interaction_cb</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/master/lib/vm/manage.html#VMWorker.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#master.lib.vm.manage.VMWorker.run" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run the VM
+:returns: TODO</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="master.lib.vm.manage.VMWorker.status">
+<code class="descname">status</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/master/lib/vm/manage.html#VMWorker.status"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#master.lib.vm.manage.VMWorker.status" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the status of the VM
+:returns: A status string</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="master.lib.vm.manage.VMWorker.stop">
+<code class="descname">stop</code><span class="sig-paren">(</span><em>force=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/master/lib/vm/manage.html#VMWorker.stop"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#master.lib.vm.manage.VMWorker.stop" title="Permalink to this definition">¶</a></dt>
+<dd><p>Stop the running VM and block until everything is cleaned up</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Force:</th><td class="field-body">TODO</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">TODO</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="master.lib.vm.manage.VMWorker.wait_for_ready">
+<code class="descname">wait_for_ready</code><span class="sig-paren">(</span><em>timeout=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/master/lib/vm/manage.html#VMWorker.wait_for_ready"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#master.lib.vm.manage.VMWorker.wait_for_ready" title="Permalink to this definition">¶</a></dt>
+<dd><p>Block until the VM is up and running
+:timeout: max amount of time to wait for (seconds)
+:returns: None</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="master.lib.vm.manage.VagrantWorker">
+<em class="property">class </em><code class="descclassname">master.lib.vm.manage.</code><code class="descname">VagrantWorker</code><span class="sig-paren">(</span><em>box_name</em>, <em>vagrantfile</em>, <em>idx</em>, <em>log</em>, <em>vagrant_base='~/.vagrant.d'</em>, <em>image_store='/var/lib/libvirt/images'</em>, <em>dest_name=None</em>, <em>import_image_path=None</em>, <em>iso_path=None</em>, <em>on_success=None</em>, <em>user_interaction=False</em>, <em>**options</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/master/lib/vm/manage.html#VagrantWorker"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#master.lib.vm.manage.VagrantWorker" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="../generated/master.lib.vm.html#master.lib.vm.manage.VMWorker" title="master.lib.vm.manage.VMWorker"><code class="xref py py-class docutils literal"><span class="pre">master.lib.vm.manage.VMWorker</span></code></a></p>
+<p>A worker for managing a running vagrant image</p>
+<dl class="method">
+<dt id="master.lib.vm.manage.VagrantWorker.get_vnc_info">
+<code class="descname">get_vnc_info</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/master/lib/vm/manage.html#VagrantWorker.get_vnc_info"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#master.lib.vm.manage.VagrantWorker.get_vnc_info" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the vnc info for the running vagrant worker
+:returns: TODO</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="master.lib.vm.manage.VagrantWorker.get_vnc_port">
+<code class="descname">get_vnc_port</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/master/lib/vm/manage.html#VagrantWorker.get_vnc_port"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#master.lib.vm.manage.VagrantWorker.get_vnc_port" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the vnc port of the vagrant VM
+:returns: The vnc port. If the domain is not running, None is returned. If vnc is not (yet?) available, -1 is returned.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="master.lib.vm.manage.VagrantWorker.run">
+<code class="descname">run</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/master/lib/vm/manage.html#VagrantWorker.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#master.lib.vm.manage.VagrantWorker.run" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run the vagrant box by creating a project that uses the specified box</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="master.lib.vm.manage.libvirt_callback">
+<code class="descclassname">master.lib.vm.manage.</code><code class="descname">libvirt_callback</code><span class="sig-paren">(</span><em>ignore</em>, <em>err</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/master/lib/vm/manage.html#libvirt_callback"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#master.lib.vm.manage.libvirt_callback" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="section" id="module-master.lib.vm">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-master.lib.vm" title="Permalink to this headline">¶</a></h2>
+<p>Docstring for the VM module</p>
+<dl class="class">
+<dt id="master.lib.vm.VM">
+<em class="property">class </em><code class="descclassname">master.lib.vm.</code><code class="descname">VM</code><span class="sig-paren">(</span><em>libvirt_info</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/master/lib/vm.html#VM"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#master.lib.vm.VM" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<p>The VM class exposes functionality to manage VMs:
+* image format conversion
+* etc</p>
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015, Optiv Labs.
+    </p>
+  </div>
+
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+  
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../',
+            VERSION:'0.0.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../_static/jquery.js"></script>
+      <script type="text/javascript" src="../_static/underscore.js"></script>
+      <script type="text/javascript" src="../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

@@ -1,0 +1,279 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>talus.cmds.tasks &mdash; Talus 0.0.1 documentation</title>
+  
+
+  
+  
+
+  
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Roboto+Slab:400,700|Inconsolata:400,700&subset=latin,cyrillic' rel='stylesheet' type='text/css'>
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="Talus 0.0.1 documentation" href="../../../index.html"/>
+        <link rel="up" title="talus.cmds" href="../cmds.html"/> 
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-nav-search">
+        
+          <a href="../../../index.html" class="fa fa-home"> Talus</a>
+        
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+        
+          
+          
+              <ul class="simple">
+</ul>
+
+          
+        
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../../../index.html">Talus</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../../../index.html">Docs</a> &raquo;</li>
+      
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+      
+          <li><a href="../cmds.html">talus.cmds</a> &raquo;</li>
+      
+    <li>talus.cmds.tasks</li>
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document">
+            
+  <h1>Source code for talus.cmds.tasks</h1><div class="highlight"><pre>
+<span class="c">#!/usr/bin/env python</span>
+<span class="c"># encoding: utf-8</span>
+
+<span class="kn">import</span> <span class="nn">argparse</span>
+<span class="kn">import</span> <span class="nn">cmd</span>
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">shlex</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">from</span> <span class="nn">tabulate</span> <span class="kn">import</span> <span class="n">tabulate</span>
+
+<span class="kn">from</span> <span class="nn">talus.cmds</span> <span class="kn">import</span> <span class="n">TalusCmdBase</span>
+<span class="kn">import</span> <span class="nn">talus.api</span>
+<span class="kn">from</span> <span class="nn">talus.models</span> <span class="kn">import</span> <span class="n">Task</span>
+
+<div class="viewcode-block" id="TaskCmd"><a class="viewcode-back" href="../../../generated/talus.cmds.html#talus.cmds.tasks.TaskCmd">[docs]</a><span class="k">class</span> <span class="nc">TaskCmd</span><span class="p">(</span><span class="n">TalusCmdBase</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;The Talus task command processor</span>
+<span class="sd">	&quot;&quot;&quot;</span>
+
+	<span class="n">command_name</span> <span class="o">=</span> <span class="s">&quot;task&quot;</span>
+
+<div class="viewcode-block" id="TaskCmd.do_list"><a class="viewcode-back" href="../../../generated/talus.cmds.html#talus.cmds.tasks.TaskCmd.do_list">[docs]</a>	<span class="k">def</span> <span class="nf">do_list</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">args</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;List all tasks in</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">tasks</span> <span class="o">=</span> <span class="p">[]</span>
+		<span class="n">headers</span> <span class="o">=</span> <span class="p">[</span><span class="s">&quot;id&quot;</span><span class="p">,</span> <span class="s">&quot;name&quot;</span><span class="p">,</span> <span class="s">&quot;tool&quot;</span><span class="p">,</span> <span class="s">&quot;version&quot;</span><span class="p">]</span>
+		<span class="k">for</span> <span class="n">task</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_talus_client</span><span class="o">.</span><span class="n">task_iter</span><span class="p">():</span>
+			<span class="n">tasks</span><span class="o">.</span><span class="n">append</span><span class="p">([</span>
+				<span class="n">task</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+				<span class="n">task</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+				<span class="n">task</span><span class="o">.</span><span class="n">tool</span> <span class="o">+</span> <span class="s">&quot; (&quot;</span> <span class="o">+</span> <span class="n">task</span><span class="o">.</span><span class="n">_fields</span><span class="p">[</span><span class="s">&quot;tool&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">value</span><span class="p">[</span><span class="s">&quot;name&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="s">&quot;)&quot;</span><span class="p">,</span>
+				<span class="n">task</span><span class="o">.</span><span class="n">version</span>
+			<span class="p">])</span>
+		<span class="k">print</span><span class="p">(</span><span class="n">tabulate</span><span class="p">(</span><span class="n">tasks</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">))</span>
+	</div>
+<div class="viewcode-block" id="TaskCmd.do_info"><a class="viewcode-back" href="../../../generated/talus.cmds.html#talus.cmds.tasks.TaskCmd.do_info">[docs]</a>	<span class="k">def</span> <span class="nf">do_info</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">args</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;List details about a task</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+</div>
+<div class="viewcode-block" id="TaskCmd.do_create"><a class="viewcode-back" href="../../../generated/talus.cmds.html#talus.cmds.tasks.TaskCmd.do_create">[docs]</a>	<span class="k">def</span> <span class="nf">do_create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">args</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Create a new task in Talus</span>
+
+<span class="sd">		create -n NAME -t TOOL_ID_OR_NAME -p PARAMS -l LIMIT</span>
+
+<span class="sd">		        -n,--name    The name of the new task (required, no default)</span>
+<span class="sd">		        -t,--tool    The name or id of the tool to be run by the task (required, no default)</span>
+<span class="sd">		       -l,--limit    The limit for the task. What the limit means is defined by how the tool</span>
+<span class="sd">			                 reports progress. If the tool does not report progress, then the limit</span>
+<span class="sd">							 means the number of total VMs to run.</span>
+<span class="sd">		      -p,--params    The params of the task</span>
+<span class="sd">		     -v,--version    The version the task should be pinned at, else the current HEAD (default=None)</span>
+<span class="sd">		 -f,--params-file    The file that contains the params of the task</span>
+
+<span class="sd">		Examples:</span>
+<span class="sd">		---------</span>
+
+<span class="sd">		To create a new task that uses the tool &quot;BrowserFuzzer&quot;:</span>
+
+<span class="sd">		    task create -n &quot;IE Fuzzer&quot; -t &quot;BrowserFuzzer&quot; -p &quot;{...json params...}&quot;</span>
+
+<span class="sd">		To create a new task that also uses the &quot;BrowserFuzzer&quot; tool but reads in the params</span>
+<span class="sd">		from a file:</span>
+
+<span class="sd">		    task create -n &quot;IE Fuzzer&quot; -t &quot;BrowserFuzzer&quot; -f ie_fuzz_params.json</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">()</span>
+		<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&quot;--name&quot;</span><span class="p">,</span> <span class="s">&quot;-n&quot;</span><span class="p">)</span>
+		<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&quot;--tool&quot;</span><span class="p">,</span> <span class="s">&quot;-t&quot;</span><span class="p">)</span>
+		<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&quot;--limit&quot;</span><span class="p">,</span> <span class="s">&quot;-l&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+		<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&quot;--params&quot;</span><span class="p">,</span> <span class="s">&quot;-p&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">None</span><span class="p">)</span>
+		<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&quot;--version&quot;</span><span class="p">,</span> <span class="s">&quot;-v&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">None</span><span class="p">)</span>
+		<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&quot;--params-file&quot;</span><span class="p">,</span> <span class="s">&quot;-f&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">None</span><span class="p">)</span>
+
+		<span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">(</span><span class="n">shlex</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">args</span><span class="p">))</span>
+
+		<span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">params</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">and</span> <span class="n">args</span><span class="o">.</span><span class="n">params_file</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;Error, params must be specified with either -p or -f&quot;</span><span class="p">)</span>
+			<span class="k">return</span>
+
+		<span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">params_file</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">params_file</span><span class="p">):</span>
+				<span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;ERROR, params file does not exist: &#39;{}&#39;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">params_file</span><span class="p">))</span>
+				<span class="k">return</span>
+
+			<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">params_file</span><span class="p">,</span> <span class="s">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+				<span class="n">args</span><span class="o">.</span><span class="n">params</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+
+		<span class="n">params</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">params</span><span class="p">)</span>
+
+		<span class="n">task</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_talus_client</span><span class="o">.</span><span class="n">task_create</span><span class="p">(</span>
+			<span class="n">name</span>			<span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+			<span class="n">params</span>			<span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">params</span><span class="p">),</span>
+			<span class="n">tool_id</span>			<span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">tool</span><span class="p">,</span>
+			<span class="n">limit</span>			<span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">limit</span><span class="p">,</span>
+			<span class="n">version</span>			<span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">version</span>
+		<span class="p">)</span>
+
+		<span class="k">print</span><span class="p">(</span><span class="s">&quot;created&quot;</span><span class="p">)</span>
+	</div>
+<div class="viewcode-block" id="TaskCmd.do_delete"><a class="viewcode-back" href="../../../generated/talus.cmds.html#talus.cmds.tasks.TaskCmd.do_delete">[docs]</a>	<span class="k">def</span> <span class="nf">do_delete</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">args</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Delete an existing task</span>
+
+<span class="sd">		task delete &lt;TASK_ID_OR_NAME&gt;</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">args</span> <span class="o">=</span> <span class="n">shlex</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_talus_client</span><span class="o">.</span><span class="n">task_delete</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+		<span class="k">print</span><span class="p">(</span><span class="s">&quot;deleted&quot;</span><span class="p">)</span>
+	</div>
+<div class="viewcode-block" id="TaskCmd.do_run"><a class="viewcode-back" href="../../../generated/talus.cmds.html#talus.cmds.tasks.TaskCmd.do_run">[docs]</a>	<span class="k">def</span> <span class="nf">do_run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">args</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Run an existing task</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="k">pass</span>
+	</div>
+<div class="viewcode-block" id="TaskCmd.do_clone"><a class="viewcode-back" href="../../../generated/talus.cmds.html#talus.cmds.tasks.TaskCmd.do_clone">[docs]</a>	<span class="k">def</span> <span class="nf">do_clone</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">args</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Clone an existing task</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="k">pass</span></div></div>
+</pre></div>
+
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015, Optiv Labs.
+    </p>
+  </div>
+
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+  
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../',
+            VERSION:'0.0.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

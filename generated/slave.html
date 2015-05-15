@@ -1,0 +1,457 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>slave package &mdash; Talus 0.0.1 documentation</title>
+  
+
+  
+  
+
+  
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Roboto+Slab:400,700|Inconsolata:400,700&subset=latin,cyrillic' rel='stylesheet' type='text/css'>
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="Talus 0.0.1 documentation" href="../index.html"/> 
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-nav-search">
+        
+          <a href="../index.html" class="fa fa-home"> Talus</a>
+        
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+        
+          
+          
+              <ul class="simple">
+</ul>
+
+          
+        
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../index.html">Talus</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../index.html">Docs</a> &raquo;</li>
+      
+    <li>slave package</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          <a href="../_sources/generated/slave.txt" rel="nofollow"> View page source</a>
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document">
+            
+  <div class="section" id="slave-package">
+<h1>slave package<a class="headerlink" href="#slave-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="subpackages">
+<h2>Subpackages<a class="headerlink" href="#subpackages" title="Permalink to this headline">¶</a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="slave.vm.html">slave.vm package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="slave.vm.html#subpackages">Subpackages</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="slave.vm.comms.html">slave.vm.comms package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="slave.vm.comms.html#module-slave.vm.comms">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="slave.vm.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="slave.vm.html#module-slave.vm.bootstrap">slave.vm.bootstrap module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="slave.vm.html#module-slave.vm">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-slave.amqp_man">
+<span id="slave-amqp-man-module"></span><h2>slave.amqp_man module<a class="headerlink" href="#module-slave.amqp_man" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="slave.amqp_man.AmqpManager">
+<em class="property">class </em><code class="descclassname">slave.amqp_man.</code><code class="descname">AmqpManager</code><span class="sig-paren">(</span><em>host=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave/amqp_man.html#AmqpManager"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.amqp_man.AmqpManager" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">threading.Thread</span></code></p>
+<p>A class to manage jobs (starting/stopping/cancelling/etc)</p>
+<dl class="attribute">
+<dt id="slave.amqp_man.AmqpManager.AMQP_JOB_QUEUE">
+<code class="descname">AMQP_JOB_QUEUE</code><em class="property"> = 'jobs'</em><a class="headerlink" href="#slave.amqp_man.AmqpManager.AMQP_JOB_QUEUE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="slave.amqp_man.AmqpManager.AMQP_JOB_RESULT_QUEUE">
+<code class="descname">AMQP_JOB_RESULT_QUEUE</code><em class="property"> = 'job_results'</em><a class="headerlink" href="#slave.amqp_man.AmqpManager.AMQP_JOB_RESULT_QUEUE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="slave.amqp_man.AmqpManager.ack_method">
+<code class="descname">ack_method</code><span class="sig-paren">(</span><em>method</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave/amqp_man.html#AmqpManager.ack_method"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.amqp_man.AmqpManager.ack_method" title="Permalink to this definition">¶</a></dt>
+<dd><p>basic_ack the method</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Method:</th><td class="field-body">The method to ack</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="slave.amqp_man.AmqpManager.bind_queue">
+<code class="descname">bind_queue</code><span class="sig-paren">(</span><em>exchange</em>, <em>queue</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave/amqp_man.html#AmqpManager.bind_queue"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.amqp_man.AmqpManager.bind_queue" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bind the queue <code class="docutils literal"><span class="pre">queue</span></code> to the exchange <code class="docutils literal"><span class="pre">exchange</span></code></p>
+</dd></dl>
+
+<dl class="method">
+<dt id="slave.amqp_man.AmqpManager.consume_queue">
+<code class="descname">consume_queue</code><span class="sig-paren">(</span><em>queue_name</em>, <em>callback</em>, <em>no_ack=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave/amqp_man.html#AmqpManager.consume_queue"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.amqp_man.AmqpManager.consume_queue" title="Permalink to this definition">¶</a></dt>
+<dd><p>Consume from the queue <code class="docutils literal"><span class="pre">queue_name</span></code> with callback <code class="docutils literal"><span class="pre">callback</span></code></p>
+</dd></dl>
+
+<dl class="method">
+<dt id="slave.amqp_man.AmqpManager.declare_exchange">
+<code class="descname">declare_exchange</code><span class="sig-paren">(</span><em>name</em>, <em>type</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave/amqp_man.html#AmqpManager.declare_exchange"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.amqp_man.AmqpManager.declare_exchange" title="Permalink to this definition">¶</a></dt>
+<dd><p>Declare an exchange named <code class="docutils literal"><span class="pre">name</span></code> and of type <code class="docutils literal"><span class="pre">type</span></code></p>
+</dd></dl>
+
+<dl class="method">
+<dt id="slave.amqp_man.AmqpManager.declare_queue">
+<code class="descname">declare_queue</code><span class="sig-paren">(</span><em>queue_name</em>, <em>**props</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave/amqp_man.html#AmqpManager.declare_queue"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.amqp_man.AmqpManager.declare_queue" title="Permalink to this definition">¶</a></dt>
+<dd><p>Declare the queue <code class="docutils literal"><span class="pre">queue_name</span></code> with properties defined in
+<code class="docutils literal"><span class="pre">**props</span></code> kwargs. Popular properties to set:</p>
+<ul class="simple">
+<li>durable</li>
+<li>exclusive</li>
+<li>auto_delete</li>
+</ul>
+</dd></dl>
+
+<dl class="method">
+<dt id="slave.amqp_man.AmqpManager.do_start">
+<code class="descname">do_start</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave/amqp_man.html#AmqpManager.do_start"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.amqp_man.AmqpManager.do_start" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="slave.amqp_man.AmqpManager.get_message_count">
+<code class="descname">get_message_count</code><span class="sig-paren">(</span><em>queue_name</em>, <em>**props</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave/amqp_man.html#AmqpManager.get_message_count"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.amqp_man.AmqpManager.get_message_count" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the size of the amqp queue <code class="docutils literal"><span class="pre">queue_name</span></code>. Note that the <code class="docutils literal"><span class="pre">props</span></code>
+kwargs must match the declaration properties of the queue. Getting the
+queue size is done by redeclaring the queue with the same properties, with
+the additional <code class="docutils literal"><span class="pre">passive=True</span></code> property set.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Queue_name:</th><td class="field-body">The name of the queue</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="slave.amqp_man.AmqpManager.instance">
+<em class="property">classmethod </em><code class="descname">instance</code><span class="sig-paren">(</span><em>host=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave/amqp_man.html#AmqpManager.instance"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.amqp_man.AmqpManager.instance" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="slave.amqp_man.AmqpManager.queue_msg">
+<code class="descname">queue_msg</code><span class="sig-paren">(</span><em>msg</em>, <em>queue_name</em>, <em>**props</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave/amqp_man.html#AmqpManager.queue_msg"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.amqp_man.AmqpManager.queue_msg" title="Permalink to this definition">¶</a></dt>
+<dd><p>Queue the message <code class="docutils literal"><span class="pre">msg</span></code> in  the queue <code class="docutils literal"><span class="pre">queue_name</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>msg</strong> (<em>str</em>) &#8211; The message to send (str or unicode)</li>
+<li><strong>queue_name</strong> (<em>str</em>) &#8211; The queue to put the message in</li>
+<li><strong>**props</strong> (<em>dict</em>) &#8211; <p>Any additional props (exchange, etc)</p>
+</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="slave.amqp_man.AmqpManager.run">
+<code class="descname">run</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave/amqp_man.html#AmqpManager.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.amqp_man.AmqpManager.run" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run the job manager. Only one of these should ever be running at a time
+:returns: TODO</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="slave.amqp_man.AmqpManager.stop">
+<code class="descname">stop</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave/amqp_man.html#AmqpManager.stop"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.amqp_man.AmqpManager.stop" title="Permalink to this definition">¶</a></dt>
+<dd><p>Stop the job manager
+:returns: TODO</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="slave.amqp_man.AmqpManager.wait_for_ready">
+<code class="descname">wait_for_ready</code><span class="sig-paren">(</span><em>timeout=2147483648</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave/amqp_man.html#AmqpManager.wait_for_ready"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.amqp_man.AmqpManager.wait_for_ready" title="Permalink to this definition">¶</a></dt>
+<dd><p>Wait until the AMQP manager is connected and ready to go</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="slave.amqp_man.AmqpQueueHandler">
+<em class="property">class </em><code class="descclassname">slave.amqp_man.</code><code class="descname">AmqpQueueHandler</code><span class="sig-paren">(</span><em>callback</em>, <em>queue_name</em>, <em>channel</em>, <em>lock</em>, <em>no_ack</em>, <em>running</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave/amqp_man.html#AmqpQueueHandler"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.amqp_man.AmqpQueueHandler" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">threading.Thread</span></code></p>
+<dl class="method">
+<dt id="slave.amqp_man.AmqpQueueHandler.run">
+<code class="descname">run</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave/amqp_man.html#AmqpQueueHandler.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.amqp_man.AmqpQueueHandler.run" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="slave.amqp_man.AmqpQueueHandler.stop">
+<code class="descname">stop</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave/amqp_man.html#AmqpQueueHandler.stop"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.amqp_man.AmqpQueueHandler.stop" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-slave.models">
+<span id="slave-models-module"></span><h2>slave.models module<a class="headerlink" href="#module-slave.models" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="slave.models.do_connect">
+<code class="descclassname">slave.models.</code><code class="descname">do_connect</code><span class="sig-paren">(</span><em>host</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave/models.html#do_connect"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.models.do_connect" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="section" id="module-slave">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-slave" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="slave.GuestComms">
+<em class="property">class </em><code class="descclassname">slave.</code><code class="descname">GuestComms</code><a class="reference internal" href="../_modules/slave.html#GuestComms"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.GuestComms" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">twisted.protocols.basic.LineReceiver</span></code></p>
+<p>Communicates with the guest hosts as they start running</p>
+<dl class="method">
+<dt id="slave.GuestComms.connectionMade">
+<code class="descname">connectionMade</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave.html#GuestComms.connectionMade"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.GuestComms.connectionMade" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="slave.GuestComms.rawDataReceived">
+<code class="descname">rawDataReceived</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave.html#GuestComms.rawDataReceived"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.GuestComms.rawDataReceived" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="slave.GuestCommsFactory">
+<em class="property">class </em><code class="descclassname">slave.</code><code class="descname">GuestCommsFactory</code><a class="reference internal" href="../_modules/slave.html#GuestCommsFactory"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.GuestCommsFactory" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">twisted.internet.protocol.Factory</span></code></p>
+<dl class="method">
+<dt id="slave.GuestCommsFactory.buildProtocol">
+<code class="descname">buildProtocol</code><span class="sig-paren">(</span><em>addr</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave.html#GuestCommsFactory.buildProtocol"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.GuestCommsFactory.buildProtocol" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="slave.Slave">
+<em class="property">class </em><code class="descclassname">slave.</code><code class="descname">Slave</code><span class="sig-paren">(</span><em>amqp_host</em>, <em>max_vms</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave.html#Slave"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.Slave" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">threading.Thread</span></code></p>
+<p>The slave handler</p>
+<dl class="attribute">
+<dt id="slave.Slave.AMQP_BROADCAST_XCHG">
+<code class="descname">AMQP_BROADCAST_XCHG</code><em class="property"> = 'broadcast'</em><a class="headerlink" href="#slave.Slave.AMQP_BROADCAST_XCHG" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="slave.Slave.AMQP_JOB_PROPS">
+<code class="descname">AMQP_JOB_PROPS</code><em class="property"> = {'exclusive': False, 'auto_delete': False, 'durable': True}</em><a class="headerlink" href="#slave.Slave.AMQP_JOB_PROPS" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="slave.Slave.AMQP_JOB_QUEUE">
+<code class="descname">AMQP_JOB_QUEUE</code><em class="property"> = 'jobs'</em><a class="headerlink" href="#slave.Slave.AMQP_JOB_QUEUE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="slave.Slave.AMQP_JOB_STATUS_QUEUE">
+<code class="descname">AMQP_JOB_STATUS_QUEUE</code><em class="property"> = 'job_status'</em><a class="headerlink" href="#slave.Slave.AMQP_JOB_STATUS_QUEUE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="slave.Slave.AMQP_SLAVE_PROPS">
+<code class="descname">AMQP_SLAVE_PROPS</code><em class="property"> = {'exclusive': False, 'auto_delete': False, 'durable': True}</em><a class="headerlink" href="#slave.Slave.AMQP_SLAVE_PROPS" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="slave.Slave.AMQP_SLAVE_QUEUE">
+<code class="descname">AMQP_SLAVE_QUEUE</code><em class="property"> = 'slaves'</em><a class="headerlink" href="#slave.Slave.AMQP_SLAVE_QUEUE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="slave.Slave.AMQP_SLAVE_STATUS_PROPS">
+<code class="descname">AMQP_SLAVE_STATUS_PROPS</code><em class="property"> = {'exclusive': False, 'auto_delete': False, 'durable': True}</em><a class="headerlink" href="#slave.Slave.AMQP_SLAVE_STATUS_PROPS" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="slave.Slave.AMQP_SLAVE_STATUS_QUEUE">
+<code class="descname">AMQP_SLAVE_STATUS_QUEUE</code><em class="property"> = 'slave_status'</em><a class="headerlink" href="#slave.Slave.AMQP_SLAVE_STATUS_QUEUE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="slave.Slave.cancel_job">
+<code class="descname">cancel_job</code><span class="sig-paren">(</span><em>job</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave.html#Slave.cancel_job"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.Slave.cancel_job" title="Permalink to this definition">¶</a></dt>
+<dd><p>Cancel the job with job id <code class="docutils literal"><span class="pre">job</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Job:</th><td class="field-body">The job id to cancel</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="slave.Slave.handle_guest_comms">
+<code class="descname">handle_guest_comms</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave.html#Slave.handle_guest_comms"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.Slave.handle_guest_comms" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="classmethod">
+<dt id="slave.Slave.instance">
+<em class="property">classmethod </em><code class="descname">instance</code><span class="sig-paren">(</span><em>amqp_host=None</em>, <em>max_vms=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave.html#Slave.instance"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.Slave.instance" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="slave.Slave.run">
+<code class="descname">run</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave.html#Slave.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.Slave.run" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="slave.Slave.stop">
+<code class="descname">stop</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave.html#Slave.stop"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.Slave.stop" title="Permalink to this definition">¶</a></dt>
+<dd><p>Stop the slave</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="slave.main">
+<code class="descclassname">slave.</code><code class="descname">main</code><span class="sig-paren">(</span><em>amqp_host</em>, <em>max_vms</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave.html#main"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.main" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015, Optiv Labs.
+    </p>
+  </div>
+
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+  
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../',
+            VERSION:'0.0.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../_static/jquery.js"></script>
+      <script type="text/javascript" src="../_static/underscore.js"></script>
+      <script type="text/javascript" src="../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

@@ -1,0 +1,297 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>slave package &mdash; Talus 0.0.1 documentation</title>
+  
+
+  
+  
+
+  
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Roboto+Slab:400,700|Inconsolata:400,700&subset=latin,cyrillic' rel='stylesheet' type='text/css'>
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="Talus 0.0.1 documentation" href="../index.html"/> 
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-nav-search">
+        
+          <a href="../index.html" class="fa fa-home"> Talus</a>
+        
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+        
+          
+          
+              <ul class="simple">
+</ul>
+
+          
+        
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../index.html">Talus</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../index.html">Docs</a> &raquo;</li>
+      
+    <li>slave package</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          <a href="../_sources/gend/slave.txt" rel="nofollow"> View page source</a>
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document">
+            
+  <div class="section" id="slave-package">
+<h1>slave package<a class="headerlink" href="#slave-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="subpackages">
+<h2>Subpackages<a class="headerlink" href="#subpackages" title="Permalink to this headline">¶</a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="slave.lib.html">slave.lib package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="slave.lib.html#subpackages">Subpackages</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="slave.lib.serfdom.html">slave.lib.serfdom package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="slave.lib.serfdom.html#module-contents">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="slave.lib.html#module-contents">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="module-slave">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-slave" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="slave.GuestComms">
+<em class="property">class </em><code class="descclassname">slave.</code><code class="descname">GuestComms</code><a class="reference internal" href="../_modules/slave.html#GuestComms"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.GuestComms" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">twisted.protocols.basic.LineReceiver</span></code></p>
+<p>Communicates with the guest hosts as they start running</p>
+<dl class="method">
+<dt id="slave.GuestComms.connectionMade">
+<code class="descname">connectionMade</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave.html#GuestComms.connectionMade"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.GuestComms.connectionMade" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="slave.GuestComms.rawDataReceived">
+<code class="descname">rawDataReceived</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave.html#GuestComms.rawDataReceived"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.GuestComms.rawDataReceived" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="slave.GuestCommsFactory">
+<em class="property">class </em><code class="descclassname">slave.</code><code class="descname">GuestCommsFactory</code><a class="reference internal" href="../_modules/slave.html#GuestCommsFactory"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.GuestCommsFactory" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">twisted.internet.protocol.Factory</span></code></p>
+<dl class="method">
+<dt id="slave.GuestCommsFactory.buildProtocol">
+<code class="descname">buildProtocol</code><span class="sig-paren">(</span><em>addr</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave.html#GuestCommsFactory.buildProtocol"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.GuestCommsFactory.buildProtocol" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="slave.Slave">
+<em class="property">class </em><code class="descclassname">slave.</code><code class="descname">Slave</code><span class="sig-paren">(</span><em>amqp_host</em>, <em>max_vms</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave.html#Slave"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.Slave" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">threading.Thread</span></code></p>
+<p>The slave handler</p>
+<dl class="attribute">
+<dt id="slave.Slave.AMQP_BROADCAST_XCHG">
+<code class="descname">AMQP_BROADCAST_XCHG</code><em class="property"> = 'broadcast'</em><a class="headerlink" href="#slave.Slave.AMQP_BROADCAST_XCHG" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="slave.Slave.AMQP_JOB_PROPS">
+<code class="descname">AMQP_JOB_PROPS</code><em class="property"> = {'exclusive': False, 'auto_delete': False, 'durable': True}</em><a class="headerlink" href="#slave.Slave.AMQP_JOB_PROPS" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="slave.Slave.AMQP_JOB_QUEUE">
+<code class="descname">AMQP_JOB_QUEUE</code><em class="property"> = 'jobs'</em><a class="headerlink" href="#slave.Slave.AMQP_JOB_QUEUE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="slave.Slave.AMQP_JOB_STATUS_QUEUE">
+<code class="descname">AMQP_JOB_STATUS_QUEUE</code><em class="property"> = 'job_status'</em><a class="headerlink" href="#slave.Slave.AMQP_JOB_STATUS_QUEUE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="slave.Slave.AMQP_SLAVE_PROPS">
+<code class="descname">AMQP_SLAVE_PROPS</code><em class="property"> = {'exclusive': False, 'auto_delete': False, 'durable': True}</em><a class="headerlink" href="#slave.Slave.AMQP_SLAVE_PROPS" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="slave.Slave.AMQP_SLAVE_QUEUE">
+<code class="descname">AMQP_SLAVE_QUEUE</code><em class="property"> = 'slaves'</em><a class="headerlink" href="#slave.Slave.AMQP_SLAVE_QUEUE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="slave.Slave.AMQP_SLAVE_STATUS_PROPS">
+<code class="descname">AMQP_SLAVE_STATUS_PROPS</code><em class="property"> = {'exclusive': False, 'auto_delete': False, 'durable': True}</em><a class="headerlink" href="#slave.Slave.AMQP_SLAVE_STATUS_PROPS" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="slave.Slave.AMQP_SLAVE_STATUS_QUEUE">
+<code class="descname">AMQP_SLAVE_STATUS_QUEUE</code><em class="property"> = 'slave_status'</em><a class="headerlink" href="#slave.Slave.AMQP_SLAVE_STATUS_QUEUE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="slave.Slave.cancel_job">
+<code class="descname">cancel_job</code><span class="sig-paren">(</span><em>job</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave.html#Slave.cancel_job"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.Slave.cancel_job" title="Permalink to this definition">¶</a></dt>
+<dd><p>Cancel the job with job id <code class="docutils literal"><span class="pre">job</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Job:</th><td class="field-body">The job id to cancel</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="slave.Slave.handle_guest_comms">
+<code class="descname">handle_guest_comms</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave.html#Slave.handle_guest_comms"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.Slave.handle_guest_comms" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="classmethod">
+<dt id="slave.Slave.instance">
+<em class="property">classmethod </em><code class="descname">instance</code><span class="sig-paren">(</span><em>amqp_host=None</em>, <em>max_vms=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave.html#Slave.instance"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.Slave.instance" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="slave.Slave.run">
+<code class="descname">run</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave.html#Slave.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.Slave.run" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="slave.Slave.stop">
+<code class="descname">stop</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave.html#Slave.stop"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.Slave.stop" title="Permalink to this definition">¶</a></dt>
+<dd><p>Stop the slave</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="slave.main">
+<code class="descclassname">slave.</code><code class="descname">main</code><span class="sig-paren">(</span><em>amqp_host</em>, <em>max_vms</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/slave.html#main"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slave.main" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015, Optiv Labs.
+    </p>
+  </div>
+
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+  
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../',
+            VERSION:'0.0.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../_static/jquery.js"></script>
+      <script type="text/javascript" src="../_static/underscore.js"></script>
+      <script type="text/javascript" src="../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

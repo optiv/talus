@@ -1,0 +1,530 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>slave.vm.bootstrap &mdash; Talus 0.0.1 documentation</title>
+  
+
+  
+  
+
+  
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Roboto+Slab:400,700|Inconsolata:400,700&subset=latin,cyrillic' rel='stylesheet' type='text/css'>
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="Talus 0.0.1 documentation" href="../../../index.html"/>
+        <link rel="up" title="slave.vm" href="../vm.html"/> 
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-nav-search">
+        
+          <a href="../../../index.html" class="fa fa-home"> Talus</a>
+        
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+        
+          
+          
+              <ul class="simple">
+</ul>
+
+          
+        
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../../../index.html">Talus</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../../../index.html">Docs</a> &raquo;</li>
+      
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+      
+          <li><a href="../../slave.html">slave</a> &raquo;</li>
+      
+          <li><a href="../vm.html">slave.vm</a> &raquo;</li>
+      
+    <li>slave.vm.bootstrap</li>
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document">
+            
+  <h1>Source code for slave.vm.bootstrap</h1><div class="highlight"><pre>
+<span class="c">#!/usr/bin/env python</span>
+<span class="c"># encoding: utf-8</span>
+
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">absolute_import</span>
+
+<span class="kn">import</span> <span class="nn">imp</span>
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">requests</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">from</span> <span class="nn">requests.auth</span> <span class="kn">import</span> <span class="n">HTTPBasicAuth</span>
+<span class="kn">import</span> <span class="nn">select</span>
+<span class="kn">import</span> <span class="nn">socket</span>
+<span class="kn">import</span> <span class="nn">shutil</span>
+<span class="kn">import</span> <span class="nn">struct</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">threading</span>
+<span class="kn">import</span> <span class="nn">time</span>
+
+<span class="n">DEV</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="s">&quot;dev&quot;</span>
+
+<span class="n">log_file</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">__file__</span><span class="p">),</span> <span class="n">__file__</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&quot;.&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="s">&quot;.log&quot;</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">DEV</span><span class="p">:</span>
+	<span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+	<span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="n">log_file</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">)</span>
+<span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s">&quot;requests&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">CRITICAL</span><span class="p">)</span>
+
+<div class="viewcode-block" id="HostComms"><a class="viewcode-back" href="../../../generated/slave.vm.html#slave.vm.bootstrap.HostComms">[docs]</a><span class="k">class</span> <span class="nc">HostComms</span><span class="p">(</span><span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">):</span>
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">recv_callback</span><span class="p">,</span> <span class="n">job_id</span><span class="p">,</span> <span class="n">job_idx</span><span class="p">,</span> <span class="n">tool</span><span class="p">,</span> <span class="n">dev</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+		<span class="nb">super</span><span class="p">(</span><span class="n">HostComms</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">()</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s">&quot;HostComms&quot;</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_dev</span> <span class="o">=</span> <span class="n">dev</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_my_ip</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">gethostbyname</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">gethostname</span><span class="p">())</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_host_ip</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_my_ip</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="s">&quot;.&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="s">&quot;.1&quot;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_host_port</span> <span class="o">=</span> <span class="mi">55555</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_job_id</span> <span class="o">=</span> <span class="n">job_id</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_job_idx</span> <span class="o">=</span> <span class="n">job_idx</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_tool</span> <span class="o">=</span> <span class="n">tool</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_running</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Event</span><span class="p">()</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_running</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_send_recv_lock</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Lock</span><span class="p">()</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_recv_callback</span> <span class="o">=</span> <span class="n">recv_callback</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_sock</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">socket</span><span class="o">.</span><span class="n">SOCK_STREAM</span><span class="p">)</span>
+	
+<div class="viewcode-block" id="HostComms.run"><a class="viewcode-back" href="../../../generated/slave.vm.html#slave.vm.bootstrap.HostComms.run">[docs]</a>	<span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;running&quot;</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_running</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
+
+		<span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dev</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_sock</span><span class="o">.</span><span class="n">connect</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">_host_ip</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_host_port</span><span class="p">))</span>
+
+		<span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">_running</span><span class="o">.</span><span class="n">is_set</span><span class="p">():</span>
+			<span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dev</span><span class="p">:</span>
+				<span class="n">reads</span><span class="p">,</span><span class="n">_</span><span class="p">,</span><span class="n">_</span> <span class="o">=</span> <span class="n">select</span><span class="o">.</span><span class="n">select</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">_sock</span><span class="p">],[],[],</span> <span class="mf">0.1</span><span class="p">)</span>
+				<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">reads</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+					<span class="n">data</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+					<span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_send_recv_lock</span><span class="p">:</span>
+						<span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+							<span class="n">recvd</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sock</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mh">0x1000</span><span class="p">)</span>
+							<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">recvd</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+								<span class="k">break</span>
+							<span class="n">data</span> <span class="o">+=</span> <span class="n">recvd</span>
+					<span class="bp">self</span><span class="o">.</span><span class="n">_recv_callback</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+			<span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;finished&quot;</span><span class="p">)</span>
+	</div>
+<div class="viewcode-block" id="HostComms.stop"><a class="viewcode-back" href="../../../generated/slave.vm.html#slave.vm.bootstrap.HostComms.stop">[docs]</a>	<span class="k">def</span> <span class="nf">stop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;stopping&quot;</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_running</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+	</div>
+<div class="viewcode-block" id="HostComms.send_msg"><a class="viewcode-back" href="../../../generated/slave.vm.html#slave.vm.bootstrap.HostComms.send_msg">[docs]</a>	<span class="k">def</span> <span class="nf">send_msg</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">type</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+		<span class="n">data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">({</span>
+			<span class="s">&quot;job&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_job_id</span><span class="p">,</span>
+			<span class="s">&quot;idx&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_job_idx</span><span class="p">,</span>
+			<span class="s">&quot;tool&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tool</span><span class="p">,</span>
+			<span class="s">&quot;type&quot;</span><span class="p">:</span> <span class="nb">type</span><span class="p">,</span>
+			<span class="s">&quot;data&quot;</span><span class="p">:</span> <span class="n">data</span>
+		<span class="p">})</span>
+		<span class="n">data_len</span> <span class="o">=</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="s">&quot;&gt;L&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">))</span>
+		<span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dev</span><span class="p">:</span>
+			<span class="k">try</span><span class="p">:</span>
+				<span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_send_recv_lock</span><span class="p">:</span>
+					<span class="bp">self</span><span class="o">.</span><span class="n">_sock</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">data_len</span> <span class="o">+</span> <span class="n">data</span><span class="p">)</span>
+			<span class="k">except</span><span class="p">:</span>
+				<span class="c"># yes, just silently fail I think???</span>
+				<span class="k">pass</span>
+</div></div>
+<div class="viewcode-block" id="TalusCodeImporter"><a class="viewcode-back" href="../../../generated/slave.vm.html#slave.vm.bootstrap.TalusCodeImporter">[docs]</a><span class="k">class</span> <span class="nc">TalusCodeImporter</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;This class will dynamically import tools and components from the</span>
+<span class="sd">	talus git repository.</span>
+<span class="sd">	</span>
+<span class="sd">	This class *should* conform to &quot;pep-302&quot;:https://www.python.org/dev/peps/pep-0302/</span>
+<span class="sd">	&quot;&quot;&quot;</span>
+
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">loc</span><span class="p">,</span> <span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">parent_log</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Create a new talus code importer that will fetch code from the specified</span>
+<span class="sd">		``location``, using ``username`` and ``password``.</span>
+
+<span class="sd">		:param str loc: The repo location (e.g. ``https://....`` or ``ssh://...``)</span>
+<span class="sd">		:param str username: The username to fetch the code with</span>
+<span class="sd">		:param str password: The password to fetch the code with</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="k">if</span> <span class="n">parent_log</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="n">parent_log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s">&quot;BOOT&quot;</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span> <span class="o">=</span> <span class="n">parent_log</span><span class="o">.</span><span class="n">getChild</span><span class="p">(</span><span class="s">&quot;importer&quot;</span><span class="p">)</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">loc</span> <span class="o">=</span> <span class="n">loc</span>
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">loc</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s">&quot;/&quot;</span><span class="p">):</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">loc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">loc</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">username</span> <span class="o">=</span> <span class="n">username</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">password</span> <span class="o">=</span> <span class="n">password</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_code_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">__file__</span><span class="p">),</span> <span class="s">&quot;TALUS_CODE&quot;</span><span class="p">)</span>
+		<span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_code_dir</span><span class="p">):</span>
+			<span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_code_dir</span><span class="p">)</span>
+		<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_code_dir</span><span class="p">)</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">cache</span> <span class="o">=</span> <span class="p">{}</span>
+
+		<span class="n">dir_check</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s">&quot;/&quot;</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">[</span><span class="s">&quot;tools&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">filter</span><span class="p">(</span><span class="n">dir_check</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_git_show</span><span class="p">(</span><span class="s">&quot;talus/tools&quot;</span><span class="p">)[</span><span class="s">&quot;items&quot;</span><span class="p">])</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">[</span><span class="s">&quot;components&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">filter</span><span class="p">(</span><span class="n">dir_check</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_git_show</span><span class="p">(</span><span class="s">&quot;talus/components&quot;</span><span class="p">)[</span><span class="s">&quot;items&quot;</span><span class="p">])</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">[</span><span class="s">&quot;lib&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">filter</span><span class="p">(</span><span class="n">dir_check</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_git_show</span><span class="p">(</span><span class="s">&quot;talus/lib&quot;</span><span class="p">)[</span><span class="s">&quot;items&quot;</span><span class="p">])</span>
+
+		<span class="n">tools</span> <span class="o">=</span> <span class="p">[]</span>
+	
+<div class="viewcode-block" id="TalusCodeImporter.find_module"><a class="viewcode-back" href="../../../generated/slave.vm.html#slave.vm.bootstrap.TalusCodeImporter.find_module">[docs]</a>	<span class="k">def</span> <span class="nf">find_module</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">abs_name</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Normally, a finder object would return a loader that can load the module.</span>
+<span class="sd">		In our case, we&#39;re going to be sneaky and just download the files and return</span>
+<span class="sd">		``None`` and let the normal sys.path-type loading take place.</span>
+
+<span class="sd">		This method is cleaner and less error prone</span>
+
+<span class="sd">		:param str abs_name: The absolute name of the module to be imported</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="c"># git ls-files for performance</span>
+		<span class="c">#git.ls_files(</span>
+		<span class="c"># Monkeys eat bananas and poop all day.</span>
+		<span class="k">if</span> <span class="ow">not</span> <span class="n">abs_name</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&quot;.&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s">&quot;talus&quot;</span><span class="p">:</span>
+			<span class="k">return</span> <span class="bp">None</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">download_module</span><span class="p">(</span><span class="n">abs_name</span><span class="p">)</span>
+
+		<span class="c"># THIS IS IMPORTANT, YES WE WANT TO RETURN NONE!!!</span>
+		<span class="c"># THIS IS IMPORTANT, YES WE WANT TO RETURN NONE!!!</span>
+		<span class="c"># THIS IS IMPORTANT, YES WE WANT TO RETURN NONE!!!</span>
+		<span class="c"># THIS IS IMPORTANT, YES WE WANT TO RETURN NONE!!!</span>
+		<span class="c"># see the comment in the docstring</span>
+		<span class="k">return</span> <span class="bp">None</span>
+	</div>
+<div class="viewcode-block" id="TalusCodeImporter.download_module"><a class="viewcode-back" href="../../../generated/slave.vm.html#slave.vm.bootstrap.TalusCodeImporter.download_module">[docs]</a>	<span class="k">def</span> <span class="nf">download_module</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">abs_name</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Download the module found at ``abs_name`` from the talus git repository</span>
+
+<span class="sd">		:param str abs_name: The absolute module name of the module to be downloaded</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">path</span> <span class="o">=</span> <span class="n">abs_name</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">&quot;.&quot;</span><span class="p">,</span> <span class="s">&quot;/&quot;</span><span class="p">)</span>
+		<span class="n">info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_git_show</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+
+		<span class="k">if</span> <span class="n">info</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="n">info_test</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_git_show</span><span class="p">(</span><span class="n">path</span> <span class="o">+</span> <span class="s">&quot;.py&quot;</span><span class="p">)</span>
+			<span class="k">if</span> <span class="n">info_test</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+				<span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span><span class="n">abs_name</span><span class="p">)</span>
+			<span class="n">info</span> <span class="o">=</span> <span class="n">info_test</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;loading module {} from git&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">abs_name</span><span class="p">))</span>
+
+		<span class="k">if</span> <span class="n">info</span><span class="p">[</span><span class="s">&quot;type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s">&quot;listing&quot;</span><span class="p">:</span>
+			<span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_download_folder</span><span class="p">(</span><span class="n">abs_name</span><span class="p">,</span> <span class="n">info</span><span class="p">)</span>
+		<span class="k">elif</span> <span class="n">info</span><span class="p">[</span><span class="s">&quot;type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s">&quot;file&quot;</span><span class="p">:</span>
+			<span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_download_file</span><span class="p">(</span><span class="n">abs_name</span><span class="p">,</span> <span class="n">info</span><span class="p">)</span>
+
+		<span class="k">return</span> <span class="bp">None</span>
+	</div>
+	<span class="k">def</span> <span class="nf">_download_folder</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">abs_name</span><span class="p">,</span> <span class="n">info</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Download the module (folder/__init__.py) from git. The module folder will</span>
+<span class="sd">		only be recursively downloaded if it is a subfolder of the tools/components/lib</span>
+<span class="sd">		folder.</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="c"># if we&#39;re loading the root directory of a tool/component/library, recursively</span>
+		<span class="c"># download everything in git in that folder</span>
+		<span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s">r&#39;^talus\.(tools|components|lib)\.[a-zA-Z_0-9]+$&#39;</span><span class="p">,</span> <span class="n">abs_name</span><span class="p">)</span>
+		<span class="n">recurse</span> <span class="o">=</span> <span class="p">(</span><span class="n">match</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">)</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_download</span><span class="p">(</span><span class="n">info</span><span class="o">=</span><span class="n">info</span><span class="p">,</span> <span class="n">recurse</span><span class="o">=</span><span class="n">recurse</span><span class="p">)</span>
+	
+	<span class="k">def</span> <span class="nf">_download_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">abs_name</span><span class="p">,</span> <span class="n">info</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Download the single file from git</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_code_dir</span><span class="p">,</span> <span class="n">info</span><span class="p">[</span><span class="s">&quot;filename&quot;</span><span class="p">])</span>
+		<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+			<span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">info</span><span class="p">[</span><span class="s">&quot;contents&quot;</span><span class="p">])</span>
+	
+	<span class="k">def</span> <span class="nf">_download</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">info</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">recurse</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Download files/folders (maybe recursively) into ``self._code_dir``. If the path</span>
+<span class="sd">		is a directory, the directory&#39;s immediate children will be downloaded. If ``recurse``</span>
+<span class="sd">		is ``True``, then all children will downloaded recursively.</span>
+
+<span class="sd">		:param str path: The talus-code-repo relative path to download</span>
+<span class="sd">		:param dict info: The maybe-already-obtained info about the path</span>
+<span class="sd">		:param bool recurse: If it should be recursively downloaded</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="k">if</span> <span class="n">path</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">and</span> <span class="n">info</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;WTF are you doing?? unexpected condition&quot;</span><span class="p">)</span>
+
+		<span class="k">if</span> <span class="n">path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="ow">and</span> <span class="n">info</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="n">info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_git_show</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+
+		<span class="n">base_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_code_dir</span><span class="p">,</span> <span class="n">info</span><span class="p">[</span><span class="s">&quot;filename&quot;</span><span class="p">])</span>
+		<span class="c">#self._log.info(&quot;downloading to {}&quot;.format(base_path))</span>
+
+		<span class="k">if</span> <span class="n">info</span><span class="p">[</span><span class="s">&quot;type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s">&quot;listing&quot;</span><span class="p">:</span>
+			<span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">base_path</span><span class="p">):</span>
+				<span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">base_path</span><span class="p">)</span>
+
+			<span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">info</span><span class="p">[</span><span class="s">&quot;items&quot;</span><span class="p">]:</span>
+				<span class="k">if</span> <span class="n">item</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s">&quot;/&quot;</span><span class="p">):</span>
+					<span class="k">if</span> <span class="n">recurse</span><span class="p">:</span>
+						<span class="bp">self</span><span class="o">.</span><span class="n">_download</span><span class="p">(</span><span class="s">&quot;{}/{}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">info</span><span class="p">[</span><span class="s">&quot;filename&quot;</span><span class="p">],</span> <span class="n">item</span><span class="p">),</span> <span class="n">recurse</span><span class="o">=</span><span class="n">recurse</span><span class="p">)</span>
+				<span class="k">else</span><span class="p">:</span>
+					<span class="bp">self</span><span class="o">.</span><span class="n">_download</span><span class="p">(</span><span class="s">&quot;{}/{}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">info</span><span class="p">[</span><span class="s">&quot;filename&quot;</span><span class="p">],</span> <span class="n">item</span><span class="p">))</span>
+
+		<span class="k">elif</span> <span class="n">info</span><span class="p">[</span><span class="s">&quot;type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s">&quot;file&quot;</span><span class="p">:</span>
+			<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">base_path</span><span class="p">,</span> <span class="s">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+				<span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">info</span><span class="p">[</span><span class="s">&quot;contents&quot;</span><span class="p">])</span>
+	
+	<span class="k">def</span> <span class="nf">_git_show</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">ref</span><span class="o">=</span><span class="s">&quot;HEAD&quot;</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Return the json object returned from the /code_cache on the web server</span>
+
+<span class="sd">		:str param path: The talus-code-relative path to get information about (file or directory)</span>
+<span class="sd">		:str param ref: The reference with which to lookup the code (can be a branch, commit, etc)</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">res</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+			<span class="s">&quot;/&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">loc</span><span class="p">,</span> <span class="n">ref</span><span class="p">,</span> <span class="n">path</span><span class="p">]),</span>
+			<span class="n">auth</span><span class="o">=</span><span class="n">HTTPBasicAuth</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">username</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">password</span><span class="p">)</span>
+		<span class="p">)</span>
+
+		<span class="k">if</span> <span class="n">res</span><span class="o">.</span><span class="n">status_code</span> <span class="o">//</span> <span class="mi">100</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+			<span class="k">return</span> <span class="bp">None</span>
+
+		<span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">res</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="TalusBootstrap"><a class="viewcode-back" href="../../../generated/slave.vm.html#slave.vm.bootstrap.TalusBootstrap">[docs]</a><span class="k">class</span> <span class="nc">TalusBootstrap</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;The main class that will bootstrap the job and get things running</span>
+<span class="sd">	&quot;&quot;&quot;</span>
+
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config_path</span><span class="p">,</span> <span class="n">dev</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		:param str config_path: The path to the config file containing json information about the job</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s">&quot;BOOT&quot;</span><span class="p">)</span>
+
+		<span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">config_path</span><span class="p">):</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s">&quot;ERROR, config path {} not found!&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">config_path</span><span class="p">))</span>
+			<span class="nb">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+		<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">config_path</span><span class="p">,</span> <span class="s">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_config</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_job_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_config</span><span class="p">[</span><span class="s">&quot;id&quot;</span><span class="p">]</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_idx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_config</span><span class="p">[</span><span class="s">&quot;idx&quot;</span><span class="p">]</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_tool</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_config</span><span class="p">[</span><span class="s">&quot;tool&quot;</span><span class="p">]</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_config</span><span class="p">[</span><span class="s">&quot;params&quot;</span><span class="p">]</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_num_progresses</span> <span class="o">=</span> <span class="mi">0</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">dev</span> <span class="o">=</span> <span class="n">dev</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_host_comms</span> <span class="o">=</span> <span class="n">HostComms</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_on_host_msg_received</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_job_id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_idx</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tool</span><span class="p">,</span> <span class="n">dev</span><span class="o">=</span><span class="n">dev</span><span class="p">)</span>
+
+<div class="viewcode-block" id="TalusBootstrap.run"><a class="viewcode-back" href="../../../generated/slave.vm.html#slave.vm.bootstrap.TalusBootstrap.run">[docs]</a>	<span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;running bootstrap&quot;</span><span class="p">)</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_host_comms</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_install_code_importer</span><span class="p">()</span>
+
+		<span class="n">talus_mod</span> <span class="o">=</span> <span class="nb">__import__</span><span class="p">(</span><span class="s">&quot;talus&quot;</span><span class="p">,</span> <span class="nb">globals</span><span class="p">(),</span> <span class="nb">locals</span><span class="p">(),</span> <span class="n">fromlist</span><span class="o">=</span><span class="p">[</span><span class="s">&quot;job&quot;</span><span class="p">])</span>
+		<span class="n">job_mod</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">talus_mod</span><span class="p">,</span> <span class="s">&quot;job&quot;</span><span class="p">)</span>
+		<span class="n">Job</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">job_mod</span><span class="p">,</span> <span class="s">&quot;Job&quot;</span><span class="p">)</span>
+
+		<span class="k">try</span><span class="p">:</span>
+			<span class="n">job</span> <span class="o">=</span> <span class="n">Job</span><span class="p">(</span>
+				<span class="nb">id</span>					<span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_job_id</span><span class="p">,</span>
+				<span class="n">idx</span>					<span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_idx</span><span class="p">,</span>
+				<span class="n">tool</span>				<span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tool</span><span class="p">,</span>
+				<span class="n">params</span>				<span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_params</span><span class="p">,</span>
+				<span class="n">progress_callback</span>	<span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_on_progress</span><span class="p">,</span>
+				<span class="n">results_callback</span>	<span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_on_result</span><span class="p">,</span>
+			<span class="p">)</span>
+			<span class="n">job</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+		<span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s">&quot;Job had an error!&quot;</span><span class="p">)</span>
+
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_progresses</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;progress was never called, but job finished running, inc progress by 1&quot;</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_on_progress</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_host_comms</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;finished&quot;</span><span class="p">)</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_host_comms</span><span class="o">.</span><span class="n">send_msg</span><span class="p">(</span><span class="s">&quot;finished&quot;</span><span class="p">,</span> <span class="p">{})</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_shutdown</span><span class="p">()</span>
+	</div>
+	<span class="k">def</span> <span class="nf">_shutdown</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;shutdown the vm&quot;&quot;&quot;</span>
+		<span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="s">&quot;shutdown -t 0 -r -f&quot;</span><span class="p">)</span>
+		<span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="s">&quot;shutdown now&quot;</span><span class="p">)</span>
+	
+	<span class="k">def</span> <span class="nf">_on_host_msg_received</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Handle the data received from the host</span>
+
+<span class="sd">		:param str data: The raw data (probably in json format)</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;received a message from the host: {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">data</span><span class="p">))</span>
+		<span class="n">data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+	
+	<span class="k">def</span> <span class="nf">_on_progress</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">num</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Increment the progress count for this job by ``num``</span>
+
+<span class="sd">		:param int num: The number to increment the progress count of this job by</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_num_progresses</span> <span class="o">+=</span> <span class="n">num</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;progress incrementing by {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">num</span><span class="p">))</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_host_comms</span><span class="o">.</span><span class="n">send_msg</span><span class="p">(</span><span class="s">&quot;progress&quot;</span><span class="p">,</span> <span class="n">num</span><span class="p">)</span>
+	
+	<span class="k">def</span> <span class="nf">_on_result</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">result_data</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Append this to the results for this job</span>
+
+<span class="sd">		:param object result_data: Any python object to be stored with this job&#39;s results (str, dict, a number, etc)</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;sending result&quot;</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_host_comms</span><span class="o">.</span><span class="n">send_msg</span><span class="p">(</span><span class="s">&quot;result&quot;</span><span class="p">,</span> <span class="n">result_data</span><span class="p">)</span>
+	
+	<span class="k">def</span> <span class="nf">_install_code_importer</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Install the sys.meta_path finder/loader to automatically load modules from</span>
+<span class="sd">		the talus git repo.</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;installing talus code importer&quot;</span><span class="p">)</span>
+		<span class="n">code</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_config</span><span class="p">[</span><span class="s">&quot;code&quot;</span><span class="p">]</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_code_importer</span> <span class="o">=</span> <span class="n">TalusCodeImporter</span><span class="p">(</span>
+			<span class="n">code</span><span class="p">[</span><span class="s">&quot;loc&quot;</span><span class="p">],</span>
+			<span class="n">code</span><span class="p">[</span><span class="s">&quot;username&quot;</span><span class="p">],</span>
+			<span class="n">code</span><span class="p">[</span><span class="s">&quot;password&quot;</span><span class="p">],</span>
+			<span class="n">parent_log</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_log</span>
+		<span class="p">)</span>
+		<span class="n">sys</span><span class="o">.</span><span class="n">meta_path</span> <span class="o">=</span> <span class="p">[</span> <span class="bp">self</span><span class="o">.</span><span class="n">_code_importer</span> <span class="p">]</span>
+</div>
+<div class="viewcode-block" id="main"><a class="viewcode-back" href="../../../generated/slave.vm.html#slave.vm.bootstrap.main">[docs]</a><span class="k">def</span> <span class="nf">main</span><span class="p">(</span><span class="n">dev</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+	<span class="n">config_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">__file__</span><span class="p">),</span> <span class="s">&quot;config.json&quot;</span><span class="p">)</span>
+	<span class="n">bootstrap</span> <span class="o">=</span> <span class="n">TalusBootstrap</span><span class="p">(</span><span class="n">config_path</span><span class="p">,</span> <span class="n">dev</span><span class="o">=</span><span class="n">dev</span><span class="p">)</span>
+	<span class="n">bootstrap</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+</div>
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&quot;__main__&quot;</span><span class="p">:</span>
+	<span class="n">dev</span> <span class="o">=</span> <span class="bp">False</span>
+	<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="s">&quot;dev&quot;</span><span class="p">:</span>
+		<span class="n">dev</span> <span class="o">=</span> <span class="bp">True</span>
+
+	<span class="n">main</span><span class="p">(</span><span class="n">dev</span><span class="o">=</span><span class="n">dev</span><span class="p">)</span>
+</pre></div>
+
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015, Optiv Labs.
+    </p>
+  </div>
+
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+  
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../',
+            VERSION:'0.0.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

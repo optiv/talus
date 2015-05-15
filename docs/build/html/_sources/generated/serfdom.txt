@@ -1,0 +1,10 @@
+serfdom package
+===============
+
+Module contents
+---------------
+
+.. automodule:: serfdom
+    :members:
+    :undoc-members:
+    :show-inheritance:

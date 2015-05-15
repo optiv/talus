@@ -1,0 +1,619 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>talus.api &mdash; Talus 0.0.1 documentation</title>
+  
+
+  
+  
+
+  
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Roboto+Slab:400,700|Inconsolata:400,700&subset=latin,cyrillic' rel='stylesheet' type='text/css'>
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="Talus 0.0.1 documentation" href="../../index.html"/>
+        <link rel="up" title="Module code" href="../index.html"/> 
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-nav-search">
+        
+          <a href="../../index.html" class="fa fa-home"> Talus</a>
+        
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+        
+          
+          
+              <ul class="simple">
+</ul>
+
+          
+        
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../../index.html">Talus</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../../index.html">Docs</a> &raquo;</li>
+      
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+      
+    <li>talus.api</li>
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document">
+            
+  <h1>Source code for talus.api</h1><div class="highlight"><pre>
+<span class="c">#!/usr/bin/env python</span>
+<span class="c"># encoding: utf-8</span>
+
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">collections</span>
+<span class="kn">import</span> <span class="nn">datetime</span>
+<span class="kn">import</span> <span class="nn">mmap</span>
+<span class="kn">import</span> <span class="nn">requests</span>
+<span class="kn">import</span> <span class="nn">shlex</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">time</span>
+
+<span class="k">try</span><span class="p">:</span>
+	<span class="kn">import</span> <span class="nn">requests</span>
+<span class="k">except</span> <span class="ne">ImportError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+	<span class="k">print</span><span class="p">(</span><span class="s">&quot;Error! requests module could not be imported. Perhaps install it with</span><span class="se">\n\n</span><span class="s">    pip install requests&quot;</span><span class="p">)</span>
+	<span class="nb">exit</span><span class="p">()</span>
+
+<span class="k">try</span><span class="p">:</span>
+	<span class="kn">import</span> <span class="nn">requests_toolbelt</span>
+<span class="k">except</span> <span class="ne">ImportError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+	<span class="k">print</span><span class="p">(</span><span class="s">&quot;Error! requests_toolbelt module could not be imported. Perhaps install it with</span><span class="se">\n\n</span><span class="s">    pip install requests-toolbelt&quot;</span><span class="p">)</span>
+	<span class="nb">exit</span><span class="p">()</span>
+
+<span class="kn">from</span> <span class="nn">requests_toolbelt.multipart.encoder</span> <span class="kn">import</span> <span class="n">MultipartEncoder</span><span class="p">,</span> <span class="n">MultipartEncoderMonitor</span>
+
+<span class="kn">from</span> <span class="nn">talus.models</span> <span class="kn">import</span> <span class="o">*</span>
+
+<div class="viewcode-block" id="TalusClient"><a class="viewcode-back" href="../../generated/talus.html#talus.api.TalusClient">[docs]</a><span class="k">class</span> <span class="nc">TalusClient</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+	<span class="sd">&quot;&quot;&quot;An api client that will communicate with Talus&quot;&quot;&quot;</span>
+
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">api_base</span><span class="o">=</span><span class="s">&quot;http://localhost:8001&quot;</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;TODO: to be defined1. &quot;&quot;&quot;</span>
+		<span class="nb">object</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_api_base</span> <span class="o">=</span> <span class="n">api_base</span>
+
+	<span class="c"># -------------------------</span>
+	<span class="c"># VM image handling</span>
+	<span class="c"># -------------------------</span>
+
+<div class="viewcode-block" id="TalusClient.image_iter"><a class="viewcode-back" href="../../generated/talus.html#talus.api.TalusClient.image_iter">[docs]</a>	<span class="k">def</span> <span class="nf">image_iter</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Return an iterator that iterates over all existing images in Talus</span>
+<span class="sd">		:returns: iterator over all existing images</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="k">for</span> <span class="n">image</span> <span class="ow">in</span> <span class="n">Image</span><span class="o">.</span><span class="n">objects</span><span class="p">(</span><span class="n">api_base</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_api_base</span><span class="p">):</span>
+			<span class="k">yield</span> <span class="n">image</span>
+</div>
+<div class="viewcode-block" id="TalusClient.image_import"><a class="viewcode-back" href="../../generated/talus.html#talus.api.TalusClient.image_import">[docs]</a>	<span class="k">def</span> <span class="nf">image_import</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image_path</span><span class="p">,</span> <span class="n">image_name</span><span class="p">,</span> <span class="n">os_id</span><span class="p">,</span> <span class="n">desc</span><span class="o">=</span><span class="s">&quot;desc&quot;</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">username</span><span class="o">=</span><span class="s">&quot;user&quot;</span><span class="p">,</span> <span class="n">password</span><span class="o">=</span><span class="s">&quot;password&quot;</span><span class="p">,</span> <span class="n">file_id</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;TODO: Docstring for import_image.</span>
+
+<span class="sd">		:image_path: The path to the image to be uploaded</span>
+<span class="sd">		:image_name: The name of the resulting image</span>
+<span class="sd">		:os_id: The id or name of the operating system document (string)</span>
+<span class="sd">		:desc: A description of the image</span>
+<span class="sd">		:tags: An array of tags associated with this VM image (e.g. [&quot;browser&quot;, &quot;ie&quot;, &quot;ie10&quot;, &quot;windows&quot;])</span>
+<span class="sd">		:username: The username to be used in the image</span>
+<span class="sd">		:password: The password associated with the username</span>
+<span class="sd">		:file_id: The id of the file that has already been uploaded to the server</span>
+<span class="sd">		:returns: The configured image</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">os</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_name_or_id</span><span class="p">(</span><span class="n">OS</span><span class="p">,</span> <span class="n">os_id</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">os</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="k">raise</span> <span class="n">errors</span><span class="o">.</span><span class="n">TalusApiError</span><span class="p">(</span><span class="s">&quot;Could not locate OS by id/name {!r}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">os_id</span><span class="p">))</span>
+
+		<span class="n">uploaded_file</span> <span class="o">=</span> <span class="n">file_id</span>
+		<span class="k">if</span> <span class="n">uploaded_file</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="k">print</span><span class="p">(</span><span class="s">&quot;uploading file {!r}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">image_path</span><span class="p">))</span>
+			<span class="n">image_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_clean_path</span><span class="p">(</span><span class="n">image_path</span><span class="p">)</span>
+			<span class="n">uploaded_file</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_upload_file</span><span class="p">(</span><span class="n">image_path</span><span class="p">)</span>
+
+			<span class="k">print</span><span class="p">(</span><span class="s">&quot;uploaded file id: {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">uploaded_file</span><span class="p">))</span>
+
+		<span class="k">if</span> <span class="n">tags</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="n">tags</span> <span class="o">=</span> <span class="p">[]</span>
+
+		<span class="n">image</span> <span class="o">=</span> <span class="n">Image</span><span class="p">(</span><span class="n">api_base</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_api_base</span><span class="p">)</span>
+		<span class="n">image</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">image_name</span>
+		<span class="n">image</span><span class="o">.</span><span class="n">os</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">id</span>
+		<span class="n">image</span><span class="o">.</span><span class="n">desc</span> <span class="o">=</span> <span class="n">desc</span>
+		<span class="n">image</span><span class="o">.</span><span class="n">tags</span> <span class="o">=</span> <span class="n">tags</span>
+		<span class="n">image</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="p">{</span><span class="s">&quot;name&quot;</span><span class="p">:</span> <span class="s">&quot;import&quot;</span><span class="p">,</span> <span class="s">&quot;tmpfile&quot;</span><span class="p">:</span> <span class="n">uploaded_file</span><span class="p">}</span>
+		<span class="n">image</span><span class="o">.</span><span class="n">username</span> <span class="o">=</span> <span class="n">username</span>
+		<span class="n">image</span><span class="o">.</span><span class="n">password</span> <span class="o">=</span> <span class="n">password</span>
+		<span class="n">image</span><span class="o">.</span><span class="n">timestamps</span> <span class="o">=</span> <span class="p">{</span><span class="s">&quot;created&quot;</span><span class="p">:</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()}</span>
+
+		<span class="n">image</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+
+		<span class="k">return</span> <span class="n">image</span>
+	</div>
+<div class="viewcode-block" id="TalusClient.image_configure"><a class="viewcode-back" href="../../generated/talus.html#talus.api.TalusClient.image_configure">[docs]</a>	<span class="k">def</span> <span class="nf">image_configure</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image_id_or_name</span><span class="p">,</span> <span class="n">vagrantfile</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">user_interaction</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Configure the image with id ``image_id``. An instance of the image will</span>
+<span class="sd">		be spun up which you can then configure. Shutting down the image will commit</span>
+<span class="sd">		any changes.</span>
+
+<span class="sd">		:image_id_or_name: The id or name of the image that is to be configured</span>
+<span class="sd">		:vagrantfile: The contents of a vagrantfile that is to be used to configure the image</span>
+<span class="sd">		:user_interaction: If the user should be given a chance to manually interact</span>
+<span class="sd">		:returns: The configured image</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">image</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_name_or_id</span><span class="p">(</span><span class="n">Image</span><span class="p">,</span> <span class="n">image_id_or_name</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">image</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="k">print</span><span class="p">(</span><span class="s">&quot;image with id or name {!r} not found&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">image_id_or_name</span><span class="p">))</span>
+			<span class="k">return</span>
+
+		<span class="n">image</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="p">{</span>
+			<span class="s">&quot;name&quot;</span><span class="p">:</span> <span class="s">&quot;configure&quot;</span><span class="p">,</span>
+			<span class="s">&quot;vagrantfile&quot;</span><span class="p">:</span> <span class="n">vagrantfile</span><span class="p">,</span>
+			<span class="s">&quot;user_interaction&quot;</span><span class="p">:</span> <span class="n">user_interaction</span>
+		<span class="p">}</span>
+		<span class="n">image</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+
+		<span class="k">return</span> <span class="n">image</span>
+	</div>
+<div class="viewcode-block" id="TalusClient.image_create"><a class="viewcode-back" href="../../generated/talus.html#talus.api.TalusClient.image_create">[docs]</a>	<span class="k">def</span> <span class="nf">image_create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image_name</span><span class="p">,</span> <span class="n">base_image_id_or_name</span><span class="p">,</span> <span class="n">os_id</span><span class="p">,</span> <span class="n">desc</span><span class="o">=</span><span class="s">&quot;&quot;</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">vagrantfile</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">user_interaction</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Create a new VM image based on an existing image.</span>
+
+<span class="sd">		:image_name: The name of the new VM image (to be created)</span>
+<span class="sd">		:base_image_id_or_name: The id or name of the base image</span>
+<span class="sd">		:os_id: The id of the operating system</span>
+<span class="sd">		:desc: A description of the new image</span>
+<span class="sd">		:tags: A list of tags associated with the new image</span>
+<span class="sd">		:vagrantfile: The Vagrantfile to run when creating the new image</span>
+<span class="sd">		:user_interaction: Allow user interaction to occur (vs automatically shutting down the VM after the vagrantfile is run)</span>
+<span class="sd">		:returns: The created image</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">base_image</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_name_or_id</span><span class="p">(</span><span class="n">Image</span><span class="p">,</span> <span class="n">base_image_id_or_name</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">base_image</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="k">print</span><span class="p">(</span><span class="s">&quot;Base image with id or name {!r} not found&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">base_image_id_or_name</span><span class="p">))</span>
+			<span class="k">return</span>
+
+		<span class="n">base_image_id</span> <span class="o">=</span> <span class="n">base_image</span><span class="o">.</span><span class="n">id</span>
+
+		<span class="c"># essentially use the base_image as the base for the new image</span>
+		<span class="n">base_image</span><span class="o">.</span><span class="n">clear_id</span><span class="p">()</span>
+		<span class="n">image</span> <span class="o">=</span> <span class="n">base_image</span> 
+		<span class="c"># required</span>
+		<span class="n">image</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">image_name</span>
+		<span class="n">image</span><span class="o">.</span><span class="n">base_image</span> <span class="o">=</span> <span class="n">base_image_id</span>
+
+		<span class="k">if</span> <span class="n">os_id</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="n">image</span><span class="o">.</span><span class="n">os</span> <span class="o">=</span> <span class="n">os_id</span>
+		<span class="k">if</span> <span class="n">desc</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="n">image</span><span class="o">.</span><span class="n">desc</span> <span class="o">=</span> <span class="n">desc</span>
+		<span class="k">if</span> <span class="n">tags</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="n">image</span><span class="o">.</span><span class="n">tags</span> <span class="o">=</span> <span class="n">tags</span>
+
+		<span class="n">image</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="p">{</span>
+			<span class="s">&quot;name&quot;</span><span class="p">:</span> <span class="s">&quot;create&quot;</span><span class="p">,</span>
+			<span class="s">&quot;vagrantfile&quot;</span><span class="p">:</span> <span class="n">vagrantfile</span><span class="p">,</span>
+			<span class="s">&quot;user_interaction&quot;</span><span class="p">:</span> <span class="n">user_interaction</span>
+		<span class="p">}</span>
+		<span class="n">image</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+
+		<span class="k">return</span> <span class="n">image</span>
+	</div>
+<div class="viewcode-block" id="TalusClient.image_delete"><a class="viewcode-back" href="../../generated/talus.html#talus.api.TalusClient.image_delete">[docs]</a>	<span class="k">def</span> <span class="nf">image_delete</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image_id_or_name</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Delete the image with id ``image_id`` or name ``name``</span>
+
+<span class="sd">		:image_id: The id of the image to delete</span>
+<span class="sd">		:returns: None</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">image</span> <span class="o">=</span> <span class="n">Image</span><span class="o">.</span><span class="n">find_one</span><span class="p">(</span><span class="n">api_base</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_api_base</span><span class="p">,</span> <span class="nb">id</span><span class="o">=</span><span class="n">image_id_or_name</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">image</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="n">image</span> <span class="o">=</span> <span class="n">Image</span><span class="o">.</span><span class="n">find_one</span><span class="p">(</span><span class="n">api_base</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_api_base</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">image_id_or_name</span><span class="p">)</span>
+			<span class="k">if</span> <span class="n">image</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+				<span class="k">print</span><span class="p">(</span><span class="s">&quot;image with id or name {!r} not found&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">image_id_or_name</span><span class="p">))</span>
+				<span class="k">return</span>
+
+		<span class="n">image</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="p">{</span>
+			<span class="s">&quot;name&quot;</span><span class="p">:</span> <span class="s">&quot;delete&quot;</span>
+		<span class="p">}</span>
+		<span class="n">image</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+		<span class="k">return</span> <span class="n">image</span>
+
+	<span class="c"># -------------------------</span>
+	<span class="c"># VM os handling</span>
+	<span class="c"># -------------------------</span>
+</div>
+<div class="viewcode-block" id="TalusClient.os_iter"><a class="viewcode-back" href="../../generated/talus.html#talus.api.TalusClient.os_iter">[docs]</a>	<span class="k">def</span> <span class="nf">os_iter</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Return an iterator that iterates over all existing OS models in Talus</span>
+<span class="sd">		:returns: iterator</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="k">for</span> <span class="n">os_</span> <span class="ow">in</span> <span class="n">OS</span><span class="o">.</span><span class="n">objects</span><span class="p">(</span><span class="n">api_base</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_api_base</span><span class="p">):</span>
+			<span class="k">yield</span> <span class="n">os_</span>
+	</div>
+<div class="viewcode-block" id="TalusClient.os_delete"><a class="viewcode-back" href="../../generated/talus.html#talus.api.TalusClient.os_delete">[docs]</a>	<span class="k">def</span> <span class="nf">os_delete</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">os_id</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Delete an os by ``os_id`` which may be the id or name</span>
+<span class="sd">		</span>
+<span class="sd">		:os_id: The name or id of the os to delete</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">os_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_name_or_id</span><span class="p">(</span><span class="n">OS</span><span class="p">,</span> <span class="n">os_id</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">os_</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="k">raise</span> <span class="n">errors</span><span class="o">.</span><span class="n">TalusApiError</span><span class="p">(</span><span class="s">&quot;Could not locate os with name/id {!r}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">os_id</span><span class="p">))</span>
+		<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">Image</span><span class="o">.</span><span class="n">objects</span><span class="p">(</span><span class="n">api_base</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_api_base</span><span class="p">,</span> <span class="n">os</span><span class="o">=</span><span class="n">os_</span><span class="o">.</span><span class="n">id</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+			<span class="k">raise</span> <span class="n">errors</span><span class="o">.</span><span class="n">TalusApiError</span><span class="p">(</span><span class="s">&quot;Could not delete OS, more than one image references it&quot;</span><span class="p">)</span>
+		<span class="n">os_</span><span class="o">.</span><span class="n">delete</span><span class="p">()</span>
+
+	<span class="c"># -------------------------</span>
+	<span class="c"># code handling</span>
+	<span class="c"># -------------------------</span>
+</div>
+<div class="viewcode-block" id="TalusClient.code_iter"><a class="viewcode-back" href="../../generated/talus.html#talus.api.TalusClient.code_iter">[docs]</a>	<span class="k">def</span> <span class="nf">code_iter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">type_</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Return an iterator that iterates over all existing Code models in Talus</span>
+<span class="sd">		:returns: iterator</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">filter_</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="k">if</span> <span class="n">type_</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="n">filter_</span><span class="p">[</span><span class="s">&quot;type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">type_</span>
+		<span class="k">for</span> <span class="n">code</span> <span class="ow">in</span> <span class="n">Code</span><span class="o">.</span><span class="n">objects</span><span class="p">(</span><span class="n">api_base</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_api_base</span><span class="p">,</span> <span class="o">**</span><span class="n">filter_</span><span class="p">):</span>
+			<span class="k">yield</span> <span class="n">code</span>
+	</div>
+<div class="viewcode-block" id="TalusClient.code_find"><a class="viewcode-back" href="../../generated/talus.html#talus.api.TalusClient.code_find">[docs]</a>	<span class="k">def</span> <span class="nf">code_find</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name_or_id</span><span class="p">,</span> <span class="o">**</span><span class="n">search</span><span class="p">):</span>
+		<span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_name_or_id</span><span class="p">(</span><span class="n">Code</span><span class="p">,</span> <span class="n">name_or_id</span><span class="p">,</span> <span class="o">**</span><span class="n">search</span><span class="p">)</span>
+	</div>
+<div class="viewcode-block" id="TalusClient.code_create"><a class="viewcode-back" href="../../generated/talus.html#talus.api.TalusClient.code_create">[docs]</a>	<span class="k">def</span> <span class="nf">code_create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">code_name</span><span class="p">,</span> <span class="n">code_type</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Create the code, and return the results&quot;&quot;&quot;</span>
+		<span class="n">data</span> <span class="o">=</span> <span class="p">{</span>
+			<span class="s">&quot;name&quot;</span><span class="p">:</span> <span class="n">code_name</span><span class="p">,</span>
+			<span class="s">&quot;type&quot;</span><span class="p">:</span> <span class="n">code_type</span>
+		<span class="p">}</span>
+		<span class="n">e</span> <span class="o">=</span> <span class="n">MultipartEncoder</span><span class="p">(</span><span class="n">fields</span><span class="o">=</span><span class="n">data</span><span class="p">)</span>
+		<span class="n">res</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_api_base</span> <span class="o">+</span> <span class="s">&quot;/api/code/create/&quot;</span><span class="p">,</span>
+			<span class="n">data</span>	<span class="o">=</span> <span class="n">e</span><span class="p">,</span>
+			<span class="n">headers</span>	<span class="o">=</span> <span class="p">{</span><span class="s">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="n">e</span><span class="o">.</span><span class="n">content_type</span><span class="p">}</span>
+		<span class="p">)</span>
+		<span class="k">if</span> <span class="n">res</span><span class="o">.</span><span class="n">status_code</span> <span class="o">//</span> <span class="mi">100</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+			<span class="k">raise</span> <span class="n">errors</span><span class="o">.</span><span class="n">TalusApiError</span><span class="p">(</span><span class="s">&quot;Could not create code!&quot;</span><span class="p">,</span> <span class="n">error</span><span class="o">=</span><span class="n">res</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+
+		<span class="k">return</span> <span class="n">res</span><span class="o">.</span><span class="n">text</span>
+
+	<span class="c"># -------------------------</span>
+	<span class="c"># task handling</span>
+	<span class="c"># -------------------------</span>
+</div>
+<div class="viewcode-block" id="TalusClient.task_iter"><a class="viewcode-back" href="../../generated/talus.html#talus.api.TalusClient.task_iter">[docs]</a>	<span class="k">def</span> <span class="nf">task_iter</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Return an iterator that iterates over all existing Task models in Talus</span>
+<span class="sd">		:returns: iterator</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="k">for</span> <span class="n">task</span> <span class="ow">in</span> <span class="n">Task</span><span class="o">.</span><span class="n">objects</span><span class="p">(</span><span class="n">api_base</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_api_base</span><span class="p">):</span>
+			<span class="k">yield</span> <span class="n">task</span>
+</div>
+<div class="viewcode-block" id="TalusClient.task_create"><a class="viewcode-back" href="../../generated/talus.html#talus.api.TalusClient.task_create">[docs]</a>	<span class="k">def</span> <span class="nf">task_create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">tool_id</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Create a new task with the supplied arguments</span>
+
+<span class="sd">		:name: The name of the task</span>
+<span class="sd">		:tool_id: The id or name of the tool the task will run</span>
+<span class="sd">		:params: A dict of params for the task</span>
+<span class="sd">		:version: The version of code to use. None defaults to the HEAD version (default: None)</span>
+<span class="sd">		:limit: The default limit of any jobs that use this task</span>
+<span class="sd">		:returns: The task model</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">tool</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_name_or_id</span><span class="p">(</span><span class="n">Code</span><span class="p">,</span> <span class="n">tool_id</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s">&quot;tool&quot;</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">tool</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="k">raise</span> <span class="n">errors</span><span class="o">.</span><span class="n">TalusApiError</span><span class="p">(</span><span class="s">&quot;Could not locate Tool by id/name {!r}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">tool_id</span><span class="p">))</span>
+		<span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+			<span class="k">raise</span> <span class="n">errors</span><span class="o">.</span><span class="n">TalusApiError</span><span class="p">(</span><span class="s">&quot;params must be a dict!&quot;</span><span class="p">)</span>
+
+		<span class="n">task</span> <span class="o">=</span> <span class="n">Task</span><span class="p">(</span><span class="n">api_base</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_api_base</span><span class="p">)</span>
+		<span class="n">task</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+		<span class="n">task</span><span class="o">.</span><span class="n">tool</span> <span class="o">=</span> <span class="n">tool</span><span class="o">.</span><span class="n">id</span>
+		<span class="n">task</span><span class="o">.</span><span class="n">version</span> <span class="o">=</span> <span class="n">version</span>
+		<span class="n">task</span><span class="o">.</span><span class="n">params</span> <span class="o">=</span> <span class="n">params</span>
+		<span class="n">task</span><span class="o">.</span><span class="n">limit</span> <span class="o">=</span> <span class="n">limit</span>
+		<span class="n">task</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+	</div>
+<div class="viewcode-block" id="TalusClient.task_delete"><a class="viewcode-back" href="../../generated/talus.html#talus.api.TalusClient.task_delete">[docs]</a>	<span class="k">def</span> <span class="nf">task_delete</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task_id</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Delete a task by ``task_id`` which may be the id or name</span>
+<span class="sd">		</span>
+<span class="sd">		:task_id: The name or id of the task to delete</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">task</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_name_or_id</span><span class="p">(</span><span class="n">Task</span><span class="p">,</span> <span class="n">task_id</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">task</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="k">raise</span> <span class="n">errors</span><span class="o">.</span><span class="n">TalusApiError</span><span class="p">(</span><span class="s">&quot;Could not locate task with name/id {!r}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">task_id</span><span class="p">))</span>
+		<span class="n">task</span><span class="o">.</span><span class="n">delete</span><span class="p">()</span>
+		
+	<span class="c"># -------------------------</span>
+	<span class="c"># result handling</span>
+	<span class="c"># -------------------------</span>
+</div>
+<div class="viewcode-block" id="TalusClient.result_iter"><a class="viewcode-back" href="../../generated/talus.html#talus.api.TalusClient.result_iter">[docs]</a>	<span class="k">def</span> <span class="nf">result_iter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">search</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Iterate through result matching the search criteria</span>
+
+<span class="sd">		:search: optional search parameters</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="k">for</span> <span class="n">result</span> <span class="ow">in</span> <span class="n">Result</span><span class="o">.</span><span class="n">objects</span><span class="p">(</span><span class="n">api_base</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_api_base</span><span class="p">,</span> <span class="o">**</span><span class="n">search</span><span class="p">):</span>
+			<span class="k">yield</span> <span class="n">result</span>
+		
+	<span class="c"># -------------------------</span>
+	<span class="c"># slave handling</span>
+	<span class="c"># -------------------------</span>
+</div>
+<div class="viewcode-block" id="TalusClient.slave_iter"><a class="viewcode-back" href="../../generated/talus.html#talus.api.TalusClient.slave_iter">[docs]</a>	<span class="k">def</span> <span class="nf">slave_iter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">search</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Iterate through all of the slaves</span>
+
+<span class="sd">		:search: optional search parameters</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="k">for</span> <span class="n">slave</span> <span class="ow">in</span> <span class="n">Slave</span><span class="o">.</span><span class="n">objects</span><span class="p">(</span><span class="n">api_base</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_api_base</span><span class="p">,</span> <span class="o">**</span><span class="n">search</span><span class="p">):</span>
+			<span class="k">yield</span> <span class="n">slave</span>
+		
+	<span class="c"># -------------------------</span>
+	<span class="c"># job handling</span>
+	<span class="c"># -------------------------</span>
+</div>
+<div class="viewcode-block" id="TalusClient.job_iter"><a class="viewcode-back" href="../../generated/talus.html#talus.api.TalusClient.job_iter">[docs]</a>	<span class="k">def</span> <span class="nf">job_iter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">search</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Iterate through all of the jobs</span>
+
+<span class="sd">		:search: optional search parameters</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="k">for</span> <span class="n">job</span> <span class="ow">in</span> <span class="n">Job</span><span class="o">.</span><span class="n">objects</span><span class="p">(</span><span class="n">api_base</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_api_base</span><span class="p">,</span> <span class="o">**</span><span class="n">search</span><span class="p">):</span>
+			<span class="k">yield</span> <span class="n">job</span>
+	</div>
+<div class="viewcode-block" id="TalusClient.job_create"><a class="viewcode-back" href="../../generated/talus.html#talus.api.TalusClient.job_create">[docs]</a>	<span class="k">def</span> <span class="nf">job_create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task_name_or_id</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">priority</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">queue</span><span class="o">=</span><span class="s">&quot;jobs&quot;</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">network</span><span class="o">=</span><span class="s">&quot;whitelist&quot;</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Create a new job (run a task)&quot;&quot;&quot;</span>
+		<span class="n">task</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_name_or_id</span><span class="p">(</span><span class="n">Task</span><span class="p">,</span> <span class="n">task_name_or_id</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">task</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="k">raise</span> <span class="n">errors</span><span class="o">.</span><span class="n">TalusApiError</span><span class="p">(</span><span class="s">&quot;could not locate task with id/name {!r}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">task_name_or_id</span><span class="p">))</span>
+
+		<span class="n">image_obj</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_name_or_id</span><span class="p">(</span><span class="n">Image</span><span class="p">,</span> <span class="n">image</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">image_obj</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="k">raise</span> <span class="n">errors</span><span class="o">.</span><span class="n">TalusApiError</span><span class="p">(</span><span class="s">&quot;could not locate image with id/name {!r}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">image</span><span class="p">))</span>
+		<span class="n">image</span> <span class="o">=</span> <span class="n">image_obj</span>
+
+		<span class="k">if</span> <span class="n">image</span><span class="o">.</span><span class="n">status</span><span class="p">[</span><span class="s">&quot;name&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="s">&quot;ready&quot;</span><span class="p">:</span>
+			<span class="k">raise</span> <span class="n">errors</span><span class="o">.</span><span class="n">TalusApiError</span><span class="p">(</span><span class="s">&quot;image &#39;{}&#39; ({}) is not in ready state (state is {})&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+				<span class="n">image</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+				<span class="n">image</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+				<span class="n">image</span><span class="o">.</span><span class="n">status</span><span class="p">[</span><span class="s">&quot;name&quot;</span><span class="p">]</span>
+			<span class="p">))</span>
+
+		<span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="n">name</span> <span class="o">=</span> <span class="n">task</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="s">&quot; &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">())</span>
+
+		<span class="k">if</span> <span class="n">limit</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="n">limit</span> <span class="o">=</span> <span class="n">task</span><span class="o">.</span><span class="n">limit</span>
+
+		<span class="c"># any params set will UPDATE the default params, not override them</span>
+		<span class="n">base_params</span> <span class="o">=</span> <span class="n">task</span><span class="o">.</span><span class="n">params</span>
+		<span class="k">if</span> <span class="n">params</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="n">base_params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dict_nested_updated</span><span class="p">(</span><span class="n">base_params</span><span class="p">,</span> <span class="n">params</span><span class="p">)</span>
+
+		<span class="n">job</span> <span class="o">=</span> <span class="n">Job</span><span class="p">(</span><span class="n">api_base</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_api_base</span><span class="p">)</span>
+		<span class="n">job</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+		<span class="n">job</span><span class="o">.</span><span class="n">image</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">id</span>
+		<span class="n">job</span><span class="o">.</span><span class="n">params</span> <span class="o">=</span> <span class="n">base_params</span>
+		<span class="n">job</span><span class="o">.</span><span class="n">task</span> <span class="o">=</span> <span class="n">task</span><span class="o">.</span><span class="n">id</span>
+		<span class="n">job</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="p">{</span><span class="s">&quot;name&quot;</span><span class="p">:</span> <span class="s">&quot;run&quot;</span><span class="p">}</span>
+		<span class="n">job</span><span class="o">.</span><span class="n">timestamps</span> <span class="o">=</span> <span class="p">{</span><span class="s">&quot;created&quot;</span><span class="p">:</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()}</span>
+		<span class="n">job</span><span class="o">.</span><span class="n">priority</span> <span class="o">=</span> <span class="n">priority</span>
+		<span class="n">job</span><span class="o">.</span><span class="n">queue</span> <span class="o">=</span> <span class="n">queue</span>
+		<span class="n">job</span><span class="o">.</span><span class="n">limit</span> <span class="o">=</span> <span class="n">limit</span>
+		<span class="n">job</span><span class="o">.</span><span class="n">network</span> <span class="o">=</span> <span class="n">network</span>
+		<span class="n">job</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+		
+		<span class="k">return</span> <span class="n">job</span>
+	</div>
+<div class="viewcode-block" id="TalusClient.job_cancel"><a class="viewcode-back" href="../../generated/talus.html#talus.api.TalusClient.job_cancel">[docs]</a>	<span class="k">def</span> <span class="nf">job_cancel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">job_name_or_id</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Cancel the job ``job_name_or_id`` in talus</span>
+
+<span class="sd">		:job_name_or_id: The job name or id to cancel</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">job</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_name_or_id</span><span class="p">(</span><span class="n">Job</span><span class="p">,</span> <span class="n">job_name_or_id</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">job</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="k">raise</span> <span class="n">errors</span><span class="o">.</span><span class="n">TalusApiError</span><span class="p">(</span><span class="s">&quot;could not locate job with name or id {!r}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">job_name_or_id</span><span class="p">))</span>
+
+		<span class="n">job</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="p">{</span><span class="s">&quot;name&quot;</span><span class="p">:</span> <span class="s">&quot;cancel&quot;</span><span class="p">}</span>
+		<span class="n">job</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+
+		<span class="k">return</span> <span class="n">job</span>
+		
+	<span class="c"># -------------------------</span>
+	<span class="c"># utility</span>
+	<span class="c"># -------------------------</span>
+</div>
+	<span class="k">def</span> <span class="nf">_dict_nested_updated</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">base</span><span class="p">,</span> <span class="n">new</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Update a nested dictionary</span>
+
+<span class="sd">		:base: the base dict</span>
+<span class="sd">		:new: the new values for the dict</span>
+<span class="sd">		:returns: the updated dict</span>
+<span class="sd">		&quot;&quot;&quot;</span> 
+		<span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span> <span class="n">new</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+			<span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">collections</span><span class="o">.</span><span class="n">Mapping</span><span class="p">):</span>
+				<span class="n">r</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dict_nested_updated</span><span class="p">(</span><span class="n">base</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="p">{}),</span> <span class="n">v</span><span class="p">)</span>
+				<span class="n">base</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">r</span>
+			<span class="k">else</span><span class="p">:</span>
+				<span class="n">base</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">new</span><span class="p">[</span><span class="n">k</span><span class="p">]</span>
+		<span class="k">return</span> <span class="n">base</span>
+	
+	<span class="k">def</span> <span class="nf">_name_or_id</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cls</span><span class="p">,</span> <span class="n">name_or_id</span><span class="p">,</span> <span class="o">**</span><span class="n">extra</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Find model by name or id</span>
+
+<span class="sd">		:name_or_id: The name or id of the model</span>
+<span class="sd">		:extra: Any additional search/filter arguments</span>
+<span class="sd">		:returns: The first model if found, else None</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">res</span> <span class="o">=</span> <span class="n">cls</span><span class="o">.</span><span class="n">find_one</span><span class="p">(</span><span class="n">api_base</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_api_base</span><span class="p">,</span> <span class="nb">id</span><span class="o">=</span><span class="n">name_or_id</span><span class="p">,</span> <span class="o">**</span><span class="n">extra</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">res</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="n">res</span> <span class="o">=</span> <span class="n">cls</span><span class="o">.</span><span class="n">find_one</span><span class="p">(</span><span class="n">api_base</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_api_base</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name_or_id</span><span class="p">,</span> <span class="o">**</span><span class="n">extra</span><span class="p">)</span>
+			<span class="k">if</span> <span class="n">res</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+				<span class="k">return</span> <span class="bp">None</span>
+		<span class="k">return</span> <span class="n">res</span>
+
+	<span class="k">def</span> <span class="nf">_upload_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Upload the file found at ``path`` to talus, returning an id</span>
+
+<span class="sd">		:path: The (local) path to the file</span>
+<span class="sd">		:returns: An id for the remote file</span>
+
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+			<span class="k">raise</span> <span class="n">errors</span><span class="o">.</span><span class="n">TalusApiError</span><span class="p">(</span><span class="s">&quot;Cannot upload image, path {!r} does not exist&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">path</span><span class="p">))</span>
+
+		<span class="n">total_size</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">getsize</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">last_update</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+		<span class="k">def</span> <span class="nf">print_progress</span><span class="p">(</span><span class="n">monitor</span><span class="p">):</span>
+			<span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\b</span><span class="s">&quot;</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">last_update</span><span class="p">))</span>
+			<span class="n">percent</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">monitor</span><span class="o">.</span><span class="n">bytes_read</span><span class="p">)</span> <span class="o">/</span> <span class="n">monitor</span><span class="o">.</span><span class="n">len</span>
+
+			<span class="n">update</span> <span class="o">=</span> <span class="s">&quot;{:0.2f}%&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">percent</span> <span class="o">*</span> <span class="mi">100</span><span class="p">)</span>
+			<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">update</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">7</span><span class="p">:</span>
+				<span class="n">u</span> <span class="o">=</span> <span class="s">&quot; &quot;</span> <span class="o">*</span> <span class="p">(</span><span class="mi">7</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">update</span><span class="p">))</span> <span class="o">+</span> <span class="n">update</span>
+
+			<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">update</span><span class="p">)</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">last_update</span><span class="p">):</span>
+				<span class="n">update</span> <span class="o">+=</span> <span class="s">&quot; &quot;</span> <span class="o">*</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">last_update</span><span class="p">)</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">update</span><span class="p">))</span>
+			<span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">update</span><span class="p">)</span>
+			<span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">last_update</span> <span class="o">=</span> <span class="n">update</span>
+		
+		<span class="n">data</span> <span class="o">=</span> <span class="p">{</span>
+			<span class="s">&quot;file&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">path</span><span class="p">),</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s">&quot;rb&quot;</span><span class="p">),</span> <span class="s">&quot;application/octet-stream&quot;</span><span class="p">)</span>
+		<span class="p">}</span>
+		<span class="n">e</span> <span class="o">=</span> <span class="n">MultipartEncoder</span><span class="p">(</span><span class="n">fields</span><span class="o">=</span><span class="n">data</span><span class="p">)</span>
+		<span class="n">m</span> <span class="o">=</span> <span class="n">MultipartEncoderMonitor</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">print_progress</span><span class="p">)</span>
+		<span class="n">res</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_api_base</span> <span class="o">+</span> <span class="s">&quot;/api/upload/&quot;</span><span class="p">,</span>
+			<span class="n">data</span><span class="o">=</span><span class="n">m</span><span class="p">,</span>
+			<span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s">&quot;Content-Type&quot;</span><span class="p">:</span><span class="n">e</span><span class="o">.</span><span class="n">content_type</span><span class="p">},</span>
+			<span class="n">timeout</span><span class="o">=</span><span class="p">(</span><span class="mi">60</span><span class="o">*</span><span class="mi">60</span><span class="p">)</span> <span class="c"># super long timeout for uploading massive files!</span>
+		<span class="p">)</span>
+
+		<span class="c"># clear out the last of the progress percent that was printed</span>
+		<span class="k">print</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\b</span><span class="s">&quot;</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">last_update</span><span class="p">))</span>
+
+		<span class="k">if</span> <span class="n">res</span><span class="o">.</span><span class="n">status_code</span> <span class="o">//</span> <span class="mi">100</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+			<span class="k">raise</span> <span class="n">errors</span><span class="o">.</span><span class="n">TalusApiError</span><span class="p">(</span><span class="s">&quot;Could not upload file!&quot;</span><span class="p">,</span> <span class="n">error</span><span class="o">=</span><span class="n">res</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+
+		<span class="k">if</span> <span class="n">res</span><span class="o">.</span><span class="n">text</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">in</span> <span class="p">[</span><span class="s">&quot;&#39;&quot;</span><span class="p">,</span> <span class="s">&#39;&quot;&#39;</span><span class="p">]:</span>
+			<span class="k">return</span> <span class="n">res</span><span class="o">.</span><span class="n">text</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+		<span class="k">return</span> <span class="n">res</span><span class="o">.</span><span class="n">text</span>
+
+	<span class="k">def</span> <span class="nf">_api</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Join the api base with path&quot;&quot;&quot;</span>
+		<span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_api_base</span> <span class="o">+</span> <span class="s">&quot;/&quot;</span> <span class="o">+</span> <span class="n">path</span>
+	
+	<span class="k">def</span> <span class="nf">_clean_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
+		<span class="k">return</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">realpath</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="n">path</span><span class="p">))</span></div>
+</pre></div>
+
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015, Optiv Labs.
+    </p>
+  </div>
+
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+  
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'0.0.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

@@ -1,0 +1,598 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>slave &mdash; Talus 0.0.1 documentation</title>
+  
+
+  
+  
+
+  
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Roboto+Slab:400,700|Inconsolata:400,700&subset=latin,cyrillic' rel='stylesheet' type='text/css'>
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="Talus 0.0.1 documentation" href="../index.html"/>
+        <link rel="up" title="Module code" href="index.html"/> 
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-nav-search">
+        
+          <a href="../index.html" class="fa fa-home"> Talus</a>
+        
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+        
+          
+          
+              <ul class="simple">
+</ul>
+
+          
+        
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../index.html">Talus</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../index.html">Docs</a> &raquo;</li>
+      
+          <li><a href="index.html">Module code</a> &raquo;</li>
+      
+    <li>slave</li>
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document">
+            
+  <h1>Source code for slave</h1><div class="highlight"><pre>
+<span class="c">#!/usr/bin/env python</span>
+<span class="c"># encoding: utf-8</span>
+
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">netifaces</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">pika</span>
+<span class="kn">import</span> <span class="nn">pymongo</span>
+<span class="kn">import</span> <span class="nn">sh</span>
+<span class="kn">import</span> <span class="nn">signal</span>
+<span class="kn">import</span> <span class="nn">socket</span>
+<span class="kn">import</span> <span class="nn">struct</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">threading</span>
+<span class="kn">import</span> <span class="nn">twisted</span>
+<span class="kn">from</span> <span class="nn">twisted.internet</span> <span class="kn">import</span> <span class="n">protocol</span><span class="p">,</span> <span class="n">reactor</span><span class="p">,</span> <span class="n">endpoints</span>
+<span class="kn">from</span> <span class="nn">twisted.protocols</span> <span class="kn">import</span> <span class="n">basic</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">uuid</span>
+
+<span class="kn">from</span> <span class="nn">slave.amqp_man</span> <span class="kn">import</span> <span class="n">AmqpManager</span>
+<span class="kn">from</span> <span class="nn">slave.vm</span> <span class="kn">import</span> <span class="n">VMHandler</span><span class="p">,</span><span class="n">ImageManager</span>
+<span class="kn">import</span> <span class="nn">slave.models</span>
+
+<span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">)</span>
+
+<span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s">&quot;sh&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">WARN</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">_signal_handler</span><span class="p">(</span><span class="n">signum</span><span class="p">,</span> <span class="n">frame</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;Shut down the running Master worker</span>
+
+<span class="sd">	:signum: Signal number (e.g. signal.SIGINT, etc)</span>
+<span class="sd">	:frame: Python frame (I think)</span>
+<span class="sd">	:returns: None</span>
+
+<span class="sd">	&quot;&quot;&quot;</span>
+	<span class="k">print</span><span class="p">(</span><span class="s">&quot;handling signal&quot;</span><span class="p">)</span>
+	<span class="n">Slave</span><span class="o">.</span><span class="n">instance</span><span class="p">()</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+
+<span class="k">def</span> <span class="nf">_install_sig_handlers</span><span class="p">():</span>
+	<span class="sd">&quot;&quot;&quot;Install signal handlers</span>
+<span class="sd">	&quot;&quot;&quot;</span>
+	<span class="k">print</span><span class="p">(</span><span class="s">&quot;installing signal handlers&quot;</span><span class="p">)</span>
+	<span class="n">signal</span><span class="o">.</span><span class="n">signal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGINT</span><span class="p">,</span> <span class="n">_signal_handler</span><span class="p">)</span>
+	<span class="n">signal</span><span class="o">.</span><span class="n">signal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGTERM</span><span class="p">,</span> <span class="n">_signal_handler</span><span class="p">)</span>
+
+<div class="viewcode-block" id="GuestComms"><a class="viewcode-back" href="../generated/slave.html#slave.GuestComms">[docs]</a><span class="k">class</span> <span class="nc">GuestComms</span><span class="p">(</span><span class="n">basic</span><span class="o">.</span><span class="n">LineReceiver</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;Communicates with the guest hosts as they start running&quot;&quot;&quot;</span>
+<div class="viewcode-block" id="GuestComms.connectionMade"><a class="viewcode-back" href="../generated/slave.html#slave.GuestComms.connectionMade">[docs]</a>	<span class="k">def</span> <span class="nf">connectionMade</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">setRawMode</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="GuestComms.rawDataReceived"><a class="viewcode-back" href="../generated/slave.html#slave.GuestComms.rawDataReceived">[docs]</a>	<span class="k">def</span> <span class="nf">rawDataReceived</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+		<span class="k">print</span><span class="p">(</span><span class="s">&quot;RECEIVED SOME DATA!!! {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">data</span><span class="p">))</span>
+
+		<span class="k">while</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+			<span class="n">data_len</span> <span class="o">=</span> <span class="n">struct</span><span class="o">.</span><span class="n">unpack</span><span class="p">(</span><span class="s">&quot;&gt;L&quot;</span><span class="p">,</span> <span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">4</span><span class="p">])[</span><span class="mi">0</span><span class="p">]</span>
+			<span class="n">part</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="mi">4</span><span class="p">:</span><span class="mi">4</span><span class="o">+</span><span class="n">data_len</span><span class="p">]</span>
+			<span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="mi">4</span><span class="o">+</span><span class="n">data_len</span><span class="p">:]</span>
+
+			<span class="n">part_data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">part</span><span class="p">)</span>
+			<span class="n">res</span> <span class="o">=</span> <span class="n">Slave</span><span class="o">.</span><span class="n">instance</span><span class="p">()</span><span class="o">.</span><span class="n">handle_guest_comms</span><span class="p">(</span><span class="n">part_data</span><span class="p">)</span>
+
+			<span class="k">if</span> <span class="n">res</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">transport</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
+</div></div>
+<div class="viewcode-block" id="GuestCommsFactory"><a class="viewcode-back" href="../generated/slave.html#slave.GuestCommsFactory">[docs]</a><span class="k">class</span> <span class="nc">GuestCommsFactory</span><span class="p">(</span><span class="n">protocol</span><span class="o">.</span><span class="n">Factory</span><span class="p">):</span>
+<div class="viewcode-block" id="GuestCommsFactory.buildProtocol"><a class="viewcode-back" href="../generated/slave.html#slave.GuestCommsFactory.buildProtocol">[docs]</a>	<span class="k">def</span> <span class="nf">buildProtocol</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">addr</span><span class="p">):</span>
+		<span class="k">return</span> <span class="n">GuestComms</span><span class="p">()</span>
+</div></div>
+<div class="viewcode-block" id="Slave"><a class="viewcode-back" href="../generated/slave.html#slave.Slave">[docs]</a><span class="k">class</span> <span class="nc">Slave</span><span class="p">(</span><span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;The slave handler&quot;&quot;&quot;</span>
+
+	<span class="n">AMQP_JOB_QUEUE</span> <span class="o">=</span> <span class="s">&quot;jobs&quot;</span>
+	<span class="n">AMQP_JOB_STATUS_QUEUE</span> <span class="o">=</span> <span class="s">&quot;job_status&quot;</span>
+	<span class="n">AMQP_JOB_PROPS</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+		<span class="n">durable</span>		<span class="o">=</span> <span class="bp">True</span><span class="p">,</span>
+		<span class="n">auto_delete</span> <span class="o">=</span> <span class="bp">False</span><span class="p">,</span>
+		<span class="n">exclusive</span>	<span class="o">=</span> <span class="bp">False</span>
+	<span class="p">)</span>
+
+	<span class="n">AMQP_BROADCAST_XCHG</span> <span class="o">=</span> <span class="s">&quot;broadcast&quot;</span>
+	<span class="n">AMQP_SLAVE_QUEUE</span> <span class="o">=</span> <span class="s">&quot;slaves&quot;</span>
+	<span class="n">AMQP_SLAVE_STATUS_QUEUE</span> <span class="o">=</span> <span class="s">&quot;slave_status&quot;</span>
+	<span class="n">AMQP_SLAVE_PROPS</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+		<span class="n">durable</span>		<span class="o">=</span> <span class="bp">True</span><span class="p">,</span>
+		<span class="n">auto_delete</span> <span class="o">=</span> <span class="bp">False</span><span class="p">,</span>
+		<span class="n">exclusive</span>	<span class="o">=</span> <span class="bp">False</span><span class="p">,</span>
+	<span class="p">)</span>
+	<span class="n">AMQP_SLAVE_STATUS_PROPS</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+		<span class="n">durable</span>		<span class="o">=</span> <span class="bp">True</span><span class="p">,</span>
+		<span class="n">auto_delete</span> <span class="o">=</span> <span class="bp">False</span><span class="p">,</span>
+		<span class="n">exclusive</span>	<span class="o">=</span> <span class="bp">False</span><span class="p">,</span>
+	<span class="p">)</span>
+
+	<span class="n">_INSTANCE</span> <span class="o">=</span> <span class="bp">None</span>
+	<span class="nd">@classmethod</span>
+<div class="viewcode-block" id="Slave.instance"><a class="viewcode-back" href="../generated/slave.html#slave.Slave.instance">[docs]</a>	<span class="k">def</span> <span class="nf">instance</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">amqp_host</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">max_vms</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+		<span class="k">if</span> <span class="n">cls</span><span class="o">.</span><span class="n">_INSTANCE</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="n">cls</span><span class="o">.</span><span class="n">_INSTANCE</span> <span class="o">=</span> <span class="n">cls</span><span class="p">(</span><span class="n">amqp_host</span><span class="p">,</span> <span class="n">max_vms</span><span class="p">)</span>
+		<span class="k">return</span> <span class="n">cls</span><span class="o">.</span><span class="n">_INSTANCE</span>
+</div>
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">amqp_host</span><span class="p">,</span> <span class="n">max_vms</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Init the slave&quot;&quot;&quot;</span>
+
+		<span class="nb">super</span><span class="p">(</span><span class="n">Slave</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">()</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_max_vms_lock</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Semaphore</span><span class="p">(</span><span class="n">max_vms</span><span class="p">)</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_amqp_host</span> <span class="o">=</span> <span class="n">amqp_host</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s">&quot;Slave&quot;</span><span class="p">)</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_running</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Event</span><span class="p">()</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_slave_config_received</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Event</span><span class="p">()</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_amqp_man</span> <span class="o">=</span> <span class="n">AmqpManager</span><span class="o">.</span><span class="n">instance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_amqp_host</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_image_man</span> <span class="o">=</span> <span class="n">ImageManager</span><span class="o">.</span><span class="n">instance</span><span class="p">()</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_uuid</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">())</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_ip</span> <span class="o">=</span> <span class="n">netifaces</span><span class="o">.</span><span class="n">ifaddresses</span><span class="p">(</span><span class="s">&#39;eth0&#39;</span><span class="p">)[</span><span class="mi">2</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s">&#39;addr&#39;</span><span class="p">]</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_hostname</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">gethostname</span><span class="p">()</span>
+
+		<span class="c"># these will be set by the config amqp message</span>
+		<span class="c"># see the _handle_config method</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_db_host</span> <span class="o">=</span> <span class="bp">None</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_code_loc</span> <span class="o">=</span> <span class="bp">None</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_already_consuming</span> <span class="o">=</span> <span class="bp">False</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_handlers</span> <span class="o">=</span> <span class="p">[]</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_handlers_lock</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Lock</span><span class="p">()</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_total_jobs_run</span> <span class="o">=</span> <span class="mi">0</span>
+
+<div class="viewcode-block" id="Slave.run"><a class="viewcode-back" href="../generated/slave.html#slave.Slave.run">[docs]</a>	<span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_running</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;running&quot;</span><span class="p">)</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_amqp_man</span><span class="o">.</span><span class="n">declare_exchange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">AMQP_BROADCAST_XCHG</span><span class="p">,</span> <span class="s">&quot;fanout&quot;</span><span class="p">)</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_amqp_man</span><span class="o">.</span><span class="n">declare_queue</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">AMQP_JOB_QUEUE</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">AMQP_JOB_PROPS</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_amqp_man</span><span class="o">.</span><span class="n">declare_queue</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">AMQP_JOB_STATUS_QUEUE</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">AMQP_JOB_PROPS</span><span class="p">)</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_amqp_man</span><span class="o">.</span><span class="n">declare_queue</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">AMQP_SLAVE_QUEUE</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">AMQP_SLAVE_PROPS</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_amqp_man</span><span class="o">.</span><span class="n">declare_queue</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">AMQP_SLAVE_STATUS_QUEUE</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">AMQP_SLAVE_STATUS_PROPS</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_amqp_man</span><span class="o">.</span><span class="n">declare_queue</span><span class="p">(</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">AMQP_SLAVE_QUEUE</span> <span class="o">+</span> <span class="s">&quot;_&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_uuid</span><span class="p">,</span>
+			<span class="n">exclusive</span>	<span class="o">=</span> <span class="bp">True</span>
+		<span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_amqp_man</span><span class="o">.</span><span class="n">bind_queue</span><span class="p">(</span>
+			<span class="n">exchange</span>	<span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">AMQP_BROADCAST_XCHG</span><span class="p">,</span>
+			<span class="n">queue</span>		<span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">AMQP_SLAVE_QUEUE</span> <span class="o">+</span> <span class="s">&quot;_&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_uuid</span>
+		<span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_amqp_man</span><span class="o">.</span><span class="n">do_start</span><span class="p">()</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_amqp_man</span><span class="o">.</span><span class="n">wait_for_ready</span><span class="p">()</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_amqp_man</span><span class="o">.</span><span class="n">queue_msg</span><span class="p">(</span>
+			<span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="nb">dict</span><span class="p">(</span>
+				<span class="nb">type</span>		<span class="o">=</span> <span class="s">&quot;new&quot;</span><span class="p">,</span>
+				<span class="n">uuid</span>		<span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_uuid</span><span class="p">,</span>
+				<span class="n">ip</span>			<span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ip</span><span class="p">,</span>
+				<span class="n">hostname</span>	<span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_hostname</span>
+			<span class="p">)),</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">AMQP_SLAVE_STATUS_QUEUE</span>
+		<span class="p">)</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_amqp_man</span><span class="o">.</span><span class="n">consume_queue</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">AMQP_SLAVE_QUEUE</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_on_slave_all_received</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_amqp_man</span><span class="o">.</span><span class="n">consume_queue</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">AMQP_SLAVE_QUEUE</span> <span class="o">+</span> <span class="s">&quot;_&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_uuid</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_on_slave_me_received</span><span class="p">)</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;waiting for slave config to be received&quot;</span><span class="p">)</span>
+
+		<span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">_running</span><span class="o">.</span><span class="n">is_set</span><span class="p">():</span>
+			<span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.2</span><span class="p">)</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;finished&quot;</span><span class="p">)</span>
+	</div>
+<div class="viewcode-block" id="Slave.stop"><a class="viewcode-back" href="../generated/slave.html#slave.Slave.stop">[docs]</a>	<span class="k">def</span> <span class="nf">stop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Stop the slave</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;stopping!&quot;</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_amqp_man</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_running</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+
+		<span class="k">for</span> <span class="n">handler</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handlers</span><span class="p">:</span>
+			<span class="n">handler</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+	</div>
+<div class="viewcode-block" id="Slave.cancel_job"><a class="viewcode-back" href="../generated/slave.html#slave.Slave.cancel_job">[docs]</a>	<span class="k">def</span> <span class="nf">cancel_job</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">job</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Cancel the job with job id ``job``</span>
+
+<span class="sd">		:job: The job id to cancel</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="k">for</span> <span class="n">handler</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handlers</span><span class="p">:</span>
+			<span class="k">if</span> <span class="n">handler</span><span class="o">.</span><span class="n">job</span> <span class="o">==</span> <span class="n">job</span><span class="p">:</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;cancelling handler for job {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">job</span><span class="p">))</span>
+				<span class="n">handler</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+				<span class="k">return</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s">&quot;could not find handler for job {} to cancel&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">job</span><span class="p">))</span>
+	
+	<span class="c"># -----------------------</span>
+	<span class="c"># guest comms</span>
+	<span class="c"># -----------------------</span>
+</div>
+<div class="viewcode-block" id="Slave.handle_guest_comms"><a class="viewcode-back" href="../generated/slave.html#slave.Slave.handle_guest_comms">[docs]</a>	<span class="k">def</span> <span class="nf">handle_guest_comms</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;recieved guest comms! {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">data</span><span class="p">)[:</span><span class="mi">100</span><span class="p">]))</span>
+
+		<span class="k">if</span> <span class="s">&quot;type&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s">&quot;type not found in guest comms data: {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">data</span><span class="p">))</span>
+			<span class="k">return</span> <span class="s">&quot;{}&quot;</span>
+
+		<span class="n">switch</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+			<span class="n">progress</span>	<span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handle_job_progress</span><span class="p">,</span>
+			<span class="n">result</span>		<span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handle_job_result</span><span class="p">,</span>
+			<span class="n">finished</span>	<span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handle_job_finished</span><span class="p">,</span>
+		<span class="p">)</span>
+
+		<span class="k">if</span> <span class="n">data</span><span class="p">[</span><span class="s">&quot;type&quot;</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">switch</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s">&quot;unhandled guest comms type: {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s">&quot;type&quot;</span><span class="p">]))</span>
+			<span class="k">return</span>
+
+		<span class="k">return</span> <span class="n">switch</span><span class="p">[</span><span class="n">data</span><span class="p">[</span><span class="s">&quot;type&quot;</span><span class="p">]](</span><span class="n">data</span><span class="p">)</span>
+	</div>
+	<span class="k">def</span> <span class="nf">_handle_job_finished</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;handling finished job part: {}:{}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s">&quot;job&quot;</span><span class="p">],</span> <span class="n">data</span><span class="p">[</span><span class="s">&quot;idx&quot;</span><span class="p">]))</span>
+
+		<span class="n">found_hander</span> <span class="o">=</span> <span class="bp">None</span>
+		<span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handlers_lock</span><span class="p">:</span>
+			<span class="k">for</span> <span class="n">handler</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handlers</span><span class="p">:</span>
+				<span class="k">if</span> <span class="n">handler</span><span class="o">.</span><span class="n">job</span> <span class="o">==</span> <span class="n">data</span><span class="p">[</span><span class="s">&quot;job&quot;</span><span class="p">]</span> <span class="ow">and</span> <span class="n">handler</span><span class="o">.</span><span class="n">idx</span> <span class="o">==</span> <span class="n">data</span><span class="p">[</span><span class="s">&quot;idx&quot;</span><span class="p">]:</span>
+					<span class="n">found_handler</span> <span class="o">=</span> <span class="n">handler</span>
+
+		<span class="k">if</span> <span class="n">found_handler</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="n">found_handler</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s">&quot;cannot find the handler for data: {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">data</span><span class="p">))</span>
+	
+	<span class="k">def</span> <span class="nf">_handle_job_progress</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;handling job progress: {}:{}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s">&quot;job&quot;</span><span class="p">],</span> <span class="n">data</span><span class="p">[</span><span class="s">&quot;idx&quot;</span><span class="p">]))</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_amqp_man</span><span class="o">.</span><span class="n">queue_msg</span><span class="p">(</span>
+			<span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="nb">dict</span><span class="p">(</span>
+				<span class="nb">type</span>		<span class="o">=</span> <span class="s">&quot;progress&quot;</span><span class="p">,</span>
+				<span class="n">job</span>			<span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s">&quot;job&quot;</span><span class="p">],</span>
+				<span class="n">idx</span>			<span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s">&quot;idx&quot;</span><span class="p">],</span>
+				<span class="n">amt</span>			<span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s">&quot;data&quot;</span><span class="p">],</span> <span class="c"># it&#39;s expected to just be a number</span>
+			<span class="p">)),</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">AMQP_JOB_STATUS_QUEUE</span>
+		<span class="p">)</span>
+	
+	<span class="k">def</span> <span class="nf">_handle_job_result</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;handling job result: {}:{}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s">&quot;job&quot;</span><span class="p">],</span> <span class="n">data</span><span class="p">[</span><span class="s">&quot;idx&quot;</span><span class="p">]))</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_amqp_man</span><span class="o">.</span><span class="n">queue_msg</span><span class="p">(</span>
+			<span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="nb">dict</span><span class="p">(</span>
+				<span class="nb">type</span>		<span class="o">=</span> <span class="s">&quot;result&quot;</span><span class="p">,</span>
+				<span class="n">tool</span>		<span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s">&quot;tool&quot;</span><span class="p">],</span>
+				<span class="n">idx</span>			<span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s">&quot;idx&quot;</span><span class="p">],</span>
+				<span class="n">job</span>			<span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s">&quot;job&quot;</span><span class="p">],</span>
+				<span class="n">data</span>		<span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s">&quot;data&quot;</span><span class="p">],</span> <span class="c"># it&#39;s expected to just be a number</span>
+			<span class="p">)),</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">AMQP_JOB_STATUS_QUEUE</span>
+		<span class="p">)</span>
+
+	<span class="c"># -----------------------</span>
+	<span class="c"># amqp stuff</span>
+	<span class="c"># -----------------------</span>
+
+	<span class="k">def</span> <span class="nf">_on_job_received</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">channel</span><span class="p">,</span> <span class="n">method</span><span class="p">,</span> <span class="n">properties</span><span class="p">,</span> <span class="n">body</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;received job from queue: {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">body</span><span class="p">))</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_amqp_man</span><span class="o">.</span><span class="n">ack_method</span><span class="p">(</span><span class="n">method</span><span class="p">)</span>
+
+		<span class="n">data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">body</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_max_vms_lock</span><span class="o">.</span><span class="n">acquire</span><span class="p">()</span>
+
+		<span class="n">jobs</span> <span class="o">=</span> <span class="n">slave</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">Job</span><span class="o">.</span><span class="n">objects</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">data</span><span class="p">[</span><span class="s">&quot;job&quot;</span><span class="p">])</span>
+		<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">jobs</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s">&quot;received a job that doesn&#39;t exist???&quot;</span><span class="p">)</span>
+			<span class="k">return</span>
+
+		<span class="n">job_obj</span> <span class="o">=</span> <span class="n">jobs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+		<span class="k">if</span> <span class="n">job_obj</span><span class="o">.</span><span class="n">status</span><span class="p">[</span><span class="s">&quot;name&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="s">&quot;running&quot;</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s">&quot;job&#39;s state is not &#39;running&#39;, so not running it (was {})&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">job_obj</span><span class="o">.</span><span class="n">status</span><span class="p">[</span><span class="s">&quot;name&quot;</span><span class="p">]))</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_max_vms_lock</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
+			<span class="k">return</span>
+
+		<span class="k">try</span><span class="p">:</span>
+			<span class="n">handler</span> <span class="o">=</span> <span class="n">VMHandler</span><span class="p">(</span>
+				<span class="n">job</span>				<span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s">&quot;job&quot;</span><span class="p">],</span>
+				<span class="n">idx</span>				<span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s">&quot;idx&quot;</span><span class="p">],</span>
+				<span class="n">image</span>			<span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s">&quot;image&quot;</span><span class="p">],</span>
+				<span class="n">image_username</span>	<span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s">&quot;image_username&quot;</span><span class="p">],</span>
+				<span class="n">image_password</span>	<span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s">&quot;image_password&quot;</span><span class="p">],</span>
+				<span class="n">tool</span>			<span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s">&quot;tool&quot;</span><span class="p">],</span>
+				<span class="n">params</span>			<span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s">&quot;params&quot;</span><span class="p">],</span>
+				<span class="n">network</span>			<span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s">&quot;network&quot;</span><span class="p">],</span>
+				<span class="n">code_loc</span>		<span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_code_loc</span><span class="p">,</span>
+				<span class="n">code_username</span>	<span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_code_username</span><span class="p">,</span>
+				<span class="n">code_password</span>	<span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_code_password</span><span class="p">,</span>
+				<span class="n">on_finished</span>		<span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_on_vm_handler_finished</span><span class="p">,</span>
+				<span class="n">on_vnc_available</span>	<span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_on_vm_handler_vnc_avail</span>
+			<span class="p">)</span>
+		<span class="k">except</span> <span class="ne">KeyError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s">&quot;received malformed job: {!r}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">data</span><span class="p">))</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_max_vms_lock</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
+			<span class="k">return</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handlers_lock</span><span class="p">:</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">_handlers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">handler</span><span class="p">)</span>
+			<span class="n">handler</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_update_status</span><span class="p">()</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;done starting VMHandler&quot;</span><span class="p">)</span>
+	
+	<span class="k">def</span> <span class="nf">_on_vm_handler_finished</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">handler</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Handle a finished VM handler</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;The VM handler {} for job {}:{} has finished&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">handler</span><span class="p">,</span> <span class="n">handler</span><span class="o">.</span><span class="n">job</span><span class="p">,</span> <span class="n">handler</span><span class="o">.</span><span class="n">idx</span><span class="p">))</span>
+		<span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handlers_lock</span><span class="p">:</span>
+			<span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handlers</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_handlers</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">handler</span><span class="p">)]</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_max_vms_lock</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_total_jobs_run</span> <span class="o">+=</span> <span class="mi">1</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_update_status</span><span class="p">()</span>
+	
+	<span class="k">def</span> <span class="nf">_on_vm_handler_vnc_avail</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">handler</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Send a new status update that will include the changes in the vnc</span>
+<span class="sd">		info in the handler.</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_update_status</span><span class="p">()</span>
+	
+	<span class="k">def</span> <span class="nf">_on_slave_all_received</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">channel</span><span class="p">,</span> <span class="n">method</span><span class="p">,</span> <span class="n">properties</span><span class="p">,</span> <span class="n">body</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;received slave all msg from queue: {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">body</span><span class="p">))</span>
+
+		<span class="n">data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">body</span><span class="p">)</span>
+
+		<span class="k">if</span> <span class="s">&quot;type&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s">&quot;all slaves type specifier was not in data: {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">data</span><span class="p">))</span>
+			<span class="k">return</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_amqp_man</span><span class="o">.</span><span class="n">ack_method</span><span class="p">(</span><span class="n">method</span><span class="p">)</span>
+
+	<span class="k">def</span> <span class="nf">_on_slave_me_received</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">channel</span><span class="p">,</span> <span class="n">method</span><span class="p">,</span> <span class="n">properties</span><span class="p">,</span> <span class="n">body</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;received slave me msg from queue: {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">body</span><span class="p">))</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_amqp_man</span><span class="o">.</span><span class="n">ack_method</span><span class="p">(</span><span class="n">method</span><span class="p">)</span>
+
+		<span class="n">data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">body</span><span class="p">)</span>
+
+		<span class="n">switch</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+			<span class="n">config</span>	<span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handle_config</span><span class="p">,</span>
+			<span class="n">cancel</span>	<span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handle_job_cancel</span><span class="p">,</span>
+		<span class="p">)</span>
+
+		<span class="k">if</span> <span class="s">&quot;type&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span> <span class="ow">or</span> <span class="n">data</span><span class="p">[</span><span class="s">&quot;type&quot;</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">switch</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;malformed data received on me slave queue: {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">body</span><span class="p">))</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="n">switch</span><span class="p">[</span><span class="n">data</span><span class="p">[</span><span class="s">&quot;type&quot;</span><span class="p">]](</span><span class="n">data</span><span class="p">)</span>
+	
+	<span class="k">def</span> <span class="nf">_handle_job_cancel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;handling a job cancellation: {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">data</span><span class="p">))</span>
+
+		<span class="k">if</span> <span class="s">&quot;job&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s">&quot;the job was not specified&quot;</span><span class="p">)</span>
+			<span class="k">return</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">cancel_job</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s">&quot;job&quot;</span><span class="p">])</span>
+	
+	<span class="k">def</span> <span class="nf">_handle_config</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;handling config: {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">data</span><span class="p">))</span>
+
+		<span class="k">if</span> <span class="s">&quot;db&quot;</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;connecting to mongodb at {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s">&quot;db&quot;</span><span class="p">]))</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_db_host</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s">&quot;db&quot;</span><span class="p">]</span>
+			<span class="n">slave</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">do_connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_db_host</span><span class="p">)</span>
+
+		<span class="k">if</span> <span class="s">&quot;code&quot;</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;setting code loc to {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s">&quot;code&quot;</span><span class="p">][</span><span class="s">&quot;loc&quot;</span><span class="p">]))</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_code_loc</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s">&quot;code&quot;</span><span class="p">][</span><span class="s">&quot;loc&quot;</span><span class="p">]</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_code_username</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s">&quot;code&quot;</span><span class="p">][</span><span class="s">&quot;username&quot;</span><span class="p">]</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_code_password</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s">&quot;code&quot;</span><span class="p">][</span><span class="s">&quot;password&quot;</span><span class="p">]</span>
+
+		<span class="k">if</span> <span class="s">&quot;image_url&quot;</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;setting image url to {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s">&quot;image_url&quot;</span><span class="p">]))</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_image_url</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s">&quot;image_url&quot;</span><span class="p">]</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_image_man</span><span class="o">.</span><span class="n">instance</span><span class="p">()</span><span class="o">.</span><span class="n">image_url</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_image_url</span>
+
+		<span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_already_consuming</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_amqp_man</span><span class="o">.</span><span class="n">consume_queue</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">AMQP_JOB_QUEUE</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_on_job_received</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_already_consuming</span> <span class="o">=</span> <span class="bp">True</span>
+	
+	<span class="c"># -----------------------</span>
+
+	<span class="k">def</span> <span class="nf">_update_status</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="n">vm_infos</span> <span class="o">=</span> <span class="p">[]</span>
+		<span class="k">for</span> <span class="n">handler</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handlers</span><span class="p">:</span>
+			<span class="n">vm_infos</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">dict</span><span class="p">(</span>
+				<span class="n">job</span>			<span class="o">=</span> <span class="n">handler</span><span class="o">.</span><span class="n">job</span><span class="p">,</span>
+				<span class="n">idx</span>			<span class="o">=</span> <span class="n">handler</span><span class="o">.</span><span class="n">idx</span><span class="p">,</span>
+				<span class="n">vnc_port</span>	<span class="o">=</span> <span class="n">handler</span><span class="o">.</span><span class="n">vnc_port</span><span class="p">,</span>
+				<span class="n">tool</span>		<span class="o">=</span> <span class="n">handler</span><span class="o">.</span><span class="n">tool</span><span class="p">,</span>
+				<span class="n">start_time</span>	<span class="o">=</span> <span class="n">handler</span><span class="o">.</span><span class="n">start_time</span>
+			<span class="p">))</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_amqp_man</span><span class="o">.</span><span class="n">queue_msg</span><span class="p">(</span>
+			<span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="nb">dict</span><span class="p">(</span>
+				<span class="nb">type</span>			<span class="o">=</span> <span class="s">&quot;status&quot;</span><span class="p">,</span>
+				<span class="n">uuid</span>			<span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_uuid</span><span class="p">,</span>
+				<span class="n">running_vms</span>		<span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_handlers</span><span class="p">),</span>
+				<span class="n">total_jobs_run</span>	<span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_total_jobs_run</span><span class="p">,</span>
+				<span class="n">vms</span>				<span class="o">=</span> <span class="n">vm_infos</span>
+			<span class="p">)),</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">AMQP_SLAVE_STATUS_QUEUE</span>
+		<span class="p">)</span>
+</div>
+<div class="viewcode-block" id="main"><a class="viewcode-back" href="../generated/slave.html#slave.main">[docs]</a><span class="k">def</span> <span class="nf">main</span><span class="p">(</span><span class="n">amqp_host</span><span class="p">,</span> <span class="n">max_vms</span><span class="p">):</span>
+	<span class="c">#_install_sig_handlers()</span>
+
+	<span class="n">virt_ip</span> <span class="o">=</span> <span class="n">netifaces</span><span class="o">.</span><span class="n">ifaddresses</span><span class="p">(</span><span class="s">&#39;virbr0&#39;</span><span class="p">)[</span><span class="mi">2</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s">&#39;addr&#39;</span><span class="p">]</span>
+	<span class="n">endpoints</span><span class="o">.</span><span class="n">serverFromString</span><span class="p">(</span><span class="n">reactor</span><span class="p">,</span> <span class="s">&quot;tcp:55555:interface={}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">virt_ip</span><span class="p">))</span><span class="o">.</span><span class="n">listen</span><span class="p">(</span><span class="n">GuestCommsFactory</span><span class="p">())</span>
+
+	<span class="n">slave</span> <span class="o">=</span> <span class="n">Slave</span><span class="o">.</span><span class="n">instance</span><span class="p">(</span><span class="n">amqp_host</span><span class="p">,</span> <span class="n">max_vms</span><span class="p">)</span>
+	<span class="n">reactor</span><span class="o">.</span><span class="n">callWhenRunning</span><span class="p">(</span><span class="n">slave</span><span class="o">.</span><span class="n">start</span><span class="p">)</span>
+	<span class="n">reactor</span><span class="o">.</span><span class="n">addSystemEventTrigger</span><span class="p">(</span><span class="s">&quot;during&quot;</span><span class="p">,</span> <span class="s">&quot;shutdown&quot;</span><span class="p">,</span> <span class="n">Slave</span><span class="o">.</span><span class="n">instance</span><span class="p">()</span><span class="o">.</span><span class="n">stop</span><span class="p">)</span>
+	<span class="n">reactor</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+</div>
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&quot;__main__&quot;</span><span class="p">:</span>
+	<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+		<span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;USAGE: {} &lt;AMQP_HOST&gt; &lt;MAX_VMS&gt;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">)</span>
+		<span class="nb">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+	<span class="n">main</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+</pre></div>
+
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015, Optiv Labs.
+    </p>
+  </div>
+
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+  
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../',
+            VERSION:'0.0.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../_static/jquery.js"></script>
+      <script type="text/javascript" src="../_static/underscore.js"></script>
+      <script type="text/javascript" src="../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

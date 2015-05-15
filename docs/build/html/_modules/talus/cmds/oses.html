@@ -1,0 +1,232 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>talus.cmds.oses &mdash; Talus 0.0.1 documentation</title>
+  
+
+  
+  
+
+  
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Roboto+Slab:400,700|Inconsolata:400,700&subset=latin,cyrillic' rel='stylesheet' type='text/css'>
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="Talus 0.0.1 documentation" href="../../../index.html"/>
+        <link rel="up" title="talus.cmds" href="../cmds.html"/> 
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-nav-search">
+        
+          <a href="../../../index.html" class="fa fa-home"> Talus</a>
+        
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+        
+          
+          
+              <ul class="simple">
+</ul>
+
+          
+        
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../../../index.html">Talus</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../../../index.html">Docs</a> &raquo;</li>
+      
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+      
+          <li><a href="../cmds.html">talus.cmds</a> &raquo;</li>
+      
+    <li>talus.cmds.oses</li>
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document">
+            
+  <h1>Source code for talus.cmds.oses</h1><div class="highlight"><pre>
+<span class="c">#!/usr/bin/env python</span>
+<span class="c"># encoding: utf-8</span>
+
+<span class="kn">import</span> <span class="nn">argparse</span>
+<span class="kn">import</span> <span class="nn">cmd</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">shlex</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">from</span> <span class="nn">tabulate</span> <span class="kn">import</span> <span class="n">tabulate</span>
+
+<span class="kn">from</span> <span class="nn">talus.cmds</span> <span class="kn">import</span> <span class="n">TalusCmdBase</span>
+<span class="kn">import</span> <span class="nn">talus.api</span>
+<span class="kn">import</span> <span class="nn">talus.errors</span>
+<span class="kn">from</span> <span class="nn">talus.models</span> <span class="kn">import</span> <span class="o">*</span>
+
+<div class="viewcode-block" id="OsCmd"><a class="viewcode-back" href="../../../generated/talus.cmds.html#talus.cmds.oses.OsCmd">[docs]</a><span class="k">class</span> <span class="nc">OsCmd</span><span class="p">(</span><span class="n">TalusCmdBase</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;The Talus code command processor</span>
+<span class="sd">	&quot;&quot;&quot;</span>
+
+	<span class="n">command_name</span> <span class="o">=</span> <span class="s">&quot;os&quot;</span>
+	
+<div class="viewcode-block" id="OsCmd.do_list"><a class="viewcode-back" href="../../../generated/talus.cmds.html#talus.cmds.oses.OsCmd.do_list">[docs]</a>	<span class="k">def</span> <span class="nf">do_list</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">args</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;List all operating system models defined in Talus</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="k">print</span><span class="p">(</span><span class="n">tabulate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_talus_client</span><span class="o">.</span><span class="n">os_iter</span><span class="p">(),</span> <span class="n">headers</span><span class="o">=</span><span class="n">OS</span><span class="o">.</span><span class="n">headers</span><span class="p">()))</span>
+</div>
+<div class="viewcode-block" id="OsCmd.do_create"><a class="viewcode-back" href="../../../generated/talus.cmds.html#talus.cmds.oses.OsCmd.do_create">[docs]</a>	<span class="k">def</span> <span class="nf">do_create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">args</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Create a new operating system model in Talus</span>
+
+<span class="sd">		create -n NAME [--type TYPE] [-t TAG1,TAG2,..] [-v VERSION]</span>
+
+<span class="sd">		   -n,--name    The name of the new OS model (required, no default)</span>
+<span class="sd">		   -t,--type    The type of the OS mdoel (default: &quot;windows&quot;)</span>
+<span class="sd">		   -a,--arch	The architecture of the OS (default: &quot;x64&quot;)</span>
+<span class="sd">		-v,--version    The version of the new OS model (default: &quot;&quot;)</span>
+
+<span class="sd">		Examples:</span>
+
+<span class="sd">		To create a new operating system model for an x64 Windows 7 OS:</span>
+
+<span class="sd">		    os create -n &quot;Windows 7 x64&quot; -t windows -v 7 -a x64</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">()</span>
+		<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&quot;--name&quot;</span><span class="p">,</span> <span class="s">&quot;-n&quot;</span><span class="p">)</span>
+		<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&quot;--type&quot;</span><span class="p">,</span> <span class="s">&quot;-t&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s">&quot;windows&quot;</span><span class="p">)</span>
+		<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&quot;--version&quot;</span><span class="p">,</span> <span class="s">&quot;-v&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s">&quot;&quot;</span><span class="p">)</span>
+		<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&quot;--arch&quot;</span><span class="p">,</span> <span class="s">&quot;-a&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s">&quot;x64&quot;</span><span class="p">)</span>
+
+		<span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">(</span><span class="n">shlex</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">args</span><span class="p">))</span>
+
+		<span class="n">new_os</span> <span class="o">=</span> <span class="n">OS</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_talus_host</span><span class="p">)</span>
+		<span class="n">new_os</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">name</span>
+		<span class="n">new_os</span><span class="o">.</span><span class="n">type</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">type</span>
+		<span class="n">new_os</span><span class="o">.</span><span class="n">version</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">version</span>
+		<span class="n">new_os</span><span class="o">.</span><span class="n">arch</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">arch</span>
+
+		<span class="k">try</span><span class="p">:</span>
+			<span class="n">new_os</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+			<span class="k">print</span><span class="p">(</span><span class="s">&quot;created&quot;</span><span class="p">)</span>
+		<span class="k">except</span> <span class="n">talus</span><span class="o">.</span><span class="n">errors</span><span class="o">.</span><span class="n">TalusApiError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+			<span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;Error saving OS: {}</span><span class="se">\n</span><span class="s">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">message</span><span class="p">))</span>
+	</div>
+<div class="viewcode-block" id="OsCmd.do_delete"><a class="viewcode-back" href="../../../generated/talus.cmds.html#talus.cmds.oses.OsCmd.do_delete">[docs]</a>	<span class="k">def</span> <span class="nf">do_delete</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">args</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Delete an operating system model in Talus</span>
+
+<span class="sd">		os delete &lt;OS_ID_OR_NAME&gt;</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">args</span> <span class="o">=</span> <span class="n">shlex</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_talus_client</span><span class="o">.</span><span class="n">os_delete</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+		<span class="k">print</span><span class="p">(</span><span class="s">&quot;deleted&quot;</span><span class="p">)</span></div></div>
+</pre></div>
+
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015, Optiv Labs.
+    </p>
+  </div>
+
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+  
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../',
+            VERSION:'0.0.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>
