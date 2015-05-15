@@ -44,6 +44,8 @@ MOCK_MODULES = [
 	"bson",
 	"libvirt",
 	"twisted",
+	"twisted.internet",
+	"twisted.protocols",
 	"mongoengine",
 	"netifaces",
 	"requests",
