@@ -43,6 +43,7 @@ MOCK_MODULES = [
 	"arrow",
 	"bson",
 	"libvirt",
+	"twisted",
 	"mongoengine",
 	"netifaces",
 	"requests",
