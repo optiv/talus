@@ -50,19 +50,38 @@ class GuestComms(basic.LineReceiver):
 	def connectionMade(self):
 		self.setRawMode()
 
+		self._unfinished_message = None
+
 	def rawDataReceived(self, data):
 		print("RECEIVED SOME DATA!!! {}".format(data))
 
 		while len(data) > 0:
-			data_len = struct.unpack(">L", data[0:4])[0]
-			part = data[4:4+data_len]
-			data = data[4+data_len:]
+			if self._unfinished_message is not None:
+				remaining = self._unfinished_message_len - len(self._unfinished_message)
+				self._unfinished_message += data[0:remaining]
+				data = data[remaining:]
 
-			part_data = json.loads(part)
-			res = Slave.instance().handle_guest_comms(part_data)
+				if len(self._unfinished_message) == self._unfinished_message_len:
+					self._handle_message(self._unfinished_message)
+					self._unfinished_message = None
 
-			if res is not None:
-				self.transport.write(res)
+			else:
+				data_len = struct.unpack(">L", data[0:4])[0]
+				part = data[4:4+data_len]
+				data = data[4+data_len:]
+
+				if len(part) < data_len:
+					self._unfinished_message_len = data_len
+					self._unfinished_message = part
+				elif len(part) == data_len:
+					self._handle_message(part)
+	
+	def _handle_message(self, message_data):
+		part_data = json.loads(message_data)
+		res = Slave.instance().handle_guest_comms(part_data)
+
+		if res is not None:
+			self.transport.write(res)
 
 class GuestCommsFactory(protocol.Factory):
 	def buildProtocol(self, addr):
@@ -194,7 +213,6 @@ class Slave(threading.Thread):
 			if handler.job == job:
 				self._log.debug("cancelling handler for job {}".format(job))
 				handler.stop()
-				return
 		self._log.warn("could not find handler for job {} to cancel".format(job))
 	
 	# -----------------------
@@ -212,6 +230,8 @@ class Slave(threading.Thread):
 			progress	= self._handle_job_progress,
 			result		= self._handle_job_result,
 			finished	= self._handle_job_finished,
+			error		= self._handle_job_error,
+			logs		= self._handle_job_logs,
 		)
 
 		if data["type"] not in switch:
@@ -219,6 +239,34 @@ class Slave(threading.Thread):
 			return
 
 		return switch[data["type"]](data)
+	
+	def _handle_job_error(self, data):
+		self._log.debug("handling errored job part: {}:{}".format(data["job"], data["idx"]))
+
+		self._amqp_man.queue_msg(
+			json.dumps(dict(
+				type		= "error",
+				tool		= data["tool"],
+				idx			= data["idx"],
+				job			= data["job"],
+				data		= data["data"]
+			)),
+			self.AMQP_JOB_STATUS_QUEUE
+		)
+	
+	def _handle_job_logs(self, data):
+		self._log.debug("handling debug logs from job part: {}:{}".format(data["job"], data["idx"]))
+
+		self._amqp_man.queue_msg(
+			json.dumps(dict(
+				type		= "log",
+				tool		= data["tool"],
+				idx			= data["idx"],
+				job			= data["job"],
+				data		= data["data"]
+			)),
+			self.AMQP_JOB_STATUS_QUEUE
+		)
 	
 	def _handle_job_finished(self, data):
 		self._log.debug("handling finished job part: {}:{}".format(data["job"], data["idx"]))
@@ -276,6 +324,7 @@ class Slave(threading.Thread):
 		jobs = slave.models.Job.objects(id=data["job"])
 		if len(jobs) == 0:
 			self._log.warn("received a job that doesn't exist???")
+			self._max_vms_lock.release()
 			return
 
 		job_obj = jobs[0]
@@ -288,12 +337,17 @@ class Slave(threading.Thread):
 			handler = VMHandler(
 				job				= data["job"],
 				idx				= data["idx"],
+				debug			= data["debug"],
 				image			= data["image"],
 				image_username	= data["image_username"],
 				image_password	= data["image_password"],
+				os_type			= data["os_type"],
 				tool			= data["tool"],
 				params			= data["params"],
 				network			= data["network"],
+				fileset			= data["fileset"],
+				timeout			= data["vm_max"],
+				db_host			= self._db_host,
 				code_loc		= self._code_loc,
 				code_username	= self._code_username,
 				code_password	= self._code_password,

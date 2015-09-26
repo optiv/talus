@@ -12,6 +12,14 @@ do
 		fi
 
 		GIT="git --git-dir $code_cache/.git --work-tree $code_cache"
-		$GIT pull --all
+		changed_requirements=$($GIT pull --all | grep requirements.txt | awk '{print $1}')
+
+		cmd="pip2pi $code_cache/talus/pypi"
+		for req in $changed_requirements; do
+			if [ $(basename "$req") = "requirements.txt" ] && [ -f "$code_cache/$req" ] ; then
+				echo requirements changed in $req
+				pip2pi "$code_cache/talus/pypi" -r "$code_cache/$req"
+			fi
+		done
 	fi
 done

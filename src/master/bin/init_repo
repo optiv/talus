@@ -4,28 +4,51 @@ DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 REPO_DIR=/talus/talus_code.git
 REPO_CACHE=/talus/talus_code_cache
 
-# setup the git repo
-mkdir -p $REPO_DIR
-cd $REPO_DIR
-useradd talus -g talus || true
-chown talus:talus $REPO_DIR
+function create_repo {
+	mkdir -p $REPO_DIR
+	cd $REPO_DIR
+	useradd talus -g talus || true
+	chown talus:talus $REPO_DIR
 
-git init --bare --shared=group
-git config --global user.name "talus"
-git config --global user.email "talus@localhost"
-sudo chmod -R g+ws .
-sudo chgrp -R talus .
-git config core.sharedRepository true
+	git init --bare --shared=group
+	git config --global user.name "talus"
+	git config --global user.email "talus@localhost"
+	sudo chmod -R g+ws .
+	sudo chgrp -R talus .
+	git config core.sharedRepository true
+}
+
+function init_pypi {
+	pip install pip2pi
+	mkdir pypi
+	pip2pi pypi -S pymongo
+	pip2pi pypi -S docutils
+	#pip2pi pypi -S package2
+	#pip2pi pypi -S package3
+	#pip2pi pypi -S package4
+
+	git add pypi
+}
+
+function init_repo {
+	git clone $REPO_DIR /tmp/talus_repo_init
+	cd /tmp/talus_repo_init
+	cp -r $DIR/../git_repo/template/* .
+	find . -name "*.py" -exec git add {} +
+
+	init_pypi
+
+	git commit -m "initial commit"
+	git push origin master
+	cd $DIR
+	rm -rf /tmp/talus_repo_init
+}
+
+# setup the git repo
+create_repo
 
 # init the repo
-git clone $REPO_DIR /tmp/talus_repo_init
-cd /tmp/talus_repo_init
-cp -r $DIR/../git_repo/template/* .
-find . -name "*.py" -exec git add {} +
-git commit -m "initial commit"
-git push origin master
-cd $DIR
-rm -rf /tmp/talus_repo_init
+init_repo
 
 # install the pre-receive hook
 cp $DIR/../git_repo/hooks/pre-receive $REPO_DIR/hooks/pre-receive

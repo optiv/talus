@@ -2,6 +2,56 @@
 
 sudo mkdir -p /talus/data /var/log/talus/{apache2}
 
+sudo mkdir -p /talus/install
+sudo chown talus:talus /talus/install
+sudo chmod -R g+ws /talus/install
+cat << EOF > /talus/install/IMAGE_SETUP_README.txt
+Requirements:
+=============
+
+All:
+----
+* auto-login
+* prebootstrap.py set to run on login
+* numpy
+
+Windows:
+--------
+
+Make sure the following are installed:
+
+* comtypes
+* Windbg
+* potentially pre-generated fastoche comtypes python files
+* python
+
+Be sure to do the following:
+
+* turn off UAC
+
+Linux:
+------
+
+Make sure the following are installed:
+
+* pip (apt-get install python-pip)
+* python
+
+Be sure to do the following:
+
+* passwordless sudo
+
+Prebootstrap.py
+===============
+You must put the prebootstrap.py file found here onto the VM and set it
+to run on login. The prebootstrap.py script will wait for a file named
+RUN_TALUS_RUN to appear in the system's temporary directory, at which
+point it will import and run the bootstrap (and hence your jobs).
+
+gl;hf
+-d0c
+EOF
+
 mkdir -p /tmp/talus/tmp
 chown -R o+rws /tmp/talus/tmp
 
@@ -30,7 +80,7 @@ mkdir -p /tmp/vagrant_install \
 	&& rm -rf /tmp/vagrant_install
 
 vagrant plugin install vagrant-libvirt
-sudo pip install xmltodict mongoengine mock pymongo==2.8.0 sh pika docutils netifaces
+sudo pip install xmltodict mongoengine mock pymongo==2.8.0 sh pika docutils netifaces pip2pi pip2pi
 
 cat << EOF > /tmp/talus_master.conf
 description "Talus Master Daemon"
@@ -41,7 +91,7 @@ stop on shutdown
 respawn
 
 script
-	$(readlink -f $DIR)/start_raw 2>&1 >> /var/log/talus/master.log
+	$(readlink -f $DIR)/start_raw
 end script
 EOF
 

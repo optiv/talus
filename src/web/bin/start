@@ -8,6 +8,10 @@ mkdir -p /tmp/talus/tmp
 sudo chmod o+rwx /tmp/talus/tmp
 mkdir -p /var/log/talus/apache2
 
+sudo mkdir -p /talus/install
+sudo chown talus:talus /talus/install
+sudo chmod -R g+ws /talus/install
+
 if [ "$1" = "dev" ] ; then
 	shift
 	sudo docker run \
@@ -20,6 +24,7 @@ if [ "$1" = "dev" ] ; then
 		-v $DIR/../app:/web \
 		-v /var/log/talus:/logs \
 		-v /tmp/talus/tmp:/tmp \
+		-v /talus/install:/talus_install \
 		-v /talus/talus_code_cache:/code_cache \
 		--name talus_web \
 		$@ talus_web
@@ -32,6 +37,7 @@ else
 		-v /var/lib/libvirt/images:/images:r \
 		-v /var/log/talus:/logs \
 		-v /tmp/talus/tmp:/tmp \
+		-v /talus/install:/talus_install \
 		-v /talus/talus_code_cache:/code_cache \
 		--name talus_web \
 		$@ talus_web

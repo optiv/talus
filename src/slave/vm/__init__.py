@@ -22,7 +22,7 @@ import xmltodict
 LIBVIRT_BASE = "/var/lib/libvirt/images"
 
 from slave.models import Image
-from slave.vm.comms import VMComms, VM_TYPE_LINUX, VM_TYPE_WINDOWS
+from slave.vm.comms import VMComms
 
 logging.getLogger("sh").setLevel(logging.WARN)
 
@@ -135,7 +135,7 @@ class ImageManager(object):
 		return True
 
 class VMHandler(threading.Thread):
-	def __init__(self, job, idx, image, image_username, image_password, tool, params, code_loc, code_username, code_password, timeout=600, network="whitelist", on_finished=None, on_vnc_available=None, startup_timeout=60):
+	def __init__(self, job, idx, image, image_username, image_password, os_type, tool, params, code_loc, code_username, code_password, fileset, db_host, timeout=1800, network="whitelist", on_finished=None, on_vnc_available=None, startup_timeout=60, debug=False):
 		"""Start up the VM image ``image`` in libvirt, with a timeout of ``timeout``,
 		and params ``params, using network ``network``.
 
@@ -147,9 +147,11 @@ class VMHandler(threading.Thread):
 
 		self.job = job
 		self.idx = idx
+		self.debug = debug
 		self.image = image
 		self.image_username = image_username
 		self.image_password = image_password
+		self.os_type = os_type
 		self.tool = tool
 		self.params = params
 		self.code_loc = code_loc
@@ -157,6 +159,8 @@ class VMHandler(threading.Thread):
 		self.code_password = code_password
 		self.timeout = timeout
 		self.startup_timeout = startup_timeout
+		self.fileset = fileset
+		self.db_host = db_host
 
 		# network can be 'all' or 'whitelist'
 		# whitelist values can also be followed by a semicolon
@@ -199,6 +203,8 @@ class VMHandler(threading.Thread):
 			self._running.clear()
 			return
 
+		self._start_vnc_port_thread()
+
 		start_time = time.time()
 		total_time = 0
 		# wait for the VM to startup before waiting for it to be shutdown
@@ -221,11 +227,6 @@ class VMHandler(threading.Thread):
 		start_time = time.time()
 		total_time = 0
 		while self._running.is_set() and self._vm_is_running() and total_time < self.timeout:
-			vnc_port = self._vm_vnc_port()
-			if vnc_port != -1 and self.vnc_port == -1:
-				self.vnc_port = vnc_port
-				if self.on_vnc_available is not None:
-					self.on_vnc_available(self)
 			time.sleep(0.1)
 			total_time = time.time() - start_time
 
@@ -238,6 +239,9 @@ class VMHandler(threading.Thread):
 	
 	def stop(self):
 		self._log.info("stopping")
+
+		self._vm_kill()
+
 		self._running.clear()
 	
 	def handle_comms(self, data):
@@ -310,7 +314,7 @@ class VMHandler(threading.Thread):
 		self._log.info("vm has an ip ({})! connecting comms".format(ip_addr))
 
 		# TODO probe ports 22/5569 instead of this?
-		self._comms = VMComms.get_comms(VM_TYPE_WINDOWS)
+		self._comms = VMComms.get_comms(self.os_type)
 		self._comms.connect(ip_addr, self.image_username, self.image_password)
 	
 	def _inject_and_run_bootstrap(self):
@@ -338,8 +342,13 @@ class VMHandler(threading.Thread):
 		if not self._running.is_set() or not self._vm_is_running():
 			return
 
-		self._log.info("running bootstrap")
-		self._comms.run_script("python \"" + tmp_path + "\"", background=True)
+		self._log.info("signaling that the bootstrap should be run")
+		tmp_path = self._comms.sep.join([self._comms.tmp_loc(), "RUN_TALUS_RUN"])
+		self._comms.put_file(tmp_path, "RUN YOU FOOLS!")
+
+		#self._comms.run_script("python \"" + tmp_path + "\"", background=True)
+		#self._comms.run_script('start-process "python" "{}" -WindowStyle Normal'.format(tmp_path))
+		#self._comms.run_script("start cmd /k python \"" + tmp_path + "\"", background=True)
 
 		if not self._running.is_set() or not self._vm_is_running():
 			return
@@ -351,7 +360,10 @@ class VMHandler(threading.Thread):
 			id		= self.job,
 			idx		= self.idx,
 			tool	= self.tool,
+			debug	= self.debug,
 			params	= self.params,
+			fileset	= self.fileset,
+			db_host	= self.db_host,
 			code	= dict(
 				loc			= self.code_loc,
 				username	= self.code_username,
@@ -373,6 +385,9 @@ class VMHandler(threading.Thread):
 		:returns: libvirt.Domain if exists, None if it does not exist
 
 		"""
+		if self._domain is None:
+			return None
+
 		conn = self._libvirt()
 		try:
 			domain = conn.lookupByName(self._domain)
@@ -417,11 +432,32 @@ class VMHandler(threading.Thread):
 
 		if domain is None:
 			return False
-		state,reason = domain.state()
-		if state == libvirt.VIR_DOMAIN_RUNNING:
-			return True
-		else:
+
+		try:
+			state,reason = domain.state()
+			if state == libvirt.VIR_DOMAIN_RUNNING:
+				return True
+			else:
+				return False
+		except:
 			return False
+	
+	def _start_vnc_port_thread(self):
+		self._vnc_port_thread = threading.Thread(target=self._watch_vnc_port)
+		self._vnc_port_thread.start()
+	
+	def _watch_vnc_port(self):
+		reported_vnc_available = False
+		while self._running.is_set():
+			try:
+				vnc_port = self._vm_vnc_port()
+				if vnc_port != -1 and self.vnc_port == -1:
+					self.vnc_port = vnc_port
+					if self.on_vnc_available is not None:
+						self.on_vnc_available(self)
+					break
+			except:
+				pass
 
 	def _vm_vnc_port(self):
 		"""Return the vnc port of the vagrant VM
@@ -433,7 +469,11 @@ class VMHandler(threading.Thread):
 		if domain is None:
 			return None
 
-		info = xmltodict.parse(domain.XMLDesc())
+		try:
+			info = xmltodict.parse(domain.XMLDesc())
+		except:
+			return None
+
 		port = int(info["domain"]["devices"]["graphics"]["@port"])
 
 		return port
@@ -510,11 +550,11 @@ class VMHandler(threading.Thread):
 					{filter_params}
 				  </filterref>
 				</interface>
-				<input type='mouse' bus='ps2'/>
-				<graphics type='vnc' port='-1'/>
+				<input type='tablet' bus='usb'/>
+				<graphics type='vnc' port='-1' keymap='en-us'/>
 				<console type='pty'/>
 				<video>
-				  <model type='cirrus'/>
+				  <model type='vga'/>
 				</video>
 			  </devices>
 			</domain>

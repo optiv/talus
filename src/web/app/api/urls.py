@@ -13,6 +13,8 @@ urlpatterns = [
 	# for temporary files
 	url(r"^upload/$", views.TmpFileUpload.as_view()),
 
+	url(r"^corpus/.*$", views.CorpusFiles.as_view()),
+
 	url(r'^result/$', views.ResultList.as_view()),
 	url(r'^result/(?P<id>' + OBJ_ID + ")/$", views.ResultDetails.as_view()),
 
@@ -33,6 +35,9 @@ urlpatterns = [
 
 	url(r'^image/$', views.ImageList.as_view()),
 	url(r'^image/(?P<id>' + OBJ_ID + ")/$", views.ImageDetails.as_view()),
+
+	url(r'^fileset/$', views.FileSetList.as_view()),
+	url(r'^fileset/(?P<id>' + OBJ_ID + ")/$", views.FileSetDetails.as_view()),
 
 	url(r'^api-auth/', include('rest_framework.urls', namespace='rest_framework'))
 ]

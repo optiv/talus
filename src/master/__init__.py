@@ -297,7 +297,7 @@ class Master(object):
 
 		# these must be unique
 		Slave.objects(
-			ip=data["ip"],
+			#ip=data["ip"],
 			hostname=data["hostname"]
 		).delete()
 

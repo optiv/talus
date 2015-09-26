@@ -3,49 +3,39 @@
 
 import os
 import sys
-import time
 
-from talus.tools import Tool
+from talus.components import Component
 
-class Template(Tool):
-	"""This is a description for the Template Tool
+class Template(Component):
+	"""This is a description for the Template component, which has
+	one method
 	"""
 
-	def run(self, arg1, arg2, comp1, iters):
-		"""Run the Template tool with a few args and a component
+	def init(self, prefix):
+		"""Initialize the Template component with a ``prefix``
 
-		:param str arg1: The first argument (a string)
-		:param str arg2: The second argument (a string)
-		:param int iters: The number of times to report progress
-		:param Component(Template) comp1: The third argument (an instantiated Template component)
+		:param str prefix: The prefix to be used in the ``add_objects`` function
 		"""
 		# -----------
 		# A few notes
 		# -----------
-		# * Tools have a logger at self.log. See the python logging module for
+		# * Components can accept other components as arguments (with :param Component(Name) argname:)
+		#
+		# * Components have a logger at self._log. See the python logging module for
 		#   details. (basically, call debug(), info(), warn(), error(), methods
 		#   on it to log data)
 		#
-		# * Tools have a progress(amt=1) method that progress can be reported with.
-		#   If progress() is never manually called, it will be called once after the
-		#   tool has run.
-		#
-		# * Tools have result(data) method that can be used to save a job's results
+		# * Components do not have a progress() or result() method
 		#
 		# * Inheritance works with talus components - e.g. a parameter's type is
 		#   Component(ISomething), any component that subclasses ISomething
 		#   will be able to be used.
 		#
-		# * The tool's index into the Job is found at ``self.idx``
-		#
 		# GOOD LUCK!
 
-		self.log.debug("starting Template tool, idx: {}".format(self.idx))
-
-		added = comp1.add_objects(arg1, arg2)
-
-		for x in range(iters):
-			self.progress(1)
-			time.sleep(5)
-
-		self.result(added)
+		self.prefix = prefix
+	
+	def add_objects(self, obj1, obj2):
+		"""Add the two objects together (as strings), prepending our prefix
+		"""
+		return self.prefix + str(obj1) + str(obj2)

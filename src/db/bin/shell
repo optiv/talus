@@ -12,4 +12,6 @@ sudo docker run \
 	--link talus_db:talus_db \
 	--name talus_db_shell \
 	-it \
-	--entrypoint bash talus_db
+	--entrypoint mongo \
+	talus_db \
+		--host talus_db/talus

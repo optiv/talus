@@ -4,13 +4,15 @@
 import base64
 import logging
 import paramiko
+import pipes
+import scp
+import tempfile
 import time
 import winrm
 
 logging.basicConfig(level=logging.DEBUG)
 
-VM_TYPE_LINUX = 0
-VM_TYPE_WINDOWS = 1
+logging.getLogger("paramiko").setLevel(logging.INFO)
 
 class VMComms(object):
 	sep = "/"
@@ -19,18 +21,13 @@ class VMComms(object):
 	def get_comms(self, vm_type):
 		"""Get an appropriate VMComms implementation for the vm type
 
-		:param str vm_type: either ``VM_TYPE_LINUX`` or ``VM_TYPE_WINDOWS``
+		:param str vm_type: expecting values like "windows", or "linux"
 		:returns: An appropriate VMComms instance
 		"""
-		switch = {
-			VM_TYPE_LINUX: SSHComms,
-			VM_TYPE_WINDOWS: WinrmComms
-		}
+		if "window" in vm_type.lower():
+			return WinrmComms()
 
-		if vm_type not in switch:
-			return None
-
-		return switch[vm_type]()
+		return SSHComms()
 
 	def __init__(self):
 		self._log = logging.getLogger(self.__class__.__name__)
@@ -61,6 +58,7 @@ class WinrmComms(VMComms):
 		while True:
 			time.sleep(0.1)
 			try:
+				# NOTE this is _sess.run_cmd, NOT! NOT! self.run_cmd
 				r = self._sess.run_cmd("echo", ["blah"])
 				if "blah" in r.std_out:
 					break
@@ -72,11 +70,14 @@ class WinrmComms(VMComms):
 	def tmp_loc(self):
 		return '$([System.Environment]::ExpandEnvironmentVariables("%TEMP%"))'
 	
-	def run_cmd(self, background, *cmd):
+	def run_cmd(self, background=False, *cmd):
 		if background:
 			cmd = ["start", "cmd", "/k", '"{}"'.format(" ".join('"' + x + '"' for x in cmd))]
 
-		r = self._sess.run_cmd(cmd[0], cmd[1:])
+		try:
+			r = self._sess.run_cmd(cmd[0], cmd[1:])
+		except:
+			return None
 		return r.std_out
 	
 	def run_script(self, script, background=False):
@@ -124,4 +125,62 @@ add-content -value $data -encoding byte -path $filePath
 		return r.std_out
 
 class SSHComms(VMComms):
-	pass
+	def tmp_loc(self):
+		return "/tmp"
+	
+	def connect(self, ip, username, password):
+		while True:
+			time.sleep(0.1)
+			try:
+				self._ssh = paramiko.SSHClient()
+				self._ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+				self._ssh.connect(ip, username=username, password=password)
+
+				output = self.run_cmd(False, "echo", "blah")
+				if "blah" in output:
+					break
+			except:
+				pass
+
+		self._scp = scp.SCPClient(self._ssh.get_transport())
+
+		self._log.info("connected to VM at {}!".format(ip))
+	
+	def run_cmd(self, background=False, *cmd):
+		cmd = list(cmd)
+
+		cmd = [pipes.quote(x) for x in cmd]
+		if background:
+			cmd.append("&")
+
+		try:
+			stdin,stdout,stderr = self._ssh.exec_command(" ".join(cmd))
+			return "".join(stdout.readlines()) + "".join(stderr.readlines())
+		except:
+			return None
+	
+	def run_script(self, script, background=False):
+		tmp_script_name = "/tmp/{}".format(str(random.random()))
+
+		cmd = ["bash", tmp_script_name]
+		if background:
+			cmd.append("&")
+
+		self.put_file(tmp_script_name, script)
+
+		return self.run_cmd(background=background, *cmd)
+	
+	def put_file(self, location, contents):
+		tmp = tempfile.NamedTemporaryFile()
+		tmp.write(contents)
+
+		# the full contents won't be written to disk if we don't
+		# flush it
+		tmp.flush()
+
+		try:
+			self._scp.put(tmp.name, location)
+		except:
+			pass
+		finally:
+			tmp.close()

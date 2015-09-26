@@ -7,6 +7,7 @@ conversion, snapshots, and exporting
 """
 
 from collections import deque
+import json
 import libvirt
 import logging
 import os
@@ -91,13 +92,92 @@ class VMWorker(threading.Thread):
 		raise NotImplemented("Inheriting classes must implement the status function")
 
 # not gonna be needed on the Master
-class LibvirtWorker(VMWorker):
+class KvmWorker(VMWorker):
 	"""A worker for managing a running libvirt vms directly (not via vagrant)"""
 
-	def __init__(self, image_path, idx, log):
+	def __init__(self, image_path, idx, log, iso_path=None, on_success=None):
 		"""docstring for LibvirtWorker constructor"""
 		super(LibvirtWorker, self).__init__(idx, log)
-		self.image_path = image_path
+
+		self._image_path = image_path
+		self._vagrant_base = vagrant
+		self._iso_path = iso_path
+		self._on_success = on_success
+
+		self._libvirt_conn = None
+		self._domain = None
+	
+	def run(self):
+		self._running.set()
+
+		self._domain = self._image_path.replace(os.path.sep, "__")
+	
+		domain_xml = """
+			<domain type='kvm'>
+			  <name>{domain_name}</name>
+			  <uuid>{domain_uuid}</uuid>
+			  <memory>{mem_size}</memory>
+			  <currentMemory>{mem_size}</currentMemory>
+			  <vcpu>{num_cpus}</vcpu>
+			  <os>
+				<type arch='x86_64'>hvm</type>
+				<boot dev='hd'/>
+			  </os>
+			  <features>
+				<acpi/><apic/><pae/>
+			  </features>
+			  <clock offset="utc"/>
+			  <on_poweroff>destroy</on_poweroff>
+			  <on_reboot>restart</on_reboot>
+			  <on_crash>destroy</on_crash>
+			  <devices>
+				<emulator>/usr/bin/kvm-spice</emulator>
+				<disk type='file' device='disk'>
+				  <driver name='qemu' type='qcow2'/>
+				  <source file='{image_path}'/>
+				  <target dev='vda' bus='sata'/>
+				</disk>
+				<interface type='network'>
+				  <source network='default'/>
+				  <model type='virtio'/>
+				</interface>
+				<input type='tablet' bus='usb'/>
+				<graphics type='vnc' port='-1' keymap='en-us'/>
+				<console type='pty'/>
+				<video>
+				  <model type='vga'/>
+				</video>
+			  </devices>
+			</domain>
+		""".format(
+			domain_name = self._domain,
+			domain_uuid = str(uuid.uuid4()),
+			mem_size	= 1024 * 1024,
+			num_cpus	= 2,
+			image_path	= self._image_path,
+		)
+
+		import pdb; pdb.set_trace()
+
+		conn = self._libvirt()
+
+		domain = conn.createXML(domain_xml, 0)
+	
+	def _libvirt(self):
+		if self._libvirt_conn is None:
+			self._libvirt_conn = libvirt.open("qemu:///system")
+		return self._libvirt_conn
+	
+	def _libvirt_domain(self):
+		if self._domain is None:
+			return None
+
+		conn = self._libvirt()
+		try:
+			domain = conn.lookupByName(self._domain)
+			return domain
+		except libvirt.libvirtError as e:
+			return None
 
 class VagrantWorker(VMWorker):
 	"""A worker for managing a running vagrant image"""
@@ -148,7 +228,7 @@ class VagrantWorker(VMWorker):
 
 		args = ["vagrant", "up"]
 		self._log.debug("running {}".format(" ".join(args)))
-		proc = utils.run(args, async=True, output_to_stdout=True, env=self._run_env)
+		proc = utils.run(args, async=True, output_to_stdout=True, env=self._run_env, group=True)
 
 		# wait for it to initally spin up, or for the proc to exit
 		# break if the box is running or "vagrant up" has exited already
@@ -208,9 +288,19 @@ class VagrantWorker(VMWorker):
 		# the vagrant up command is still running. KILL IT. FORCIBLY. WITH PREJUDICE
 		if proc.poll() is None:
 			self._log.debug("vagrant up process is still running, forcefully terminating it")
-			proc.terminate()
-			proc.kill()
-			proc.send_signal(signal.SIGKILL)
+
+			kill_methods = [
+				# should kill all child processes too
+				[os.killpg, [proc.pid, signal.SIGKILL]],
+				[proc.terminate, []],
+				[proc.kill, []],
+				[proc.send_signal, [signal.SIGKILL]]
+			]
+			for kill_method,kill_args in kill_methods:
+				try:
+					kill_method(kill_args)
+				except:
+					pass
 
 		# TODO do we want a temporary "run this VM and let me poke around"?
 		# if not self._temporary:
@@ -351,7 +441,11 @@ class VagrantWorker(VMWorker):
 			self._log.debug("copying base image back into vagrant box...")
 			# since it's symlinked now, we shouldn't have to copy anything around
 			info = utils.qemu_img_info(vm_path)
-			shutil.copyfile(info["backing file"], os.path.join(self._vagrant_base, "boxes", self._box_name, "0", "libvirt", "box.img"))
+
+			if "backing file" in info:
+				shutil.copyfile(info["backing file"], os.path.join(self._vagrant_base, "boxes", self._box_name, "0", "libvirt", "box.img"))
+			else:
+				self._log.debug("ERROR saving image {!r}, could not determine backing file".format(vm_path))
 
 		# create a new vagrant box
 		else:
@@ -383,8 +477,19 @@ class VagrantWorker(VMWorker):
 			vagrantfile = """
 				Vagrant.configure("2") do |config|
 					config.vm.box = "some_box_name"
+
+					config.vm.provider :libvirt do |libvirt|
+					  libvirt.input :type => 'tablet', :bus => 'usb'
+
+					  # always mount the isos
+					  libvirt.storage :file, :device => :cdrom, :path => "{iso_path}"
+					  libvirt.disk_bus = 'sata'
+					  libvirt.video_type = 'vga'
+					end
 				end
-			"""
+			""".format(
+				iso_path=os.path.join(DATA_DIR, "virtio-drivers.iso")
+			)
 
 		vagrantfile = self._prepare_vagrantfile(vagrantfile, base_name, auto_shutdown=(not self._user_interaction))
 
@@ -410,6 +515,9 @@ class VagrantWorker(VMWorker):
 		:raises: Exception if a box already exists with `box_name`
 		"""
 		box_folder = os.path.join(self._vagrant_base, "boxes", box_name)
+
+		self._log.debug("creating new vagrant box at {}".format(box_folder))
+
 		# make sure the box name is unique! it *SHOULD* be a uuid or something
 		if os.path.exists(box_folder):
 			raise Exception("vagrant box {!r} already exists!".format(box_name))
@@ -432,6 +540,8 @@ class VagrantWorker(VMWorker):
 					config.vm.provider :libvirt do |libvirt|
 					  libvirt.storage :file, :device => :cdrom, :path => "{iso_path}"
 					  libvirt.disk_bus = 'sata'
+					  libvirt.input :type => 'tablet', :bus => 'usb'
+					  libvirt.video_type = 'vga'
 					end
 				end
 			""".format(
@@ -575,6 +685,13 @@ class VMManager(object):
 			self._log.debug("removing vagrant box path: {!r}".format(vagrant_box_path))
 			shutil.rmtree(vagrant_box_path)
 
+			# update the machine index
+			with open(os.path.join(self._vagrant_base, "data", "machine-index", "index")) as f:
+				data = json.loads(f.read())
+			del data["machines"][image_name]
+			with open(ow.path.join(self._vagrant_base, "data", "machine-index", "index"), "wb") as f:
+				f.write(json.dumps(data))
+
 		# now also delete it from the libvirt pool
 		conn = self._libvirt()
 		default_pool = conn.storagePoolLookupByName("default")
@@ -601,7 +718,7 @@ class VMManager(object):
 		# TODO should we allow this to be streamed?? ... nah
 		pass
 	
-	def configure_image(self, box_name, vagrantfile, user_interaction=False, on_success=None):
+	def configure_image(self, box_name, vagrantfile, user_interaction=False, on_success=None, kvm=False):
 		"""Configure the existing vagrant box with the supplied vagrantfile. If ``user_interaction`` is
 		True, a dict will be returned with vm worker info in the format: ::
 
@@ -621,13 +738,23 @@ class VMManager(object):
 		:returns: None
 
 		"""
-		return self._run_vagrant_worker(
-			box_name,
-			vagrantfile,
-			dest_name=None, # update the existing vagrant box image!
-			user_interaction=user_interaction,
-			on_success=on_success
-		)
+		if kvm:
+			return self._run_kvm_worker(
+				box_name,
+				dest_name=None, # update the existing vagrant box image!
+
+				# TODO maybe be able to provide a script to run instead of a vagrant file??
+				user_interaction=True, # no auto-configuring since it's kvm (no vagrant files)
+				on_success=on_success
+			)
+		else:
+			return self._run_vagrant_worker(
+				box_name,
+				vagrantfile,
+				dest_name=None, # update the existing vagrant box image!
+				user_interaction=user_interaction,
+				on_success=on_success
+			)
 	
 	def create_image(self, vagrantfile, base_name, dest_name, user_interaction=False, on_success=None):
 		"""Use the `vagrantfile` to create a new image using the vagrant
@@ -684,6 +811,23 @@ class VMManager(object):
 
 		self._log.debug("releasing vm_lock")
 		self._vm_lock.release()
+	
+	def _run_kvm_worker(self, base_name, dest_name=None, user_interaction=True):
+		"""TODO: Docstring for _run_kvm_worker.
+
+		:base_name: TODO
+		:dest_name: TODO
+		:user_interaction: TODO
+		:returns: TODO
+
+		"""
+		# make sure we don't just will-nilly create too many VMs
+		self._vm_lock.acquire()
+
+		worker_num = self._next_worker_number()
+		worker = KvmWorker(
+			shutil.copyfile(info["backing file"], os.path.join(self._vagrant_base, "boxes", self._box_name, "0", "libvirt", "box.img"))
+		)
 
 	def _run_vagrant_worker(self, base_name, vagrantfile, dest_name=None, user_interaction=False, import_image_path=None, iso_path=None, on_success=None, **options):
 		"""Run the vagrant worker with the supplied args. If dest_name is None, the existing image

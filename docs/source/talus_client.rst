@@ -2,4 +2,5 @@
 Talus Client
 ============
 
-Talus client documentation
+Talus comes with a command-line client that uses the REST api to interact
+with 

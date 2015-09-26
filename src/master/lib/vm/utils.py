@@ -7,7 +7,7 @@ import subprocess
 import sys
 import re
 
-def run(args, async=False, shell=True, env=None, output_to_stdout=False):
+def run(args, async=False, shell=True, env=None, output_to_stdout=False, group=False):
 	"""Run the command specified by the array `args` and return
 	the output. If ``async`` is True, the proc object will be returned
 
@@ -21,13 +21,16 @@ def run(args, async=False, shell=True, env=None, output_to_stdout=False):
 		proc_env = os.environ.copy()
 		proc_env.update(env)
 
+	opts = {}
+	if group:
+		opts["preexec_fn"] = os.setsid
 	if shell:
 		if output_to_stdout:
-			proc = subprocess.Popen(args, stderr=subprocess.STDOUT, env=proc_env)
+			proc = subprocess.Popen(args, stderr=subprocess.STDOUT, env=proc_env, **opts)
 		else:
-			proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=proc_env)
+			proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=proc_env, **opts)
 	else:
-		proc = subprocess.Popen(args, shell=False, env=proc_env)
+		proc = subprocess.Popen(args, shell=False, env=proc_env, **opts)
 
 	if async:
 		return proc

@@ -118,7 +118,8 @@ class VMWatcher(WatcherBase):
 			str(image.id),
 			vagrantfile			= vagrantfile,
 			user_interaction	= user_interaction,
-			on_success			= self._set_image_ready
+			on_success			= self._set_image_ready,
+			kvm					= image.status["kvm"]
 		)
 		self._log.debug("got vnc info from configure image: {!r}".format(vnc_info))
 
@@ -188,9 +189,18 @@ class VMWatcher(WatcherBase):
 
 		image = images[0]
 		image.status = {"name": "ready"}
-		md5,_ = md5sum("/var/lib/libvirt/images/{}_vagrant_box_image_0.img".format(
-			str(image.id)
-		)).split()
+
+		path = "/var/lib/libvirt/images/{}_vagrant_box_image_0.img".format(str(image.id))
+		if not os.path.exists(path):
+			path = os.path.join(os.path.expanduser("~"), ".vagrant.d", "boxes", str(image.id), "0", "libvirt", "box.img")
+
+		if not os.path.exists(path):
+			self._log.warn("Could not find valid path for image {} to update md5".format(str(image.id)))
+			return
+
+		md5,_ = md5sum().split()
 		image.md5 = md5
 		image.timestamps["modified"] = time.time()
 		image.save()
+
+		self._log.info("updated md5 for image {!r}".format(image_name))

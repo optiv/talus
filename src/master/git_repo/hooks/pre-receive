@@ -19,6 +19,11 @@ logging.basicConfig()
 
 CONN = pymongo.MongoClient("localhost", 27017)
 
+ERROR_MESSAGES = []
+def add_error_message(msg):
+	global ERROR_MESSAGES
+	ERROR_MESSAGES.append(msg)
+
 ERRORS = ["""
          ▌─────────────────────────▐█─────▐
          ▌────▄──────────────────▄█▓█▌────▐
@@ -121,6 +126,11 @@ class PyFuncTypeComponent(object):
 			raise TalusError("Could not determine the component name from: {!r}".format(raw))
 		self.name = match.group(1)
 
+class PyFuncTypeFileSet(object):
+	def __init__(self):
+		self.type = "fileset"
+		self.name = "FileSet"
+
 class PyFuncTypeNative(object):
 	def __init__(self, native_type):
 		self.type = "native"
@@ -144,6 +154,8 @@ class PyFuncParam(object):
 
 		if type.startswith("Component"):
 			type = PyFuncTypeComponent(type)
+		elif type == "FileSet":
+			type = PyFuncTypeFileSet()
 		else:
 			type = PyFuncTypeNative(type)
 
@@ -315,7 +327,7 @@ class ChangeHandler(object):
 		try:
 			cls = self.get_class(mod_name, filename, source)
 		except SyntaxError as e:
-			self._log.error("Could not parse source file!\n{}".format(
+			add_error_message("Could not parse source file!\n{}".format(
 				traceback.format_exc(0)
 			))
 			return False
@@ -331,7 +343,7 @@ class ChangeHandler(object):
 		try:
 			cls = self.get_class(mod_name, filename, source)
 		except SyntaxError as e:
-			self._log.error("Could not parse source file!\n{}".format(
+			add_error_message("Could not parse source file!\n{}".format(
 				traceback.format_exc(0)
 			))
 			return False
@@ -347,7 +359,7 @@ class ChangeHandler(object):
 		try:
 			cls = self.get_class(mod_name, filename, source)
 		except SyntaxError as e:
-			self._log.error("Could not parse source file!\n{}".format(
+			add_error_message("Could not parse source file!\n{}".format(
 				traceback.format_exc(0)
 			))
 			return False
@@ -513,7 +525,8 @@ if __name__ == "__main__":
 				errored = True
 				continue
 	except TalusError as e:
-		do_error(e.message)
+		errored = True
+		add_error_message("\n" + e.message)
 
 	if errored:
-		do_error("ERROR!")
+		do_error("\n\n".join(ERROR_MESSAGES))

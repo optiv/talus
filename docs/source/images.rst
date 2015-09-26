@@ -2,8 +2,8 @@
 
 
 
-Talus Image Documentation
-=========================
+VM Images
+=========
 
 Talus uses Vagrant with the vagrant-libvirt provider to manage and configure VMs.
 Once a VM is configured and in the Talus system, libvirt will be directly used to start/stop/shutdown

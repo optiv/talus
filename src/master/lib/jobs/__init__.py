@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # encoding: utf-8
 
+import datetime
 import json
 import logging
 import os
@@ -30,6 +31,14 @@ class JobHandler(object):
 		self.job = job
 		self.drip_count = 0
 		self.queue_name = queue_name
+		self.fileset = FileSet(
+			name		= "{}_default_fileset".format(job.name),
+			timestamps	= {"created": time.time()},
+			job			= job
+		)
+		self.fileset.save()
+
+		self.ran_pre_hook = False
 	
 	def drip(self, drip_size):
 		"""Return items to be inserted into the queue. The ``drip_size`` is the total
@@ -41,20 +50,39 @@ class JobHandler(object):
 		priority = self.job.priority
 		num = int(round(drip_size * priority / 100.0))
 		for x in range(num):
-			yield self.drop()
+			res = self.drop()
+
+			# NOTE
+			# the job handler could return None if the pre_hook is queued and is waiting to be run
+			# also note - if the prehook fails/errors, the job should not continue
+			if res is not None:
+				yield res
+			else:
+				break
 
 	def drop(self):
 		self.drip_count += 1
 		return json.dumps(dict(
 			job				= str(self.job.id),
 			idx				= self.drip_count,
+			debug			= self.job.debug,
 			image			= str(self.job.image.id),
 			image_username	= self.job.image.username,
 			image_password	= self.job.image.password,
+			os_type			= self.job.image.os.type,
 			tool			= str(self.job.task.tool.name),
 			params			= self.job.params,
-			network			= self.job.network
+			fileset			= str(self.fileset.id),
+			network			= self.job.network,
+			vm_max			= self.job.vm_max
 		))
+	
+	def cleanup(self):
+		self.fileset.reload()
+
+		# don't need a bunch of empty filesets sitting around
+		if len(self.fileset.files) == 0:
+			self.fileset.delete()
 
 class JobManager(threading.Thread):
 	"""A class to manage jobs (starting/stopping/cancelling/etc)"""
@@ -179,6 +207,8 @@ class JobManager(threading.Thread):
 		job.save()
 
 		self._log.info("stopped job: {}".format(job.id))
+
+		self._cleanup_job(job)
 	
 	def cancel_job(self, job):
 		"""Cancel the job ``job``
@@ -223,7 +253,16 @@ class JobManager(threading.Thread):
 
 		self._log.info("cancelled job: {}".format(job.id))
 
+		self._cleanup_job(job)
+
 	# ---------------------------------------
+	
+	def _cleanup_job(self, job):
+		self._log.info("cleaning up job: {}".format(job.id))
+
+		handler = self._job_handlers[str(job.id)]
+		handler.cleanup()
+		del self._job_handlers[str(job.id)]
 
 	def _create_handlers_for_existing(self):
 		self._log.info("creating job handlers for existing running jobs in the database")
@@ -248,6 +287,8 @@ class JobManager(threading.Thread):
 		switch = dict(
 			progress	= self._handle_job_progress,
 			result		= self._handle_job_result,
+			error		= self._handle_job_error,
+			log			= self._handle_job_log,
 		)
 
 		if data["type"] not in switch:
@@ -255,6 +296,24 @@ class JobManager(threading.Thread):
 			return
 
 		switch[data["type"]](data)
+	
+	def _handle_job_error(self, data):
+		"""Handle job errors
+		"""
+		self._log.debug("handling job error: {}".format(data))
+
+		err_data = data["data"]
+		error = JobError(**err_data)
+		Job.objects(id=data["job"]).update_one(add_to_set__errors=error)
+	
+	def _handle_job_log(self, data):
+		"""Handle job errors
+		"""
+		self._log.debug("handling job log: {}".format(data))
+
+		err_data = data["data"]
+		error = JobError(**err_data)
+		Job.objects(id=data["job"]).update_one(add_to_set__logs=log)
 
 	def _handle_job_progress(self, data):
 		"""Handling job progress

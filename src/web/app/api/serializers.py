@@ -1,5 +1,5 @@
-from api.models import Image,OS,Code,Task,Job,Slave,Result
-from rest_framework_mongoengine.serializers import DocumentSerializer
+from api.models import Image,OS,Code,Task,Job,Slave,Result,JobError,FileSet
+from rest_framework_mongoengine.serializers import DocumentSerializer, EmbeddedDocumentSerializer
 
 class ResultSerializer(DocumentSerializer):
 	class Meta:
@@ -9,6 +9,11 @@ class ResultSerializer(DocumentSerializer):
 class TaskSerializer(DocumentSerializer):
 	class Meta:
 		model = Task
+		depth = 2
+
+class JobError(EmbeddedDocumentSerializer):
+	class Meta:
+		model = JobError
 		depth = 2
 
 class JobSerializer(DocumentSerializer):
@@ -39,4 +44,9 @@ class SlaveSerializer(DocumentSerializer):
 class ImageImportSerializer(DocumentSerializer):
 	class Meta:
 		model = Image
+		depth = 2
+
+class FileSetSerializer(DocumentSerializer):
+	class Meta:
+		model = FileSet
 		depth = 2

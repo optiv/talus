@@ -29,6 +29,7 @@ pip install \
 	pika \
 	pymongo==2.8.0 \
 	pywinrm \
+	scp \
 	sh \
 	twisted \
 	xmltodict \

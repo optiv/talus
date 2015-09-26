@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # encoding: utf-8
 
+import base64
 import json
 import os
 from sh import git as GIT
@@ -16,21 +17,33 @@ def git_info(request, ref, path):
 	path = path
 	data = {"ref": ref, "path": path}
 
-	output = git.show(ref + ":" + path)
-	lines = output.split("\n")
-
 	res = {}
 	res["filename"] = path
-	parts = lines[0].split()
 
-	# directories
-	if len(parts) > 1 and parts[0] == "tree" and len(parts) > 1 and parts[1].startswith(ref + ":" + path):
-		res["type"] = "listing"
-		res["items"] = filter(lambda x:len(x) > 0, [x.strip() for x in lines[2:]])
-	
-	# files
+	if path.startswith("talus/pypi"):
+		file_path = os.path.join(code_path, path)
+		if os.path.isdir(file_path):
+			res["type"] = "listing"
+			res["items"] = os.listdir(file_path)
+
+		elif os.path.isfile(file_path):
+			res["type"] = "file"
+			with open(file_path, "rb") as f:
+				res["contents"] = base64.b64encode(f.read())
+
 	else:
-		res["type"] = "file"
-		res["contents"] = str(output)
+		output = git.show(ref + ":" + path)
+		output_stdout = output.stdout
+
+		# it's a directory
+		if output_stdout.startswith("tree {}:{}".format(ref, path)):
+			lines = output_stdout.split("\n")
+			res["type"] = "listing"
+			res["items"] = filter(lambda x:len(x) > 0, [x.strip() for x in lines[2:]])
+
+		# files
+		else:
+			res["type"] = "file"
+			res["contents"] = base64.b64encode(output_stdout)
 
 	return HttpResponse(json.dumps(res), "application/json")

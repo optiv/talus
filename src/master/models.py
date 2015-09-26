@@ -13,20 +13,39 @@ def do_connect():
 
 	connect("talus", host=talus_host, port=talus_port)
 
-class Task(Document):
-	name		= StringField(unique_with="tool")
-	tool		= ReferenceField("Code", required=True)
-	params		= DictField()
-	version		= StringField() # intended to be used for git versioning
-	limit		= IntField(default=1)
-	timestamps	= DictField()
-
 class Result(Document):
 	job			= ReferenceField("Job", required=True)
 	type		= StringField(required=True)
 	tool		= StringField(required=True)
 	data		= DictField()
 	created		= DateTimeField(default=datetime.datetime.now)
+	tags		= ListField(StringField())
+
+class Code(Document):
+	name		= StringField(unique_with="type")
+	type		= StringField()
+	params		= ListField()
+	bases		= ListField()
+	desc		= StringField()
+	timestamps	= DictField()
+	tags		= ListField(StringField())
+
+class Task(Document):
+	name		= StringField(unique_with="tool")
+	tool		= ReferenceField("Code", required=True)
+	image		= ReferenceField("Image", required=False)
+	params		= DictField()
+	version		= StringField() # intended to be used for git versioning
+	timestamps	= DictField()
+	limit		= IntField(default=1)
+	vm_max		= IntField(default=30*60)
+	network		= StringField()
+	tags		= ListField(StringField())
+
+class JobError(EmbeddedDocument):
+	message		= StringField()
+	backtrace	= StringField()
+	logs		= ListField(StringField())
 
 class Job(Document):
 	name		= StringField()
@@ -40,34 +59,44 @@ class Job(Document):
 	progress	= IntField(default=0)
 	image		= ReferenceField("Image", required=True)
 	network		= StringField()
+	debug		= BooleanField(default=False)
+	vm_max		= IntField(default=30*60)
+	errors		= ListField(EmbeddedDocumentField(JobError))
+	logs		= ListField(EmbeddedDocumentField(JobError))
+	tags		= ListField(StringField())
 
-class Code(Document):
-	name		= StringField(unique_with="type")
-	type		= StringField()
-	params		= ListField()
-	bases		= ListField()
-	desc		= StringField()
+class FileSet(Document):
+	name		= StringField()
+	files		= ListField()
+
+	# created, modified
 	timestamps	= DictField()
+
+	# for use when it's the result set output of a job
+	job			= ReferenceField("Job", required=False)
+
+	tags		= ListField(StringField())
 
 class TmpFile(Document):
 	path		= StringField(unique=True)
 
 class OS(Document):
-	name		= StringField()
+	name		= StringField(unique=True)
 	version		= StringField()
 	type		= StringField()
 	arch		= StringField()
+	tags		= ListField(StringField())
 
 class Image(Document):
-	name		= StringField(required=True)
-	os			= ReferenceField("OS", required=True)
-	desc		= StringField(required=False)
+	name		= StringField(unique=True)
+	os			= ReferenceField('OS', required=True)
+	desc		= StringField(default="desc", required=False)
 	tags		= ListField(StringField())
 	status		= DictField()
-	base_image	= ReferenceField("Image", null=True, required=False)
+	base_image	= ReferenceField('Image', null=True, required=False)
 	username	= StringField(required=True, default="user")
 	password	= StringField(required=True, default="password")
-	md5			= StringField(required=False, null=True)
+	md5			= StringField(required=False, null=True, default=None)
 	timestamps	= DictField()
 
 class Slave(Document):
