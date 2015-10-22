@@ -99,6 +99,12 @@ class Image(Document):
 	md5			= StringField(required=False, null=True, default=None)
 	timestamps	= DictField()
 
+class Master(Document):
+	hostname		= StringField(unique=True)
+	ip				= StringField()
+	vms				= ListField(DictField())
+	queues			= DictField()
+
 class Slave(Document):
 	hostname		= StringField()
 	uuid			= StringField()

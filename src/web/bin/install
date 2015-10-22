@@ -3,7 +3,7 @@
 sudo mkdir -p /talus/data /var/log/talus/{apache2}
 
 mkdir -p /tmp/talus/tmp
-chown -R o+rws /tmp/talus/tmp
+chmod -R o+rws /tmp/talus/tmp
 
 DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 

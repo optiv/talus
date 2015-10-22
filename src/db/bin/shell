@@ -7,11 +7,9 @@ sudo docker rm talus_db_shell
 
 sudo docker run \
 	--rm \
-	-v /tmp/talus/logs:/talus/logs \
-	-v /tmp/talus/data:/talus/data \
 	--link talus_db:talus_db \
 	--name talus_db_shell \
 	-it \
 	--entrypoint mongo \
 	talus_db \
-		--host talus_db/talus
+		--host talus_db

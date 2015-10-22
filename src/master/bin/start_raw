@@ -9,4 +9,4 @@ TALUS_AMQP_PORT_5672_TCP=tcp://$(sudo docker inspect --format '{{ .NetworkSettin
 sudo \
 	TALUS_DB_PORT_27017_TCP=$TALUS_DB_PORT_27017_TCP \
 	TALUS_AMQP_PORT_5672_TCP=$TALUS_AMQP_PORT_5672_TCP \
-	python -m master
+	python -m master $1

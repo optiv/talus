@@ -20,7 +20,7 @@ if [ "$1" = "dev" ] ; then
 		--link talus_db:talus_db \
 		-p 80:80 \
 		-p 8001:8001 \
-		-v /var/lib/libvirt/images:/images:r \
+		-v /var/lib/libvirt/images:/images:ro \
 		-v $DIR/../app:/web \
 		-v /var/log/talus:/logs \
 		-v /tmp/talus/tmp:/tmp \
@@ -34,7 +34,7 @@ else
 		--link talus_db:talus_db \
 		-p 80:80 \
 		-p 8001:8001 \
-		-v /var/lib/libvirt/images:/images:r \
+		-v /var/lib/libvirt/images:/images:ro \
 		-v /var/log/talus:/logs \
 		-v /tmp/talus/tmp:/tmp \
 		-v /talus/install:/talus_install \

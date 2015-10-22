@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # encoding: utf-8
 
+from contextlib import contextmanager
 import json
 import libvirt
 import logging
@@ -12,8 +13,10 @@ import sh
 from sh import md5sum
 from sh import wget
 from sh import arp
+import shutil
 import socket
 import sys
+import tempfile
 import threading
 import time
 import uuid
@@ -60,6 +63,14 @@ class ImageManager(object):
 		self._cache = {}
 		self._log = logging.getLogger("ImageMan")
 		self.image_url = None
+
+		# will be a hash of image_name => threading.Event() that can be
+		# waited on
+		self._downloading_images = {}
+		self._downloading_images_lock = threading.Lock()
+
+		self._calc_md5_images = {}
+		self._calc_md5_images_lock = threading.Lock()
 	
 	def get_md5(self, path):
 		"""Get the md5 of the file at ``path``. A cache will be used
@@ -67,13 +78,25 @@ class ImageManager(object):
 		exist, None will be returned.
 		"""
 		path = os.path.realpath(os.path.abspath(path))
-
 		if not os.path.exists(path):
 			self._log.debug("could not get md5, path does not exist: {}".format(path))
 			return None
 
 		if path in self._cache and os.path.getmtime(path) == self._cache[path]["modtime"]:
 			self._log.debug("path was in cache ({}), md5: {}".format(path, self._cache[path]["md5"]))
+			return self._cache[path]["md5"]
+
+		md5ing_already = False
+		with self._calc_md5_images_lock:
+			md5ing_already = (path in self._calc_md5_images)
+			if not md5ing_already:
+				e = self._calc_md5_images[path] = threading.Event()
+				e.clear()
+
+		if md5ing_already:
+			self._log.debug("already calculating md5, waiting for it to finish")
+			self._calc_md5_images[path].wait()
+			self._log.debug("image md5 done")
 			return self._cache[path]["md5"]
 
 		self._log.info("path not in cache ({}), calculating".format(path))
@@ -83,16 +106,36 @@ class ImageManager(object):
 			"md5": output,
 			"modtime": os.path.getmtime(path),
 		}
+
+		self._calc_md5_images[path].set()
+		del self._calc_md5_images[path]
+
 		return output
 	
 	def download_image(self, image_id):
 		"""Download the image from the image_url"""
+		downloading_already = False
+		with self._downloading_images_lock:
+			downloading_already = (image_id in self._downloading_images)
+			if not downloading_already:
+				e = self._downloading_images[image_id] = threading.Event()
+				e.clear()
+
+		if downloading_already:
+			self._log.debug("image is already being downloaded, waiting for it to finish")
+			self._downloading_images[image_id].wait()
+			self._log.debug("image finished downloading")
+			return
+
 		image_filename = image_id_to_volume(image_id)
 		dest = os.path.join(LIBVIRT_BASE, image_filename)
 		self._log.debug("downloading image {} to {}".format(image_id, dest))
 
 		wget("-q", "-O", dest, self.image_url + "/" + image_filename)
 		self._log.debug("downloaded {}".format(image_id))
+
+		self._downloading_images[image_id].set()
+		del self._downloading_images[image_id]
 	
 	def ensure_image(self, image_id):
 		"""Ensure that the image ``image_id`` and its bases exist in LIBVIRT_BASE
@@ -135,7 +178,7 @@ class ImageManager(object):
 		return True
 
 class VMHandler(threading.Thread):
-	def __init__(self, job, idx, image, image_username, image_password, os_type, tool, params, code_loc, code_username, code_password, fileset, db_host, timeout=1800, network="whitelist", on_finished=None, on_vnc_available=None, startup_timeout=60, debug=False):
+	def __init__(self, job, idx, image, image_username, image_password, os_type, tool, params, code_loc, code_username, code_password, fileset, db_host, timeout=1800, network="whitelist", on_finished=None, on_vnc_available=None, startup_timeout=120, debug=False, cpus=1, ram=2048+512, libvirt_conn=None, mac=None, vnc_port=None):
 		"""Start up the VM image ``image`` in libvirt, with a timeout of ``timeout``,
 		and params ``params, using network ``network``.
 
@@ -161,6 +204,16 @@ class VMHandler(threading.Thread):
 		self.startup_timeout = startup_timeout
 		self.fileset = fileset
 		self.db_host = db_host
+		self.cpus = cpus
+		self.mac = mac
+		self.vnc_port = vnc_port
+		self.vm_status = ""
+
+		self.libvirt_conn = libvirt_conn
+		self.libvirt_domain_obj = None
+		self._opened_libvirt = False
+
+		self.total_progress = 0
 
 		# network can be 'all' or 'whitelist'
 		# whitelist values can also be followed by a semicolon
@@ -174,9 +227,7 @@ class VMHandler(threading.Thread):
 			if len(parts) > 1:
 				self.whitelisted_hosts = [x.strip() for x in parts[1].split(",")]
 
-		self.ram = 1024
-		self.vnc_port = -1
-		self.on_vnc_available = on_vnc_available
+		self.ram = ram
 		self.on_finished = on_finished
 		self.start_time = time.time()
 
@@ -185,32 +236,53 @@ class VMHandler(threading.Thread):
 
 		self._image_man = ImageManager.instance()
 
-		self._libvirt_conn = None
 		self._vm_image_loc = None
 		self._domain = None
+		self._ip = None
+		self._vm_killed = False
+		self._received_started_msg = False
+	
+	def on_received_started(self):
+		self.vm_status = "running tool"
+		self._received_started_msg = True
+	
+	# DEAD CODE
+	def unplug_bootstrap_img(self):
+		#self._log.debug("hotunplugging bootstrap disk")
+
+		# bootstrap image is always attached as vdb
+		# sh.virsh("detach-disk", self._domain, "sda")
+		pass
 	
 	def run(self):
+		self._running.set()
+		self.start_time = time.time()
+		self._log.debug("starting")
+
+		try:
+			self.do_run()
+		finally:
+			self._vm_cleanup()
+
+		self._log.debug("finished, calling on_finished")
+
+		if self.on_finished is not None:
+			self.on_finished(self)
+	
+	def do_run(self):
 		"""Run the VMHandler
 		"""
-		self._running.set()
-
-		self.start_time = time.time()
-
-		self._log.debug("starting")
 
 		if not self._vm_start():
 			self._log.warn("error, could not start vm, bailing")
 			self._running.clear()
 			return
 
-		self._start_vnc_port_thread()
-
-		start_time = time.time()
 		total_time = 0
 		# wait for the VM to startup before waiting for it to be shutdown
-		while self._running.is_set() and not self._vm_is_running() and total_time < self.startup_timeout:
-			time.sleep(0.2)
-			total_time = time.time() - start_time()
+#		while self._running.is_set() and not self._vm_is_running() and total_time < self.startup_timeout:
+#			time.sleep(1)
+#			total_time = time.time() - self.start_time
 
 		if self._running.is_set():
 			if total_time >= self.startup_timeout:
@@ -219,29 +291,35 @@ class VMHandler(threading.Thread):
 			
 			# means it started up
 			else:
-				self._log.info("VM started up, waiting to inject bootstrap and run job")
+				self._log.info("VM started up")
 
-		self._connect_comms()
-		self._inject_and_run_bootstrap()
-
-		start_time = time.time()
-		total_time = 0
-		while self._running.is_set() and self._vm_is_running() and total_time < self.timeout:
-			time.sleep(0.1)
-			total_time = time.time() - start_time
-
-		self._vm_cleanup()
-
-		self._log.debug("finished")
-
-		if self.on_finished is not None:
-			self.on_finished(self)
+		# see the note below
+		# see the note below
+		# see the note below
+		# see the note below
+		#
+#		if not self._connect_comms():
+#			self._log.error("Could not connect comms!!! bailing")
+#		else:
+#			self._inject_and_run_bootstrap()
+#
+		# just keeping the indentation here for testing - if we DO want to go
+		# back to injecting the bootstrap into a tmpdir on the device, remove
+		# if True, (keep indentation), and uncomment the lines above
+		if True:
+			self.run_time = time.time()
+			total_time = 0
+			#while self._running.is_set() and self._vm_is_running() and total_time < self.timeout:
+			while self._running.is_set() and total_time < self.timeout:
+				if not self._received_started_msg and total_time > self.startup_timeout:
+					self._log.warn("never received startup message in {}s, bailing".format(self.startup_timeout))
+					return
+					
+				time.sleep(5)
+				total_time = time.time() - self.run_time
 	
 	def stop(self):
 		self._log.info("stopping")
-
-		self._vm_kill()
-
 		self._running.clear()
 	
 	def handle_comms(self, data):
@@ -279,7 +357,7 @@ class VMHandler(threading.Thread):
 			code_loc_host = self.code_loc.replace("http://", "").replace("https://", "").split("/", 1)[0]
 			code_loc_ip = socket.gethostbyname(code_loc_host)
 
-			this_ip = netifaces.ifaddresses('virbr0')[2][0]['addr']
+			this_ip = netifaces.ifaddresses('virbr1')[2][0]['addr']
 			bcast = this_ip.rsplit(".",1)[0] + ".255"
 
 			ips = [
@@ -302,20 +380,74 @@ class VMHandler(threading.Thread):
 	def _connect_comms(self):
 		self._log.debug("waiting for vm to get an ip")
 
-		ip_addr = self._vm_ip_address()
+		self._ip = ip_addr = self._vm_ip_address()
 		while self._running.is_set() and self._vm_is_running() and ip_addr is None:
-			time.sleep(0.5)
-			ip_addr = self._vm_ip_address()
+			time.sleep(1)
+			self._ip = ip_addr = self._vm_ip_address()
 
 		if not self._running.is_set() or not self._vm_is_running():
 			self._log.debug("stopped waiting for ip, was told to quit (or vm shutdown)")
 			return
 
-		self._log.info("vm has an ip ({})! connecting comms".format(ip_addr))
+		self._log.info("vm has an ip ({} [{}])! connecting comms".format(ip_addr, self._mac_addr))
 
 		# TODO probe ports 22/5569 instead of this?
-		self._comms = VMComms.get_comms(self.os_type)
-		self._comms.connect(ip_addr, self.image_username, self.image_password)
+		self._comms = VMComms.get_comms(self.os_type, self._log)
+		return self._comms.connect(ip_addr, self.image_username, self.image_password, self._running)
+	
+	def _create_bootstrap_img(self):
+		self._bootstrap_dir = tempfile.mkdtemp()
+		sh.chmod("o+rwx", self._bootstrap_dir)
+
+		self._bootstrap_files = os.path.join(self._bootstrap_dir, "files")
+		os.makedirs(self._bootstrap_files)
+
+		with open(os.path.join(os.path.dirname(__file__), "bootstrap.py"), "r") as f:
+			bootstrap_contents = f.read()
+		with open(os.path.join(self._bootstrap_files, "bootstrap.py"), "wb") as f:
+			f.write(bootstrap_contents)
+
+		with open(os.path.join(self._bootstrap_files, "config.json"), "wb") as f:
+			f.write(self._make_config())
+
+		self._bootstrap_img = os.path.join(self._bootstrap_dir, "bootstrap.img")
+		
+		sh.dd("if=/dev/null", "bs=1K", "of={}".format(self._bootstrap_img), "seek=2040")
+		sh.Command("mkfs.ntfs")("-F", self._bootstrap_img)
+		#sh.Command("mkfs.vfat")(self._bootstrap_img)
+
+		mounted_dir = os.path.join(self._bootstrap_dir, "mounted")
+		os.makedirs(mounted_dir)
+
+		output = sh.mount("-t", "ntfs", "-o", "loop", self._bootstrap_img, mounted_dir)
+		#output = sh.mount("-t", "vfat", "-o", "loop", self._bootstrap_img, mounted_dir)
+		#self._log.debug("mount output: " + str(output))
+
+		shutil.copy(os.path.join(self._bootstrap_files, "bootstrap.py"), mounted_dir)
+		shutil.copy(os.path.join(self._bootstrap_files, "config.json"), mounted_dir)
+
+		try:
+			sh.umount(mounted_dir)
+		except:
+			pass
+
+		return self._bootstrap_img
+	
+	def _create_cdrom(self):
+		self._cdrom_dir = tempfile.mkdtemp()
+
+		with open(os.path.join(os.path.dirname(__file__), "bootstrap.py"), "r") as f:
+			bootstrap_contents = f.read()
+		with open(os.path.join(self._cdrom_dir, "bootstrap.py"), "wb") as f:
+			f.write(bootstrap_contents)
+
+		with open(os.path.join(self._cdrom_dir, "config.json"), "wb") as f:
+			f.write(self._make_config())
+
+		self._cdrom_path = self._cdrom_dir + ".iso"
+		sh.mkisofs("-JlL", "-joliet-long", "-allow-lowercase", "--max-iso9660-filenames", "-o", self._cdrom_path, self._cdrom_dir)
+
+		return self._cdrom_path
 	
 	def _inject_and_run_bootstrap(self):
 		"""Inject and run the bootstrap inside the VM
@@ -330,21 +462,22 @@ class VMHandler(threading.Thread):
 
 		tmp_path = self._comms.sep.join([self._comms.tmp_loc(), "bootstrap.py"])
 		self._log.debug("saving bootstrap to {}".format(tmp_path))
-		output = self._comms.put_file(tmp_path, bootstrap_contents)
+
+		self._retry_put_file(tmp_path, bootstrap_contents)
 
 		if not self._running.is_set() or not self._vm_is_running():
 			return
 
 		config_path = self._comms.sep.join([self._comms.tmp_loc(), "config.json"])
 		self._log.debug("writing config to {}".format(config_path))
-		output = self._comms.put_file(config_path, self._make_config())
+		self._retry_put_file(config_path, self._make_config())
 
 		if not self._running.is_set() or not self._vm_is_running():
 			return
 
 		self._log.info("signaling that the bootstrap should be run")
 		tmp_path = self._comms.sep.join([self._comms.tmp_loc(), "RUN_TALUS_RUN"])
-		self._comms.put_file(tmp_path, "RUN YOU FOOLS!")
+		self._retry_put_file(tmp_path, "RUN YOU FOOLS!")
 
 		#self._comms.run_script("python \"" + tmp_path + "\"", background=True)
 		#self._comms.run_script('start-process "python" "{}" -WindowStyle Normal'.format(tmp_path))
@@ -354,6 +487,14 @@ class VMHandler(threading.Thread):
 			return
 
 		self._log.debug("started bootstrap")
+	
+	def _retry_put_file(self, path, contents):
+		count = 0
+		while self._running.is_set():
+			count += 1
+			if self._comms.put_file(path, contents):
+				break
+			time.sleep(1)
 	
 	def _make_config(self):
 		res = dict(
@@ -376,60 +517,120 @@ class VMHandler(threading.Thread):
 	# ----------------------------
 
 	def _libvirt(self):
-		if self._libvirt_conn is None:
-			self._libvirt_conn = libvirt.open("qemu:///system")
-		return self._libvirt_conn
+		if self.libvirt_conn is None:
+			#self.libvirt_conn = libvirt.open("qemu:///system")
+			#self._opened_libvirt = True
+			raise("who you lookin at, foo!")
 
+		# should be thread safe
+		return self.libvirt_conn
+	
 	def _libvirt_domain(self):
 		"""Return the libvirt domain for the currently-running vagrant box
 		:returns: libvirt.Domain if exists, None if it does not exist
 
 		"""
-		if self._domain is None:
-			return None
+		if self.libvirt_domain_obj is None:
+			conn = self._libvirt()
+			try:
+				self.libvirt_domain_obj = conn.lookupByName(self._domain)
+			except libvirt.libvirtError as e:
+				return None
 
-		conn = self._libvirt()
-		try:
-			domain = conn.lookupByName(self._domain)
-			return domain
-		except libvirt.libvirtError as e:
-			return None
+		return self.libvirt_domain_obj
 	
 	def _vm_start(self):
+		self.vm_status = "ensuring"
 		if not self._image_man.ensure_image(self.image):
 			return False
 		
+		self.vm_status = "creating"
 		self._vm_create()
+
+		self.vm_status = "booting"
 		self._vm_run()
 
 		return True
 	
 	def _vm_cleanup(self):
 		self._log.info("cleaning up")
+		self.vm_status = "stopping"
 		self._vm_kill()
-		os.remove(self._vm_image_loc)
+
+		try:
+			os.remove(self._vm_image_loc)
+		except:
+			pass
+
+		try:
+			#shutil.rmtree(self._bootstrap_dir)
+			shutil.rmtree(self._cdrom_dir)
+			os.remove(self._cdrom_path)
+		except:
+			pass
 	
 	def _vm_kill(self):
-		vm_name = os.path.basename(self._vm_image_loc)
+		if self._vm_image_loc is None:
+			return
+
+		self._log.debug("killing vm")
+
+		#vm_name = os.path.basename(self._vm_image_loc)
 		# the domains created are transient, don't need to undefine them
 		# sh.virsh.undefine(vm_name)
 
+		start = time.time()
+
 		# if the VM has already been shutdown, this will fail
-		try:
-			sh.virsh.destroy(vm_name)
-		except:
-			pass
+
+		#self._libvirt_domain().destroy()
+		# USE THIS!!!! MUCH MUCH MUCH FASTER!!!! (orders of magnitude faster)
+		# I think there's some flags that you can pass to the destroy() function
+		# in the python libvirt bindings, but I couldn't figure those out. And,
+		# this works, and works well.
+		#sh.virsh.destroy(self._domain)
+
+		pid_path = "/var/run/libvirt/qemu/{}.pid".format(self._domain)
+		if os.path.exists(pid_path):
+			with open(pid_path, "r") as f:
+				pid = f.read()
+			os.system("kill -KILL {}".format(pid))
+		else:
+			self._log.debug("vm not running, nothing to kill")
+
+		self._vm_killed = True
+
+		self._log.debug("vm is killed - took {} seconds".format(round(time.time() - start, 2)))
+
+		if self._opened_libvirt:
+			self._log.debug("closing libvirt connection")
+			try:
+				self.libvirt_conn.close()
+			except:
+				pass
+
+		self._remove_ip_from_arp_cache()
+
+		self._log.debug("vm should be completely killed now")
+	
+	def _remove_ip_from_arp_cache(self):
+		return
+#
+#		if self._ip is None:
+#			return
+#
+#		self._log.debug("removing ip {} from arp cache".format(self._ip))
+#
+#		try:
+#			sh.arp("-d", self._ip)
+#		except:
+#			pass
 	
 	def _vm_is_running(self):
 		"""Return True/False if the current image is still running
 		:returns: True/False
 		"""
-		conn = self._libvirt()
-		try:
-			domain = conn.lookupByName(self._domain)
-		except libvirt.libvirtError as e:
-			return False
-
+		domain = self._libvirt_domain()
 		if domain is None:
 			return False
 
@@ -441,23 +642,6 @@ class VMHandler(threading.Thread):
 				return False
 		except:
 			return False
-	
-	def _start_vnc_port_thread(self):
-		self._vnc_port_thread = threading.Thread(target=self._watch_vnc_port)
-		self._vnc_port_thread.start()
-	
-	def _watch_vnc_port(self):
-		reported_vnc_available = False
-		while self._running.is_set():
-			try:
-				vnc_port = self._vm_vnc_port()
-				if vnc_port != -1 and self.vnc_port == -1:
-					self.vnc_port = vnc_port
-					if self.on_vnc_available is not None:
-						self.on_vnc_available(self)
-					break
-			except:
-				pass
 
 	def _vm_vnc_port(self):
 		"""Return the vnc port of the vagrant VM
@@ -487,7 +671,7 @@ class VMHandler(threading.Thread):
 			return None
 
 		info = xmltodict.parse(domain.XMLDesc())
-		mac_addr = info["domain"]["devices"]["interface"]["mac"]["@address"]
+		mac_addr = self._mac_addr = info["domain"]["devices"]["interface"]["mac"]["@address"]
 		output = arp("-a", "-n")
 		for line in output.split("\n"):
 			if mac_addr in line:
@@ -505,18 +689,15 @@ class VMHandler(threading.Thread):
 			f	= "qcow2",
 		)
 	
-	def _rand_mac_addr(self):
-		mac = [0x00,0x16,0x3e,
-			random.randint(0x00, 0x7f),
-			random.randint(0x00, 0xff),
-			random.randint(0x00, 0xff)
-		]
-		return ':'.join(map(lambda x: "%02x" % x, mac))
-	
 	def _vm_run(self):
 		"""Creates the domain and runs it"""
 		vm_name = os.path.basename(self._vm_image_loc)
-		self._log.info("running VM {}".format(vm_name))
+		self._log.info("running VM {} with mac {} (ip {}, vnc port {})".format(
+			vm_name,
+			self.mac,
+			".".join(str(int(x,16)) for x in self.mac.split(":")[-4:]),
+			self.vnc_port
+		))
 		
 		domain_xml = """
 			<domain type='kvm'>
@@ -532,47 +713,100 @@ class VMHandler(threading.Thread):
 			  <features>
 				<acpi/><apic/><pae/>
 			  </features>
+			  <cpu mode="host-model">
+				<model fallback="allow"/>
+			  </cpu>
 			  <clock offset="utc"/>
 			  <on_poweroff>destroy</on_poweroff>
 			  <on_reboot>restart</on_reboot>
 			  <on_crash>destroy</on_crash>
 			  <devices>
 				<emulator>/usr/bin/kvm-spice</emulator>
+
 				<disk type='file' device='disk'>
 				  <driver name='qemu' type='qcow2'/>
 				  <source file='{image_path}'/>
 				  <target dev='vda' bus='sata'/>
+				  <address type='drive' controller='0' bus='0' target='0' unit='0'/>
 				</disk>
+				<controller type='sata' index='0'>
+				  <alias name='sata0'/>
+				  <address type='pci' bus='0x00' slot='0x03' function='0x0'/>
+				</controller>
+
+				<!-- 2ND DISK -->
+				<!--
+				<disk type="file" device="disk">
+					<driver name="qemu" type="raw" cache="none" io="native"/>
+					<source file="{{bootstrap_img}}"/>
+					<target dev="vdb" bus="virtio"/>
+					<address type='pci' domain='0x0000' bus='0x00' slot='0x06' function='0x0'/>
+				</disk>
+				-->
+
+				<!-- USB -->
+				<!--
+				<disk type="file" device="disk">
+					<driver name="qemu" type="raw" cache="none" io="native"/>
+					<source file="{{bootstrap_img}}"/>
+					<target dev="sda" bus="usb"/>
+				</disk>
+				-->
+				
+				<!-- CDROM -->
+				<disk type='file' device='cdrom'>
+				  <driver name='qemu' type='raw' cache="none" io="native"/>
+				  <source file='{config_cdrom}'/>
+				  <target dev='hda' bus='ide'/>
+				  <readonly/>
+				  <alias name='ide0-0-0'/>
+				  <address type='drive' controller='0' bus='0' target='0' unit='0'/>
+				</disk>
+				<controller type='ide' index='0'>
+				  <alias name='ide0'/>
+				  <address type='pci' domain='0x0000' bus='0x00' slot='0x01' function='0x1'/>
+				</controller>
+				<!-- 
+				-->
+				
 				<interface type='network'>
-				  <source network='default'/>
+				  <mac address='{mac}'/>
+				  <source network='talus-network'/>
 				  <model type='virtio'/>
 				  <filterref filter='{filter_name}'>
 					{filter_params}
 				  </filterref>
+				  <address type='pci' bus='0x00' slot='0x05' function='0x0'/>
 				</interface>
 				<input type='tablet' bus='usb'/>
-				<graphics type='vnc' port='-1' keymap='en-us'/>
+				<graphics type='vnc' port='{vnc_port}' keymap='en-us'/>
 				<console type='pty'/>
 				<video>
 				  <model type='vga'/>
+				  <address type='pci' bus='0x00' slot='0x02' function='0x0'/>
 				</video>
 			  </devices>
 			</domain>
 		""".format(
+			config_cdrom	= self._create_cdrom(),
+			#bootstrap_img	= self._create_bootstrap_img(),
 			domain_name		= vm_name,
 			domain_uuid		= str(uuid.uuid4()),
 			mem_size		= self.ram * 1024, # ram is in MB
-			num_cpus		= 2,
+			num_cpus		= 1,
 			image_path		= self._vm_image_loc,
 			filter_name		= "talus-" + self.network,
 			filter_params	= self._get_filter_params(),
-			#mac_address		= self._rand_mac_addr()
+			mac				= self.mac,
+			vnc_port		= self.vnc_port
 		)
 
 		conn = self._libvirt()
 		#domain = conn.defineXML(domain_xml)
 		# should create and start the VM
 		domain = conn.createXML(domain_xml, 0)
+
+		self._log.debug("should be running now")
 #
 		#sh.virt_install(
 			#"--import", # stupid python keywords
@@ -582,7 +816,7 @@ class VMHandler(threading.Thread):
 			#n				= vm_name,
 			#disk			= "{},device=disk,bus=sata,format=qcow2".format(self._vm_image_loc),
 			#vnc				= True,
-			##w				= "bridge=virbr0,model=virtio",
+			##w				= "bridge=virbr1,model=virtio",
 			#w				= True,
 			#noautoconsole	= True,
 			## network		= "filter...."

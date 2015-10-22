@@ -11,37 +11,77 @@ function create_repo {
 	chown talus:talus $REPO_DIR
 
 	git init --bare --shared=group
-	git config --global user.name "talus"
-	git config --global user.email "talus@localhost"
-	sudo chmod -R g+ws .
-	sudo chgrp -R talus .
+	chmod -R g+ws .
+	chgrp -R talus .
+	git config --global user.email "master@talus"
+	git config --global user.name "Talus Master"
+	sudo git config --global user.email "master@talus"
+	sudo git config --global user.name "Talus Master"
 	git config core.sharedRepository true
 }
 
-function init_pypi {
-	pip install pip2pi
-	mkdir pypi
-	pip2pi pypi -S pymongo
-	pip2pi pypi -S docutils
-	#pip2pi pypi -S package2
-	#pip2pi pypi -S package3
-	#pip2pi pypi -S package4
+function init_code_cache {
+	mkdir -p $REPO_CACHE
+	chown -R talus:talus $REPO_CACHE
+	chmod -R g+ws $REPO_CACHE
 
-	git add pypi
+	cd /tmp/talus_repo_init
+	echo -e "\n" >> requirements.txt
+	git add requirements.txt
+	git commit -m "initial commit after hooks have been installed"
+	git push origin master
+
+	chown -R talus:talus $REPO_CACHE
+}
+
+function init_pypi {
+	requires=talus/requirements.txt
+
+	cd /tmp/talus_repo_init
+	echo -e "\npymongo\ndocutils\n# $(date)" >> $requires
+	cat $requires | sort | uniq > $requires.tmp
+	mv $requires.tmp $requires
+	git add $requires
+	git commit -m "adding requirements.txt - updating global requirements"
+	git push origin master
 }
 
 function init_repo {
 	git clone $REPO_DIR /tmp/talus_repo_init
 	cd /tmp/talus_repo_init
 	cp -r $DIR/../git_repo/template/* .
-	find . -name "*.py" -exec git add {} +
+	git add *
+	git reset talus/tools/tool_template
+	git reset talus/components/component_template
 
-	init_pypi
-
-	git commit -m "initial commit"
+	git commit -m "initial commit, pre hook install"
 	git push origin master
+
+	install_hooks
+
+	git add talus/components/component_template
+	git commit -m "initial commit with component template"
+	git push origin master
+
+	git add talus/tools/tool_template
+	git commit -m "2nd commit with tool template"
+	git push origin master
+
 	cd $DIR
+}
+
+function cleanup {
 	rm -rf /tmp/talus_repo_init
+}
+
+function install_hooks {
+	# install the pre-receive hook
+	cp $DIR/../git_repo/hooks/pre-receive $REPO_DIR/hooks/pre-receive
+	chmod g+x $REPO_DIR/hooks/pre-receive
+
+	# install the post-receive hook
+	cp $DIR/../git_repo/hooks/post-receive $REPO_DIR/hooks/post-receive
+	chmod g+x $REPO_DIR/hooks/post-receive
 }
 
 # setup the git repo
@@ -50,17 +90,11 @@ create_repo
 # init the repo
 init_repo
 
-# install the pre-receive hook
-cp $DIR/../git_repo/hooks/pre-receive $REPO_DIR/hooks/pre-receive
-chmod g+x $REPO_DIR/hooks/pre-receive
+init_code_cache
+# yes do this twice
+init_pypi
 
-# install the post-receive hook
-cp $DIR/../git_repo/hooks/post-receive $REPO_DIR/hooks/post-receive
-chmod g+x $REPO_DIR/hooks/post-receive
-
-mkdir -p $REPO_CACHE
-chown talus:talus $REPO_CACHE
-chmod -R g+ws $REPO_CACHE
+cleanup
 
 echo
 echo "-------------------------------------------------------"

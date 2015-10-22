@@ -5,6 +5,7 @@ import base64
 import logging
 import paramiko
 import pipes
+import random
 import scp
 import tempfile
 import time
@@ -18,24 +19,24 @@ class VMComms(object):
 	sep = "/"
 
 	@classmethod
-	def get_comms(self, vm_type):
+	def get_comms(self, vm_type, parent_log):
 		"""Get an appropriate VMComms implementation for the vm type
 
 		:param str vm_type: expecting values like "windows", or "linux"
 		:returns: An appropriate VMComms instance
 		"""
 		if "window" in vm_type.lower():
-			return WinrmComms()
+			return WinrmComms(parent_log)
 
-		return SSHComms()
+		return SSHComms(parent_log)
 
-	def __init__(self):
-		self._log = logging.getLogger(self.__class__.__name__)
+	def __init__(self, parent_log):
+		self._log = parent_log.getChild(self.__class__.__name__)
 	
 	def tmp_loc(self):
 		raise NotImplemented("Inheriting classes must implement the tmp_loc function")
 	
-	def connect(self, ip, username, password):
+	def connect(self, ip, username, password, keep_going_event):
 		raise NotImplemented("Inheriting classes must implement the connect function")
 
 	def run_cmd(self, background=False, *cmd):
@@ -46,26 +47,45 @@ class VMComms(object):
 	
 	def put_file(self, location, contents):
 		raise NotImplemented("Inheriting classes must implement the put_file function")
+	
+	def close(self):
+		pass
 
 class WinrmComms(VMComms):
 	sep = "\\"
 
-	def connect(self, ip, username, password):
+	def connect(self, ip, username, password, keep_going_event):
 		self._log.debug("connecting to VM at {}".format(ip))
 		self._sess = winrm.Session(ip, (username, password))
 
+		count = 0
+		e = None
+
 		# loop until we can successfully 
-		while True:
-			time.sleep(0.1)
+		while keep_going_event.is_set():
+			count += 1
+#			if count == 20:
+#				self._log.warn("COULD NOT CONNECT TO VM: {}".format(e))
+#				return False
+
 			try:
-				# NOTE this is _sess.run_cmd, NOT! NOT! self.run_cmd
+				# NOTE this is _sess.run_cmd, NOT! self.run_cmd
 				r = self._sess.run_cmd("echo", ["blah"])
 				if "blah" in r.std_out:
 					break
-			except:
+			except Exception as e:
+				self._log.error("could not connect: {}".format(e))
 				pass
 
+			# keep vm handlers from doing everything at exactly the same time
+			time.sleep(0.5)
+
 		self._log.info("connected to VM at {}!".format(ip))
+
+		return True
+	
+	def close(self):
+		pass
 	
 	def tmp_loc(self):
 		return '$([System.Environment]::ExpandEnvironmentVariables("%TEMP%"))'
@@ -99,9 +119,14 @@ class WinrmComms(VMComms):
 	
 	def put_file(self, location, contents):
 		# max is supposed to be 2047 characters
-		step = 1500
-		for i in range(0, len(contents), step):
-			self._do_put_file(location, contents[i:i+step])
+		try:
+			step = 1500
+			for i in range(0, len(contents), step):
+				self._do_put_file(location, contents[i:i+step])
+
+			return True
+		except:
+			return False
 	
 	def _do_put_file(self, location, contents):
 		# adapted/copied from https://github.com/diyan/pywinrm/issues/18
@@ -128,13 +153,23 @@ class SSHComms(VMComms):
 	def tmp_loc(self):
 		return "/tmp"
 	
-	def connect(self, ip, username, password):
-		while True:
-			time.sleep(0.1)
+	def connect(self, ip, username, password, keep_going_event):
+		count = 0
+		e = None
+
+		while keep_going_event.is_set():
+			count += 1
+#			if count == 20:
+#				self._log.warn("COULD NOT CONNECT TO VM: {}".format(e))
+#				return False
+
 			try:
 				self._ssh = paramiko.SSHClient()
 				self._ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-				self._ssh.connect(ip, username=username, password=password)
+				try:
+					self._ssh.connect(ip, username=username, password=password)
+				except Exception as e:
+					continue
 
 				output = self.run_cmd(False, "echo", "blah")
 				if "blah" in output:
@@ -142,9 +177,18 @@ class SSHComms(VMComms):
 			except:
 				pass
 
-		self._scp = scp.SCPClient(self._ssh.get_transport())
+			time.sleep(0.5)
 
+		self._scp = scp.SCPClient(self._ssh.get_transport())
 		self._log.info("connected to VM at {}!".format(ip))
+
+		return True
+	
+	def close(self):
+		try:
+			self._ssh.close()
+		except:
+			pass
 	
 	def run_cmd(self, background=False, *cmd):
 		cmd = list(cmd)
@@ -180,7 +224,8 @@ class SSHComms(VMComms):
 
 		try:
 			self._scp.put(tmp.name, location)
+			return True
 		except:
-			pass
+			return False
 		finally:
 			tmp.close()

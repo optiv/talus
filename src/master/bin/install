@@ -1,19 +1,30 @@
 #!/bin/bash
 
+DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+
 sudo mkdir -p /talus/data /var/log/talus/{apache2}
+
+sudo useradd -M talus -g talus
 
 sudo mkdir -p /talus/install
 sudo chown talus:talus /talus/install
 sudo chmod -R g+ws /talus/install
+
+cp $DIR/../../slave/vm/prebootstrap.py /talus/install/
 cat << EOF > /talus/install/IMAGE_SETUP_README.txt
 Requirements:
 =============
 
 All:
 ----
+* install drivers that can be found in the mounted CDROM
 * auto-login
 * prebootstrap.py set to run on login
 * numpy
+* turn off auto-updates (you want your base image to be clean w/ no updates!)
+* python lxml module
+* any other python modules/dependencies that need to be compiled or
+	installed via an installer
 
 Windows:
 --------
@@ -21,13 +32,35 @@ Windows:
 Make sure the following are installed:
 
 * comtypes
+* pip install requests
 * Windbg
 * potentially pre-generated fastoche comtypes python files
 * python
+* VCREDIST 2012 x86 AND x64 (for windbg msec.dll)
+* msec.dll in the winext folder of both x86 and x64 windbgs
+* psexec (all pstools?)
 
 Be sure to do the following:
 
 * turn off UAC
+
+You must also configure WINRM by doing (in an Administrator cmd.exe):
+
+	winrm quickconfig -q
+	winrm set winrm/config/winrs @{MaxMemoryPerShellMB="512"}
+	winrm set winrm/config @{MaxTimeoutms="1800000"}
+	winrm set winrm/config/service @{AllowUnencrypted="true"}
+	winrm set winrm/config/service/auth @{Basic="true"}
+	sc config WinRM start= auto
+
+Also note that all created networks in the VM must be set the “Work”
+network. This can be set to be the default action by going to:
+
+	Open "gpedit.msc" -> Go to Computer Configration –> Windows Settings –> Security Settings –> Network list manager
+
+It may also help to attempt to shrink the size of the VM using sdelete
+
+	sdelete -z C:
 
 Linux:
 ------
@@ -53,7 +86,7 @@ gl;hf
 EOF
 
 mkdir -p /tmp/talus/tmp
-chown -R o+rws /tmp/talus/tmp
+chmod -R o+rws /tmp/talus/tmp
 
 DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 
@@ -66,21 +99,33 @@ sudo apt-get install -y \
 	libxslt-dev \
 	libxml2-dev \
 	libvirt-dev \
+	libxml2-dev \
+	libdevmapper-dev \
+	libnl-dev \
 	libffi-dev \
 	build-essential \
 	ruby-dev \
 	python-pip \
 	python-dev \
-	wget
+	libyajl* \
+	wget \
+	gcc make pkg-config libxml2-dev libgnutls-dev libdevmapper-dev libcurl4-gnutls-dev python-dev libpciaccess-dev libxen-dev libnl-dev libyajl-dev uuid-dev libpcap-dev xsltproc
 
-mkdir -p /tmp/vagrant_install \
+(mkdir -p /tmp/vagrant_install \
 	&& cd /tmp/vagrant_install \
 	&& wget https://dl.bintray.com/mitchellh/vagrant/vagrant_1.7.2_x86_64.deb \
 	&& sudo dpkg -i vagrant_1.7.2_x86_64.deb \
-	&& rm -rf /tmp/vagrant_install
+	&& rm -rf /tmp/vagrant_install)
 
 vagrant plugin install vagrant-libvirt
-sudo pip install xmltodict mongoengine mock pymongo==2.8.0 sh pika docutils netifaces pip2pi pip2pi
+sudo pip install xmltodict mongoengine mock pymongo==2.8.0 sh pika docutils netifaces pip2pi
+
+echo "USER INPUT" 
+echo "USER INPUT" 
+echo "USER INPUT" 
+echo ""
+echo 
+read -p "through which interface does the master interact with the slaves?" intf
 
 cat << EOF > /tmp/talus_master.conf
 description "Talus Master Daemon"
@@ -91,10 +136,10 @@ stop on shutdown
 respawn
 
 script
-	$(readlink -f $DIR)/start_raw
+	$(readlink -f $DIR)/start_raw $intf
 end script
 EOF
 
 sudo mv /tmp/talus_master.conf /etc/init/
 
-$DIR/init_repo
+sudo $DIR/init_repo

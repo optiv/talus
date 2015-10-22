@@ -13,11 +13,13 @@ import netifaces
 import os
 import pymongo
 import signal
+import socket
 import sys
 import threading
 
 import master.models
 from master.models import *
+from master.models import Master as MasterModel
 from master.lib.mongo_oplog_watcher import OplogWatcher, OplogPrinter
 from master.lib.amqp_man import AmqpManager
 import master.watchers
@@ -51,7 +53,6 @@ class TalusDBWatcher(OplogWatcher):
 		:db: database name, default to "talus"
 		:collection: name of the collection to filter on, default to ``None``
 		"""
-		threading.Thread.__init__(self)
 		OplogWatcher.__init__(self, *args, **kwargs)
 
 		# { <mod_name>: [watchers], ... }
@@ -113,7 +114,7 @@ class TalusDBWatcher(OplogWatcher):
 
 		"""
 		self._log.info("update for {}:{}".format(ns, id))
-		self._log.debug("modification: {}".format(mod))
+		#self._log.debug("modification: {}".format(mod))
 
 		if ns in self._watchers:
 			for watcher in self._watchers[ns]:
@@ -151,16 +152,16 @@ class Master(object):
 	_instance = None
 
 	@classmethod
-	def instance(cls):
+	def instance(cls, intf=None):
 		"""Return the singleton instance of the Master class
 		:returns: TODO
 
 		"""
 		if cls._instance is None:
-			cls._instance = cls()
+			cls._instance = cls(intf)
 		return cls._instance
 
-	def __init__(self):
+	def __init__(self, intf):
 		"""docstring for Master constructor"""
 		super(Master, self).__init__()
 
@@ -173,8 +174,20 @@ class Master(object):
 		self._watcher = None
 		self._amqp_man = AmqpManager.instance()
 		
+		self._intf = intf
 		# TODO need a better way than just eth0
-		self._ip = netifaces.ifaddresses('eth0')[2][0]['addr']
+		self._ip = netifaces.ifaddresses(intf)[2][0]['addr']
+
+		# delete all the previous master entries - there should
+		# only be _ONE_ master document in the DB
+		MasterModel.objects().delete()
+		self._master_obj_lock = threading.Lock()
+		self._master_obj = MasterModel()
+		self._master_obj.hostname = socket.gethostname()
+		self._master_obj.ip = self._ip
+		self._master_obj.vms = []
+		self._master_obj.queue = []
+		self._master_obj.save()
 
 		self._log.info("ready")
 
@@ -225,6 +238,17 @@ class Master(object):
 	# -------------------------
 	# private functions
 	# -------------------------
+
+	def update_status(self, queues=None, vms=None):
+		"""Update the master document in mongodb
+		"""
+		with self._master_obj_lock:
+			if queues is not None:
+				self._master_obj.queues = queues
+			if vms is not None:
+				self._master_obj.vms = vms
+
+			self._master_obj.save()
 
 	def _amqp_listen_for_slaves(self):
 		"""Setup amqp queues to listen/respond to slaves
@@ -302,6 +326,7 @@ class Master(object):
 		).delete()
 
 		slave = Slave()
+		slave.max_vms = data["max_vms"]
 		slave.ip = data["ip"]
 		slave.hostname = data["hostname"]
 		slave.uuid = data["uuid"]
@@ -359,12 +384,12 @@ class Master(object):
 					watcher = getattr(mod, name)(self._log)
 					self._watcher.add_watcher(watcher.collection, watcher)
 	
-def main():
+def main(intf):
 	_install_sig_handlers()
 
 	master.models.do_connect()
 
-	m = Master.instance()
+	m = Master.instance(intf)
 	m.run()
 
 if __name__ == "__main__":

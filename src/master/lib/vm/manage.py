@@ -12,6 +12,7 @@ import libvirt
 import logging
 import os
 import re
+import sh
 import shutil
 import signal
 import socket
@@ -35,6 +36,8 @@ libvirt.registerErrorHandler(f=libvirt_callback, ctx=None)
 
 class VMWorker(threading.Thread):
 	"""A threaded class that manages individual VMs"""
+
+	daemon = True
 
 	def __init__(self, idx, log):
 		"""docstring for VMWorker constructor
@@ -208,8 +211,10 @@ class VagrantWorker(VMWorker):
 		self._import_image_path = import_image_path
 		self._iso_path = iso_path
 		self._on_success = on_success
+		self._log.debug("on_success = {}".format(self._on_success))
 		self._user_interaction = user_interaction
 		self._options = options
+		self._tmpdir = None
 	
 	def run(self):
 		"""Run the vagrant box by creating a project that uses the specified box
@@ -226,7 +231,7 @@ class VagrantWorker(VMWorker):
 		self._log.debug("created temporary vagrant project at {!r}".format(self._project_dir))
 		self._domain = os.path.basename(self._project_dir + "_default")
 
-		args = ["vagrant", "up"]
+		args = ["vagrant", "up", "--provider", "libvirt"]
 		self._log.debug("running {}".format(" ".join(args)))
 		proc = utils.run(args, async=True, output_to_stdout=True, env=self._run_env, group=True)
 
@@ -239,6 +244,8 @@ class VagrantWorker(VMWorker):
 			count += 1
 			time.sleep(0.5)
 		self._log.debug("box should be up and running")
+
+		self._hotplug_empty_disk()
 
 		if proc.poll() is not None:
 			self._log.debug("vagrant up quit before the VM started, likely some error")
@@ -313,15 +320,43 @@ class VagrantWorker(VMWorker):
 		self._running.clear()
 
 		if self._on_success is not None:
+			self._log.debug("going to call self._on_success")
 			# create new from base
 			if self._dest_name is not None:
+				self._log.debug("calling self._on_success({})".format(self._dest_name))
 				self._on_success(self._dest_name)
 			
 			# configure/import an image
 			else:
+				self._log.debug("calling self._on_success({})".format(self._box_name))
 				self._on_success(self._box_name)
 
 		self._log.debug("vagrant worker finished")
+	
+	def _hotplug_empty_disk(self):
+		self._tmpdir = tempfile.mkdtemp()
+		sh.chmod("o+rwx", self._tmpdir)
+		self._tmpdisk = os.path.join(self._tmpdir, "tmpdisk.img")
+
+		sh.dd("if=/dev/null", "bs=1K", "of={}".format(self._tmpdisk), "seek=1030")
+		sh.Command("mkfs.ntfs")("-F", self._tmpdisk)
+
+		disk_file = os.path.join(self._tmpdir, "disk.xml")
+		with open(disk_file, "wb") as f:
+			f.write("""
+<disk type="file" device="disk">
+	<driver name="qemu" type="raw" cache="none" io="native"/>
+	<source file="{}"/>
+	<target dev="sda" bus="usb"/>
+</disk>
+			""".format(self._tmpdisk))
+
+		sh.virsh("attach-device", self._domain, disk_file)
+
+#		sh.qemu_img("create", "-f", "raw", self._tmpdisk, "1.1M")
+#		sh.Command("mkfs.ntfs")("-F", self._tmpdisk)
+#
+#		sh.virsh("attach-disk", self._domain, "--source", self._tmpdisk, "--target", "vdb")
 	
 	def _maybe_do_import(self):
 		"""Maybe import an image into a vagrant box
@@ -399,9 +434,11 @@ class VagrantWorker(VMWorker):
 		# TODO change this to some config setting?
 		hostname = socket.gethostname()
 
-		return {
+		self._vnc_info = {
 			"uri": "vnc://{}:{}".format(hostname, port)
 		}
+
+		return self._vnc_info
 	
 	def _libvirt(self):
 		"""Return a libvirt connection
@@ -460,6 +497,9 @@ class VagrantWorker(VMWorker):
 		output = utils.run(args, env=self._run_env)
 
 		shutil.rmtree(self._project_dir)
+
+		if self._tmpdir is not None:
+			shutil.rmtree(self._tmpdir)
 
 	def _create_vagrant_project(self, vagrantfile, id="tmp", base_name=None):
 		"""Create a project directory in which "vagrant up" can be run. Callers are
@@ -542,6 +582,7 @@ class VagrantWorker(VMWorker):
 					  libvirt.disk_bus = 'sata'
 					  libvirt.input :type => 'tablet', :bus => 'usb'
 					  libvirt.video_type = 'vga'
+					  libvirt.graphics_ip = '0.0.0.0'
 					end
 				end
 			""".format(
@@ -621,6 +662,7 @@ class VMManager(object):
 		# TODO make this based on the # of cores available in the system
 		self._max_vms = opts.setdefault("max_vms", 2)
 		self._vm_lock = threading.Semaphore(self._max_vms)
+		self._on_worker_exited = opts.setdefault("on_worker_exited", None)
 		self._worker_numbers = deque(range(self._max_vms))
 		self._workers = {}
 
@@ -809,6 +851,9 @@ class VMManager(object):
 		del self._workers[worker._idx]
 		self._worker_numbers.append(worker._idx)
 
+		if self._on_worker_exited is not None:
+			self._on_worker_exited()
+
 		self._log.debug("releasing vm_lock")
 		self._vm_lock.release()
 	
@@ -862,7 +907,9 @@ class VMManager(object):
 		self._workers[worker_num] = worker
 		worker.start()
 
-		threading.Thread(target=self._wait_for_worker_to_exit, args=[worker]).start()
+		thread = threading.Thread(target=self._wait_for_worker_to_exit, args=[worker])
+		thread.daemon = True
+		thread.start()
 
 		ret = None
 		if user_interaction:

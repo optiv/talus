@@ -1,0 +1,65 @@
+<network>
+	<name>talus-network</name>
+	<uuid>6137498b-f067-4fd7-cf64-69d2714f297b</uuid>
+	<forward mode='nat' />
+	<bridge name='virbr1' stp='on' delay='0'/>
+	<ip address='192.168.123.1' netmask='255.255.255.0'>
+		<dhcp>
+			<range start='192.168.123.55' end='192.168.123.254'/>
+
+			<host mac="00:00:c0:a8:7b:02" name="vm_mac_2" ip="192.168.123.2"/>
+			<host mac="00:00:c0:a8:7b:03" name="vm_mac_3" ip="192.168.123.3"/>
+			<host mac="00:00:c0:a8:7b:04" name="vm_mac_4" ip="192.168.123.4"/>
+			<host mac="00:00:c0:a8:7b:05" name="vm_mac_5" ip="192.168.123.5"/>
+			<host mac="00:00:c0:a8:7b:06" name="vm_mac_6" ip="192.168.123.6"/>
+			<host mac="00:00:c0:a8:7b:07" name="vm_mac_7" ip="192.168.123.7"/>
+			<host mac="00:00:c0:a8:7b:08" name="vm_mac_8" ip="192.168.123.8"/>
+			<host mac="00:00:c0:a8:7b:09" name="vm_mac_9" ip="192.168.123.9"/>
+			<host mac="00:00:c0:a8:7b:0a" name="vm_mac_10" ip="192.168.123.10"/>
+			<host mac="00:00:c0:a8:7b:0b" name="vm_mac_11" ip="192.168.123.11"/>
+			<host mac="00:00:c0:a8:7b:0c" name="vm_mac_12" ip="192.168.123.12"/>
+			<host mac="00:00:c0:a8:7b:0d" name="vm_mac_13" ip="192.168.123.13"/>
+			<host mac="00:00:c0:a8:7b:0e" name="vm_mac_14" ip="192.168.123.14"/>
+			<host mac="00:00:c0:a8:7b:0f" name="vm_mac_15" ip="192.168.123.15"/>
+			<host mac="00:00:c0:a8:7b:10" name="vm_mac_16" ip="192.168.123.16"/>
+			<host mac="00:00:c0:a8:7b:11" name="vm_mac_17" ip="192.168.123.17"/>
+			<host mac="00:00:c0:a8:7b:12" name="vm_mac_18" ip="192.168.123.18"/>
+			<host mac="00:00:c0:a8:7b:13" name="vm_mac_19" ip="192.168.123.19"/>
+			<host mac="00:00:c0:a8:7b:14" name="vm_mac_20" ip="192.168.123.20"/>
+			<host mac="00:00:c0:a8:7b:15" name="vm_mac_21" ip="192.168.123.21"/>
+			<host mac="00:00:c0:a8:7b:16" name="vm_mac_22" ip="192.168.123.22"/>
+			<host mac="00:00:c0:a8:7b:17" name="vm_mac_23" ip="192.168.123.23"/>
+			<host mac="00:00:c0:a8:7b:18" name="vm_mac_24" ip="192.168.123.24"/>
+			<host mac="00:00:c0:a8:7b:19" name="vm_mac_25" ip="192.168.123.25"/>
+			<host mac="00:00:c0:a8:7b:1a" name="vm_mac_26" ip="192.168.123.26"/>
+			<host mac="00:00:c0:a8:7b:1b" name="vm_mac_27" ip="192.168.123.27"/>
+			<host mac="00:00:c0:a8:7b:1c" name="vm_mac_28" ip="192.168.123.28"/>
+			<host mac="00:00:c0:a8:7b:1d" name="vm_mac_29" ip="192.168.123.29"/>
+			<host mac="00:00:c0:a8:7b:1e" name="vm_mac_30" ip="192.168.123.30"/>
+			<host mac="00:00:c0:a8:7b:1f" name="vm_mac_31" ip="192.168.123.31"/>
+			<host mac="00:00:c0:a8:7b:20" name="vm_mac_32" ip="192.168.123.32"/>
+			<host mac="00:00:c0:a8:7b:21" name="vm_mac_33" ip="192.168.123.33"/>
+			<host mac="00:00:c0:a8:7b:22" name="vm_mac_34" ip="192.168.123.34"/>
+			<host mac="00:00:c0:a8:7b:23" name="vm_mac_35" ip="192.168.123.35"/>
+			<host mac="00:00:c0:a8:7b:24" name="vm_mac_36" ip="192.168.123.36"/>
+			<host mac="00:00:c0:a8:7b:25" name="vm_mac_37" ip="192.168.123.37"/>
+			<host mac="00:00:c0:a8:7b:26" name="vm_mac_38" ip="192.168.123.38"/>
+			<host mac="00:00:c0:a8:7b:27" name="vm_mac_39" ip="192.168.123.39"/>
+			<host mac="00:00:c0:a8:7b:28" name="vm_mac_40" ip="192.168.123.40"/>
+			<host mac="00:00:c0:a8:7b:29" name="vm_mac_41" ip="192.168.123.41"/>
+			<host mac="00:00:c0:a8:7b:2a" name="vm_mac_42" ip="192.168.123.42"/>
+			<host mac="00:00:c0:a8:7b:2b" name="vm_mac_43" ip="192.168.123.43"/>
+			<host mac="00:00:c0:a8:7b:2c" name="vm_mac_44" ip="192.168.123.44"/>
+			<host mac="00:00:c0:a8:7b:2d" name="vm_mac_45" ip="192.168.123.45"/>
+			<host mac="00:00:c0:a8:7b:2e" name="vm_mac_46" ip="192.168.123.46"/>
+			<host mac="00:00:c0:a8:7b:2f" name="vm_mac_47" ip="192.168.123.47"/>
+			<host mac="00:00:c0:a8:7b:30" name="vm_mac_48" ip="192.168.123.48"/>
+			<host mac="00:00:c0:a8:7b:31" name="vm_mac_49" ip="192.168.123.49"/>
+			<host mac="00:00:c0:a8:7b:32" name="vm_mac_50" ip="192.168.123.50"/>
+			<host mac="00:00:c0:a8:7b:33" name="vm_mac_51" ip="192.168.123.51"/>
+			<host mac="00:00:c0:a8:7b:34" name="vm_mac_52" ip="192.168.123.52"/>
+			<host mac="00:00:c0:a8:7b:35" name="vm_mac_53" ip="192.168.123.53"/>
+			<host mac="00:00:c0:a8:7b:36" name="vm_mac_54" ip="192.168.123.54"/>
+		</dhcp>
+	</ip>
+</network>

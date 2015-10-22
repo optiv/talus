@@ -11,6 +11,8 @@ pika_logger = logging.getLogger('pika')
 pika_logger.setLevel(logging.CRITICAL)
 
 class AmqpQueueHandler(threading.Thread):
+	daemon = True
+
 	def __init__(self, callback, queue_name, channel, lock, no_ack, running):
 		super(AmqpQueueHandler, self).__init__()
 
@@ -47,6 +49,8 @@ class AmqpQueueHandler(threading.Thread):
 
 class AmqpManager(threading.Thread):
 	"""A class to manage jobs (starting/stopping/cancelling/etc)"""
+
+	daemon = True
 
 	AMQP_JOB_QUEUE = "jobs"
 	AMQP_JOB_RESULT_QUEUE = "job_results"

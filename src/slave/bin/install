@@ -1,7 +1,7 @@
 #!/bin/bash
 
-if [[ "$#" -ne 2 ]] ; then
-	echo "USAGE: $0 <TALUS_MASTER_HOST> <MAX_VMS>"
+if [[ "$#" -ne 3 ]] ; then
+	echo "USAGE: $0 <TALUS_MASTER_HOST> <MAX_VMS> <INTF [e.g. eth0]>"
 	exit
 fi
 
@@ -19,9 +19,11 @@ sudo apt-get install -y \
 	python-pip \
 	python-dev \
 	apparmor-utils \
-	wget
+	wget \
+	genisoimage \
+	gcc make pkg-config libxml2-dev libgnutls-dev libdevmapper-dev libcurl4-gnutls-dev python-dev libpciaccess-dev libxen-dev libnl-dev libyajl-dev uuid-dev libpcap-dev xsltproc
 
-pip install \
+sudo pip install \
 	mongoengine \
 	mock \
 	netifaces \
@@ -34,24 +36,53 @@ pip install \
 	twisted \
 	xmltodict \
 
+(
+	cd /tmp ; \
+	wget http://libvirt.org/sources/libvirt-1.2.20.tar.gz ; \
+	tar -xzf libvirt-1.2.20.tar.gz ; \
+	cd libvirt-1.2.20 ; \
+	./autogen.sh --system --with-libpcap ; \
+	make ; \
+	sudo make install ; \
+	sudo /etc/init.d/libvirt-bin stop ; \
+	sudo /etc/init.d/libvirt-bin start
+)
+
 # TODO - figure out what's up with this?
 # libvirt network filters weren't working until I did
 # this....
 sudo aa-complain /usr/sbin/libvirtd
 
+$DIR/install_networks
 $DIR/install_filters
 
 cat << EOF > /tmp/talus_slave.conf
 description "Talus Slave Daemon"
 author		"Optiv Labs"
 
-start on filesystem or runlevel [2345]
+start on (started networking)
 stop on shutdown
 respawn
 
 script
-	$(readlink -f $DIR)/start_raw $1 $2 2>&1 >> /var/log/talus/slave.log
+	aa-complain /usr/sbin/libvirtd
+	$(readlink -f $DIR)/start_raw $1 $2 $3 2>&1 >> /var/log/talus/slave.log
 end script
 EOF
 
 sudo mv /tmp/talus_slave.conf /etc/init/
+
+sudo sh -c 'echo GRUB_CMDLINE_LINUX_DEFAULT="max_loop=64" >> /etc/default/grub'
+sudo update-grub2
+
+echo "NOTE NOTE NOTE NOTE NOTE NOTE NOTE"
+echo "NOTE NOTE NOTE NOTE NOTE NOTE NOTE"
+echo "NOTE NOTE NOTE NOTE NOTE NOTE NOTE"
+echo "NOTE NOTE NOTE NOTE NOTE NOTE NOTE"
+echo ""
+echo "you must reboot for the max loop device changes to take effect"
+echo ""
+echo "NOTE NOTE NOTE NOTE NOTE NOTE NOTE"
+echo "NOTE NOTE NOTE NOTE NOTE NOTE NOTE"
+echo "NOTE NOTE NOTE NOTE NOTE NOTE NOTE"
+echo "NOTE NOTE NOTE NOTE NOTE NOTE NOTE"

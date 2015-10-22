@@ -79,15 +79,25 @@ class HostComms(threading.Thread):
 		self._log = logging.getLogger("HostComms")
 		self._dev = dev
 
-		self._my_ip = socket.gethostbyname(socket.gethostname())
-		if self._my_ip.startswith("127.0"):
-			p = subprocess.Popen(["ifconfig", "eth0"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-			stdout,stderr = p.communicate()
-			for line in stdout.split("\n"):
-				if "inet addr:" in line:
-					match = re.match(r'^\s*inet addr:(\d+\.\d+\.\d+\.\d+).*$', line)
-					self._my_ip = match.group(1)
-					break
+		while True:
+			self._my_ip = socket.gethostbyname(socket.gethostname())
+			if self._my_ip.startswith("127.0"):
+				p = subprocess.Popen(["ifconfig", "eth0"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+				stdout,stderr = p.communicate()
+				for line in stdout.split("\n"):
+					if "inet addr:" in line:
+						match = re.match(r'^\s*inet addr:(\d+\.\d+\.\d+\.\d+).*$', line)
+						self._my_ip = match.group(1)
+						break
+
+			if not self._my_ip.startswith("192.168.123."):
+				self._log.debug("we don't have an ip address yet (currently '{}')".format(self._my_ip))
+				time.sleep(0.2)
+				continue
+
+			break
+
+		self._log.debug("we have an ip! {}".format(self._my_ip))
 
 		self._host_ip = self._my_ip.rsplit(".", 1)[0] + ".1"
 		self._host_port = 55555
@@ -98,6 +108,9 @@ class HostComms(threading.Thread):
 
 		self._running = threading.Event()
 		self._running.clear()
+		self._connected = threading.Event()
+		self._connected.clear()
+
 		self._send_recv_lock = threading.Lock()
 
 		self._recv_callback = recv_callback
@@ -110,6 +123,8 @@ class HostComms(threading.Thread):
 
 		if not self._dev:
 			self._sock.connect((self._host_ip, self._host_port))
+
+		self._connected.set()
 
 		while self._running.is_set():
 			if not self._dev:
@@ -146,6 +161,8 @@ class HostComms(threading.Thread):
 			# keep it simple for now
 			cls=FriendlyJSONEncoder
 		)
+
+		self._connected.wait(2**31)
 
 		data_len = struct.pack(">L", len(data))
 		if not self._dev:
@@ -201,13 +218,11 @@ class TalusCodeImporter(object):
 
 		self.cache = {}
 
-		dir_check = lambda x: x.endswith("/")
-		self.cache["tools"] = filter(dir_check, self._git_show("talus/tools")["items"])
-		self.cache["components"] = filter(dir_check, self._git_show("talus/components")["items"])
-		self.cache["lib"] = filter(dir_check, self._git_show("talus/lib")["items"])
-		self.cache["pypi"] = dict(map(lambda x: (x.replace("/", ""), True), filter(dir_check, self._git_show("talus/pypi/simple")["items"])))
+		self.cache["git"] = {"__items__":set(["talus/"]), "talus/":{"__items__": set()}}
 
-		tools = []
+		dir_check = lambda x: x.endswith("/")
+		pypi_items = self._git_show("talus/pypi/simple")["items"]
+		self.cache["pypi"] = dict(map(lambda x: (x.replace("/", ""), True), filter(dir_check, pypi_items)))
 	
 	def find_module(self, abs_name, path=None):
 		"""Normally, a finder object would return a loader that can load the module.
@@ -220,18 +235,14 @@ class TalusCodeImporter(object):
 		"""
 		package_name = abs_name.split(".")[0]
 
-		if package_name == "talus":
-			self.download_module(abs_name)
-			# THIS IS IMPORTANT, YES WE WANT TO RETURN NONE!!!
-			# THIS IS IMPORTANT, YES WE WANT TO RETURN NONE!!!
-			# THIS IS IMPORTANT, YES WE WANT TO RETURN NONE!!!
-			# THIS IS IMPORTANT, YES WE WANT TO RETURN NONE!!!
-			# see the comment in the docstring
+		last_name = abs_name.split(".")[-1]
+		if last_name in sys.modules:
 			return None
 
 		try:
 			# means it can already be imported, no work to be done here
-			imp.find_module(package_name)
+			imp.find_module(abs_name)
+
 			# THIS IS IMPORTANT, YES WE WANT TO RETURN NONE!!!
 			# THIS IS IMPORTANT, YES WE WANT TO RETURN NONE!!!
 			# THIS IS IMPORTANT, YES WE WANT TO RETURN NONE!!!
@@ -241,7 +252,18 @@ class TalusCodeImporter(object):
 		except ImportError as e:
 			pass
 
-		if package_name in self.cache["pypi"]:
+		if package_name == "talus" and self._module_in_git(abs_name):
+			self.download_module(abs_name)
+			# THIS IS IMPORTANT, YES WE WANT TO RETURN NONE!!!
+			# THIS IS IMPORTANT, YES WE WANT TO RETURN NONE!!!
+			# THIS IS IMPORTANT, YES WE WANT TO RETURN NONE!!!
+			# THIS IS IMPORTANT, YES WE WANT TO RETURN NONE!!!
+			# see the comment in the docstring
+			return None
+
+		# we NEED to have the 2nd check here or else it will keep downloading
+		# the same package over and over
+		if package_name in self.cache["pypi"] and package_name not in sys.modules:
 			self.install_package(package_name)
 			# just in case sys.argv got mucked with somehow/somewhere
 			#os.execvp("python", [__file__] + ORIG_ARGS)
@@ -290,6 +312,8 @@ class TalusCodeImporter(object):
 
 		:param str abs_name: The absolute module name of the module to be downloaded
 		"""
+		self._log.info("downloading module {}".format(abs_name))
+
 		path = abs_name.replace(".", "/")
 		info = self._git_show(path)
 
@@ -330,15 +354,20 @@ class TalusCodeImporter(object):
 #				self._log.info("downloading package {}".format(item.name))
 #				self._download(self._pypi_dir, path="talus/pypi/simple/{}".format(item.name), recurse=True)
 
-		pip.main([
-			"install",
-			"--user",
-			"-i",
-				self.pypi_loc,
-				#"file://{}".format(os.path.abspath(os.path.join(self._pypi_dir, "talus", "pypi", "simple")).replace("\\", "/")),
-			"-r",
-				full_path
-		])
+		try:
+			pip.main([
+				"install",
+				"--user",
+				# grab only the hostname from the pypi_loc
+				"--trusted-host", re.match(r'^.*://([^/]+)/.*$', self.pypi_loc).group(1),
+				"-i",
+					self.pypi_loc,
+					#"file://{}".format(os.path.abspath(os.path.join(self._pypi_dir, "talus", "pypi", "simple")).replace("\\", "/")),
+				"-r",
+					full_path
+			])
+		except SystemExit as e:
+			self._log.error("Could not install package. Sorry :^(")
 	
 	def install_package(self, package_name):
 		self._log.info("downloading package {} to local python index".format(package_name))
@@ -364,6 +393,8 @@ class TalusCodeImporter(object):
 	def _download_file(self, abs_name, info, dest):
 		"""Download the single file from git
 		"""
+		self._log.debug("downloading file: {}".format(info["filename"]))
+
 		path = os.path.join(dest, info["filename"])
 		with open(path, "wb") as f:
 			f.write(base64.b64decode(info["contents"]))
@@ -386,6 +417,8 @@ class TalusCodeImporter(object):
 
 		if info is None:
 			raise Exception("Error! could not get information from code cache about {!r}".format(path))
+
+		self._log.debug("downloading file: {}".format(info["filename"]))
 
 		base_path = os.path.join(dest, info["filename"])
 
@@ -421,7 +454,48 @@ class TalusCodeImporter(object):
 		if res.status_code // 100 != 2:
 			return None
 
-		return json.loads(res.text)
+		res = json.loads(res.text)
+
+		# cache existence info about all directories shown!
+		if path != "talus/pypi/simple" and res["type"] == "listing":
+			self._add_to_cache(path, items=res["items"])
+
+		return res
+	
+	def _add_to_cache(self, path, items=None):
+		cache = root = self.cache["git"]
+
+		parts = path.split("/")
+		for part in parts:
+			cache = cache.setdefault(part + "/", {"__items__": set()})
+
+		for item in items:
+			cache["__items__"].add(item)
+	
+	def _module_in_git(self, modname):
+		parts = modname.split(".")
+
+		cache = self.cache["git"]
+
+		for part in parts[:-1]:
+			items = cache["__items__"]
+			if part + "/"  not in items:
+				return False
+
+			cache = cache[part + "/"]
+
+		last_part = parts[-1]
+		items = cache["__items__"]
+
+		# e.g. talus.fileset
+		if last_part + ".py" in items:
+			return True
+
+		# e.g. talus.tools
+		if last_part + "/" in items:
+			return True
+
+		return False
 
 class TalusBootstrap(object):
 	"""The main class that will bootstrap the job and get things running
@@ -438,6 +512,7 @@ class TalusBootstrap(object):
 
 		if not os.path.exists(config_path):
 			self._log.error("ERROR, config path {} not found!".format(config_path))
+			logging.shutdown()
 			exit(1)
 
 		with open(config_path, "r") as f:
@@ -454,11 +529,28 @@ class TalusBootstrap(object):
 
 		self.dev = dev
 		self._host_comms = HostComms(self._on_host_msg_received, self._job_id, self._idx, self._tool, dev=dev)
+	
+	def sys_except_hook(self, type_, value, traceback):
+		formatted = traceback.format_exception(type_, value, traceback)
+
+		self._log.exception("there was an exception!")
+		self._log.error(formatted)
+		try:
+			self._host_comms.send_msg("error", {
+				"message": str(value),
+				"backtrace": formatted,
+				"logs": self._log_accumulator.get_records()
+			})
+		except:
+			pass
+		logging.shutdown()
 
 	def run(self):
 		self._log.debug("running bootstrap")
 
 		self._host_comms.start()
+		self._host_comms.send_msg("started", {})
+
 		self._install_code_importer()
 
 		talus_mod = __import__("talus", globals(), locals(), fromlist=["job"])
@@ -493,7 +585,7 @@ class TalusBootstrap(object):
 			if self._debug:
 				self._host_comms.send_msg("logs", {
 					"message"		: "DEBUG LOGS",
-					"backtrace"		: formatted,
+					"backtrace"		: "",
 					"logs"			: self._log_accumulator.get_records()
 				})
 
@@ -510,8 +602,11 @@ class TalusBootstrap(object):
 	
 	def _shutdown(self):
 		"""shutdown the vm"""
-		os.system("shutdown -t 0 -r -f")
-		os.system("shutdown -h now")
+		os_name = os.name.lower()
+		if os_name == "nt":
+			os.system("shutdown /t 0 /s /f")
+		else:
+			os.system("shutdown -h now")
 	
 	def _on_host_msg_received(self, data):
 		"""Handle the data received from the host

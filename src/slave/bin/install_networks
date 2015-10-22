@@ -1,0 +1,13 @@
+#!/bin/bash
+
+DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+
+echo "installing networks"
+
+for file in $DIR/../networks/*.xml; do
+	name=$(grep "<name>" $file | sed -e 's/<name>\(.*\)<\/name>/\1/')
+	echo "installing network $file ($name)"
+	sudo virsh net-define $file
+	sudo virsh net-autostart $name
+	sudo virsh net-start $name
+done

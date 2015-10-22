@@ -1,10 +1,10 @@
 #!/bin/bash
 
-echo "running a temporary amqp container (talus_amqp)"
-
 DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 
 $DIR/stop
+
+echo "running a temporary amqp container (talus_amqp)"
 
 mkdir -p /talus/data
 

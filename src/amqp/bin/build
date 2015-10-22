@@ -4,4 +4,4 @@ DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 
 cd "$DIR/.."
 
-sudo docker build -t talus_amqp .
+sudo docker build $@ -t talus_amqp .

@@ -21,7 +21,7 @@ class VMWatcher(WatcherBase):
 	def __init__(self, *args, **kwargs):
 		WatcherBase.__init__(self, *args, **kwargs)
 
-		self._vm_manager = master.lib.vm.manage.VMManager()
+		self._vm_manager = master.lib.vm.manage.VMManager(on_worker_exited=self._on_worker_exited)
 
 		for img in master.models.Image.objects(status__name__in=["import", "configure", "create", "delete"]):
 			self._handle_status(img.id, image=img)
@@ -43,6 +43,10 @@ class VMWatcher(WatcherBase):
 
 	# -----------------------
 
+	def _on_worker_exited(self):
+		from master import Master
+		Master.instance().update_status(vms=self._get_running_vms())
+
 	def _handle_status(self, id_, obj=None, image=None):
 		switch = {
 			"import":		self._handle_import,
@@ -59,6 +63,12 @@ class VMWatcher(WatcherBase):
 
 		if image.status["name"] in switch:
 			switch[image.status["name"]](id_, image)
+	
+	def _get_running_vms(self):
+		vms = []
+		for worker in self._vm_manager._workers.values():
+			vms.append(worker.get_vnc_info())
+		return vms
 
 	def _handle_import(self, id_, image):
 		"""This is the initial step when importing an image from the API. The API
@@ -95,6 +105,9 @@ class VMWatcher(WatcherBase):
 			on_success			= self._set_image_ready
 		)
 
+		from master import Master
+		Master.instance().update_status(vms=self._get_running_vms())
+
 		if os.path.exists(tmp_file.path):
 			os.remove(tmp_file.path)
 		tmp_file.delete()
@@ -123,6 +136,9 @@ class VMWatcher(WatcherBase):
 		)
 		self._log.debug("got vnc info from configure image: {!r}".format(vnc_info))
 
+		from master import Master
+		Master.instance().update_status(vms=self._get_running_vms())
+
 		image = master.models.Image.objects(id=image.id)[0]
 		if user_interaction:
 			image.status = {
@@ -148,6 +164,9 @@ class VMWatcher(WatcherBase):
 			user_interaction	= user_interaction,
 			on_success			= self._set_image_ready
 		)
+
+		from master import Master
+		Master.instance().update_status(vms=self._get_running_vms())
 
 		image = master.models.Image.objects(id=image.id)[0]
 		if user_interaction:
@@ -187,18 +206,24 @@ class VMWatcher(WatcherBase):
 			self._log.warn("Could not set image named {!r} as ready, not found in database!".format(image_name))
 			return
 
+		self._log.debug("images: {} ({!r})".format(images, image_name))
 		image = images[0]
+		self._log.debug("image: {}".format(image))
 		image.status = {"name": "ready"}
 
 		path = "/var/lib/libvirt/images/{}_vagrant_box_image_0.img".format(str(image.id))
 		if not os.path.exists(path):
 			path = os.path.join(os.path.expanduser("~"), ".vagrant.d", "boxes", str(image.id), "0", "libvirt", "box.img")
 
+		self._log.info("recalculating md5 of image found at {}".format(path))
+
 		if not os.path.exists(path):
 			self._log.warn("Could not find valid path for image {} to update md5".format(str(image.id)))
 			return
 
-		md5,_ = md5sum().split()
+		md5,_ = md5sum(path).split()
+
+		self._log.info("new md5: {}".format(md5))
 		image.md5 = md5
 		image.timestamps["modified"] = time.time()
 		image.save()

@@ -24,7 +24,12 @@ def git_info(request, ref, path):
 		file_path = os.path.join(code_path, path)
 		if os.path.isdir(file_path):
 			res["type"] = "listing"
-			res["items"] = os.listdir(file_path)
+			items = []
+			for item in os.listdir(file_path):
+				if os.path.isdir(os.path.join(file_path, item)):
+					item += "/"
+				items.append(item)
+			res["items"] = items
 
 		elif os.path.isfile(file_path):
 			res["type"] = "file"

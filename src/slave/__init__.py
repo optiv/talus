@@ -2,11 +2,13 @@
 # encoding: utf-8
 
 import json
+import libvirt
 import logging
 import netifaces
 import os
 import pika
 import pymongo
+from Queue import Queue
 import sh
 import signal
 import socket
@@ -23,7 +25,10 @@ from slave.amqp_man import AmqpManager
 from slave.vm import VMHandler,ImageManager
 import slave.models
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(
+	level=logging.DEBUG,
+)
+logging.getLogger().handlers[0].setFormatter(logging.Formatter("%(asctime)s %(levelname)s:%(name)s:%(message)s"))
 
 logging.getLogger("sh").setLevel(logging.WARN)
 
@@ -35,8 +40,9 @@ def _signal_handler(signum, frame):
 	:returns: None
 
 	"""
-	print("handling signal")
+	logging.getLogger("Slave").info("handling signal")
 	Slave.instance().stop()
+	logging.shutdown()
 
 def _install_sig_handlers():
 	"""Install signal handlers
@@ -44,6 +50,53 @@ def _install_sig_handlers():
 	print("installing signal handlers")
 	signal.signal(signal.SIGINT, _signal_handler)
 	signal.signal(signal.SIGTERM, _signal_handler)
+
+class LibvirtWrapper(object):
+	_lock = None
+	_conn = None
+
+	def __init__(self, log, uri="qemu:///system"):
+		#self._lock = threading.Lock()
+		self._uri = uri
+		self._conn = libvirt.open(self._uri)
+		self._l_log = log.getChild("LV")
+
+		self._can_be_used = threading.Event()
+		self._can_be_used.set()
+		self._lock = threading.Lock()
+	
+	def restart_libvirtd(self):
+		self._l_log.debug("restaring libvirtd, waiting for lock")
+
+		self._can_be_used.clear()
+
+		self._l_log.debug("closing connection")
+		self._conn.close()
+		self._l_log.info("restarting libvirtd")
+		# this works better than `/etc/init.d/libvirt-bin restart` for some reason
+		os.system("/etc/init.d/libvirt-bin stop")
+		time.sleep(3)
+		os.system("killall -KILL libvirtd")
+		time.sleep(3)
+		os.system("/etc/init.d/libvirt-bin start")
+		self._l_log.info("sleeping for a bit until libvirt should be up")
+		time.sleep(10)
+		self._l_log.info("reconnecting to libvirt")
+		self._conn = libvirt.open(self._uri)
+		self._l_log.info("reconnected")
+
+		self._can_be_used.set()
+	
+	def __getattr__(self, name):
+		if hasattr(self._conn, name):
+			val = getattr(self._conn, name)
+			if hasattr(val, "__call__"):
+				def wrapped(*args, **kwargs):
+					self._can_be_used.wait(2**31)
+					return val(*args, **kwargs)
+				return wrapped
+			else:
+				return val
 
 class GuestComms(basic.LineReceiver):
 	"""Communicates with the guest hosts as they start running"""
@@ -114,16 +167,17 @@ class Slave(threading.Thread):
 
 	_INSTANCE = None
 	@classmethod
-	def instance(cls, amqp_host=None, max_vms=None):
+	def instance(cls, amqp_host=None, max_vms=None, intf=None):
 		if cls._INSTANCE is None:
-			cls._INSTANCE = cls(amqp_host, max_vms)
+			cls._INSTANCE = cls(amqp_host, max_vms, intf)
 		return cls._INSTANCE
 
-	def __init__(self, amqp_host, max_vms):
+	def __init__(self, amqp_host, max_vms, intf):
 		"""Init the slave"""
 
 		super(Slave, self).__init__()
 
+		self._max_vms = max_vms
 		self._max_vms_lock = threading.Semaphore(max_vms)
 
 		self._amqp_host = amqp_host
@@ -136,7 +190,8 @@ class Slave(threading.Thread):
 		self._image_man = ImageManager.instance()
 
 		self._uuid = str(uuid.uuid4())
-		self._ip = netifaces.ifaddresses('eth0')[2][0]['addr']
+		self._intf = intf
+		self._ip = netifaces.ifaddresses(self._intf)[2][0]['addr']
 		self._hostname = socket.gethostname()
 
 		# these will be set by the config amqp message
@@ -149,6 +204,33 @@ class Slave(threading.Thread):
 		self._handlers = []
 		self._handlers_lock = threading.Lock()
 		self._total_jobs_run = 0
+
+		self._libvirt_conn = None
+
+		self._gen_mac_addrs()
+		self._gen_vnc_ports()
+
+		self._libvirtd_can_be_used = threading.Event()
+		# not restarting, so set it (amqp jobs will wait on it when it's cleared)
+		self._libvirtd_can_be_used.set()
+		# restart every thousand vms
+		self._libvirtd_restart_vm_count = 1000
+	
+	def _gen_mac_addrs(self):
+		self._mac_addrs = Queue()
+		base = "00:00:c0:a8:7b:{:02x}"
+		num = 2
+		for x in xrange(50):
+			new_mac = base.format(num+x)
+			ip = ".".join(map(lambda x: str(int(x, 16)), new_mac.split(":")[2:]))
+			# just testing this out...
+			sh.arp("-s", ip, new_mac)
+			self._mac_addrs.put(new_mac)
+	
+	def _gen_vnc_ports(self):
+		self._vnc_ports = Queue()
+		for x in xrange(50):
+			self._vnc_ports.put(5900 + x)
 
 	def run(self):
 		self._running.set()
@@ -176,8 +258,9 @@ class Slave(threading.Thread):
 			json.dumps(dict(
 				type		= "new",
 				uuid		= self._uuid,
-				ip			= self._ip,
-				hostname	= self._hostname
+				ip		= self._ip,
+				hostname	= self._hostname,
+				max_vms		= self._max_vms,
 			)),
 			self.AMQP_SLAVE_STATUS_QUEUE
 		)
@@ -186,6 +269,10 @@ class Slave(threading.Thread):
 		self._amqp_man.consume_queue(self.AMQP_SLAVE_QUEUE + "_" + self._uuid, self._on_slave_me_received)
 
 		self._log.info("waiting for slave config to be received")
+
+		self._status_update_thread = threading.Thread(target=self._do_update_status)
+		self._status_update_thread.daemon = True
+		self._status_update_thread.start()
 
 		while self._running.is_set():
 			time.sleep(0.2)
@@ -197,11 +284,23 @@ class Slave(threading.Thread):
 		Stop the slave
 		"""
 		self._log.info("stopping!")
+		# logging module does not work from within a signal handler (which
+		# is where stop may be called from). See
+		# https://docs.python.org/2/library/logging.html#thread-safety
+		print("stopping!")
+
 		self._amqp_man.stop()
 		self._running.clear()
 
 		for handler in self._handlers:
 			handler.stop()
+			# wait for them all to finish!
+			handler.join()
+
+		self._log.info("all handlers have exited, goodbye")
+		print("all handlers have exited, goodbye")
+
+		logging.shutdown()
 	
 	def cancel_job(self, job):
 		"""
@@ -227,6 +326,7 @@ class Slave(threading.Thread):
 			return "{}"
 
 		switch = dict(
+			started		= self._handle_job_started,
 			progress	= self._handle_job_progress,
 			result		= self._handle_job_result,
 			finished	= self._handle_job_finished,
@@ -239,6 +339,20 @@ class Slave(threading.Thread):
 			return
 
 		return switch[data["type"]](data)
+	
+	def _handle_job_started(self, data):
+		self._log.debug("handling started job part: {}:{}".format(data["job"], data["idx"]))
+
+		found_handler = None
+		with self._handlers_lock:
+			for handler in self._handlers:
+				if handler.job == data["job"] and handler.idx == data["idx"]:
+					found_handler = handler
+
+		if found_handler is not None:
+			found_handler.on_received_started()
+		else:
+			self._log.warn("cannot find the handler for data: {}".format(data))
 	
 	def _handle_job_error(self, data):
 		self._log.debug("handling errored job part: {}:{}".format(data["job"], data["idx"]))
@@ -271,7 +385,7 @@ class Slave(threading.Thread):
 	def _handle_job_finished(self, data):
 		self._log.debug("handling finished job part: {}:{}".format(data["job"], data["idx"]))
 
-		found_hander = None
+		found_handler = None
 		with self._handlers_lock:
 			for handler in self._handlers:
 				if handler.job == data["job"] and handler.idx == data["idx"]:
@@ -284,6 +398,16 @@ class Slave(threading.Thread):
 	
 	def _handle_job_progress(self, data):
 		self._log.debug("handling job progress: {}:{}".format(data["job"], data["idx"]))
+		
+		matched_handler = None
+		for handler in self._handlers:
+			if handler.job == data["job"] and handler.idx == data["idx"]:
+				matched_handler = handler
+				break
+
+		if matched_handler is not None:
+			matched_handler.total_progress += data["data"]
+
 		self._amqp_man.queue_msg(
 			json.dumps(dict(
 				type		= "progress",
@@ -303,7 +427,7 @@ class Slave(threading.Thread):
 				tool		= data["tool"],
 				idx			= data["idx"],
 				job			= data["job"],
-				data		= data["data"], # it's expected to just be a number
+				data		= data["data"],
 			)),
 			self.AMQP_JOB_STATUS_QUEUE
 		)
@@ -315,11 +439,17 @@ class Slave(threading.Thread):
 	def _on_job_received(self, channel, method, properties, body):
 		"""
 		"""
-		self._log.info("received job from queue: {}".format(body))
-		self._amqp_man.ack_method(method)
-
-		data = json.loads(body)
 		self._max_vms_lock.acquire()
+
+		# wait for any restarts to be 
+		if not self._libvirtd_can_be_used.is_set():
+			self._log.debug("waiting for libvirtd to restart before starting any new VMs")
+		self._libvirtd_can_be_used.wait(2**31)
+
+		self._log.info("received job from queue: {}".format(body))
+
+		self._amqp_man.ack_method(method)
+		data = json.loads(body)
 
 		jobs = slave.models.Job.objects(id=data["job"])
 		if len(jobs) == 0:
@@ -335,24 +465,26 @@ class Slave(threading.Thread):
 
 		try:
 			handler = VMHandler(
-				job				= data["job"],
-				idx				= data["idx"],
-				debug			= data["debug"],
-				image			= data["image"],
-				image_username	= data["image_username"],
-				image_password	= data["image_password"],
-				os_type			= data["os_type"],
-				tool			= data["tool"],
-				params			= data["params"],
-				network			= data["network"],
-				fileset			= data["fileset"],
-				timeout			= data["vm_max"],
-				db_host			= self._db_host,
-				code_loc		= self._code_loc,
-				code_username	= self._code_username,
-				code_password	= self._code_password,
-				on_finished		= self._on_vm_handler_finished,
-				on_vnc_available	= self._on_vm_handler_vnc_avail
+				job					= data["job"],
+				idx					= data["idx"],
+				debug				= data["debug"],
+				image				= data["image"],
+				image_username		= data["image_username"],
+				image_password		= data["image_password"],
+				os_type				= data["os_type"],
+				tool				= data["tool"],
+				params				= data["params"],
+				network				= data["network"],
+				fileset				= data["fileset"],
+				timeout				= data["vm_max"],
+				db_host				= self._db_host,
+				code_loc			= self._code_loc,
+				code_username		= self._code_username,
+				code_password		= self._code_password,
+				on_finished			= self._on_vm_handler_finished,
+				libvirt_conn		= self._get_libvirt_conn(),
+				mac					= self._get_next_mac(),
+				vnc_port			= self._get_next_vnc(),
 			)
 		except KeyError as e:
 			self._log.warn("received malformed job: {!r}".format(data))
@@ -366,17 +498,52 @@ class Slave(threading.Thread):
 		self._update_status()
 		self._log.debug("done starting VMHandler")
 	
+	def _get_next_vnc(self):
+		return self._vnc_ports.get()
+	
+	def _get_next_mac(self):
+		return self._mac_addrs.get()
+	
+	def _get_libvirt_conn(self):
+		if self._libvirt_conn is None:
+			self._libvirt_conn = LibvirtWrapper(self._log)
+			#self._libvirt_conn = libvirt.open("qemu:///system")
+
+		return self._libvirt_conn
+	
 	def _on_vm_handler_finished(self, handler):
 		"""
 		Handle a finished VM handler
 		"""
 		self._log.debug("The VM handler {} for job {}:{} has finished".format(handler, handler.job, handler.idx))
+
+		# it never reported progress for some reason, so let's report a progress of 1
+		# for just having run the VM (1 vm == 1 progress. ALWAYS!)
+		if handler.total_progress == 0:
+			self._log.info("job handler exited without reporting any progress, reporting 1 progress")
+			self._handle_job_progress({
+				"job"	: handler.job,
+				"idx"	: handler.idx,
+				"data"	: 1
+			})
+
 		with self._handlers_lock:
-			del self._handlers[self._handlers.index(handler)]
+			self._handlers.remove(handler)
+			self._total_jobs_run += 1
 
+#			if self._total_jobs_run % self._libvirtd_restart_vm_count == 0:
+#				self._log.debug("clearing libvirt restart event")
+#				self._libvirtd_can_be_used.clear()
+#
+#			if len(self._handlers) == 0 and not self._libvirtd_can_be_used.is_set():
+#				self._log.debug("no vms are running and libvirtd needs to be restarted, so restarting it")
+#				self._libvirt_conn.restart_libvirtd()
+#				self._log.debug("setting libvirtd_can_be_used event")
+#				self._libvirtd_can_be_used.set()
+
+		self._mac_addrs.put(handler.mac)
+		self._vnc_ports.put(handler.vnc_port)
 		self._max_vms_lock.release()
-
-		self._total_jobs_run += 1
 		self._update_status()
 	
 	def _on_vm_handler_vnc_avail(self, handler):
@@ -450,6 +617,11 @@ class Slave(threading.Thread):
 			self._already_consuming = True
 	
 	# -----------------------
+	
+	def _do_update_status(self):
+		while self._running.is_set():
+			self._update_status()
+			time.sleep(5)
 
 	def _update_status(self):
 		vm_infos = []
@@ -459,7 +631,8 @@ class Slave(threading.Thread):
 				idx			= handler.idx,
 				vnc_port	= handler.vnc_port,
 				tool		= handler.tool,
-				start_time	= handler.start_time
+				start_time	= handler.start_time,
+				vm_status	= handler.vm_status,
 			))
 
 		self._amqp_man.queue_msg(
@@ -473,13 +646,13 @@ class Slave(threading.Thread):
 			self.AMQP_SLAVE_STATUS_QUEUE
 		)
 
-def main(amqp_host, max_vms):
+def main(amqp_host, max_vms, intf):
 	#_install_sig_handlers()
 
-	virt_ip = netifaces.ifaddresses('virbr0')[2][0]['addr']
+	virt_ip = netifaces.ifaddresses('virbr1')[2][0]['addr']
 	endpoints.serverFromString(reactor, "tcp:55555:interface={}".format(virt_ip)).listen(GuestCommsFactory())
 
-	slave = Slave.instance(amqp_host, max_vms)
+	slave = Slave.instance(amqp_host, max_vms, intf)
 	reactor.callWhenRunning(slave.start)
 	reactor.addSystemEventTrigger("during", "shutdown", Slave.instance().stop)
 	reactor.run()

@@ -13,28 +13,32 @@ PQ = Q.PriorityQueue
 import threading
 import time
 
-from master import Master
 from master.lib.amqp_man import AmqpManager
+
 from master.models import *
+from master.models import Master as MasterModel
+from master import Master
 
 logging.basicConfig(level=logging.DEBUG)
 
 class JobHandler(object):
 	"""A class to handle new jobs"""
 
-	def __init__(self, job, queue_name):
+	def __init__(self, job, queue_name, job_man):
 		"""init the job handler
 		
 		:param mongoengine.Document job: A Job model
 		:param str queue_name: The name of the queue this job will drip into
 		"""
 		self.job = job
+		self.job_man = job_man
 		self.drip_count = 0
 		self.queue_name = queue_name
 		self.fileset = FileSet(
 			name		= "{}_default_fileset".format(job.name),
 			timestamps	= {"created": time.time()},
-			job			= job
+			job			= job,
+			tags		= job.tags
 		)
 		self.fileset.save()
 
@@ -47,8 +51,35 @@ class JobHandler(object):
 
 		:num: The number of items to return
 		"""
+		# this check is usually performed in the _handle_job_progress function, as
+		# the progress of jobs is received over AMQP. We should check it here as well,
+		# just in case talus_master daemon is restarted and jobs end up with a progress
+		# higher than their limit
+		if self.job.limit != -1 and self.job.progress >= self.job.limit:
+			self.job.status = {"name": "stop"}
+			self.job.save()
+
+			# this uses the self._job_queue_lock, which we should already have
+			# acquired at this point, and this will cause it to HANG! so we're
+			# just going to update the document in the DB and let the job watcher
+			# handle the change (same procedure as cancelling a job)
+			# self.job_man.stop_job(self.job)
+			return
+
 		priority = self.job.priority
 		num = int(round(drip_size * priority / 100.0))
+		if num == 0:
+			num = 1
+
+		if self.job.debug and self.drip_count + num > self.job.limit:
+			# only drip whatever's left
+			num = self.job.limit - self.drip_count
+
+			# we only want to stop dripping jobs, not completely cancel the job
+			# job cancellation for debug jobs comes into play when progress >= limit
+			if num == 0:
+				return
+
 		for x in range(num):
 			res = self.drop()
 
@@ -87,6 +118,8 @@ class JobHandler(object):
 class JobManager(threading.Thread):
 	"""A class to manage jobs (starting/stopping/cancelling/etc)"""
 
+	daemon = True
+
 	AMQP_JOB_QUEUE = "jobs"
 	AMQP_JOB_STATUS_QUEUE = "job_status"
 	AMQP_JOB_PROPS = dict(
@@ -95,7 +128,7 @@ class JobManager(threading.Thread):
 		exclusive	= False,
 	)
 
-	def __init__(self, drip_size=10):
+	def __init__(self, drip_size=25):
 		"""init the job manager
 		
 		:drip_size: The number of jobs to be added to the queue at once"""
@@ -163,33 +196,58 @@ class JobManager(threading.Thread):
 		if queue is None or queue == "":
 			queue = self.AMQP_JOB_QUEUE
 
-		handler = JobHandler(job, queue)
+		handler = JobHandler(job, queue, self)
 		self._job_handlers[str(job.id)] = handler
 
 		with self._job_queue_lock:
 			job_priority_queue = self._job_amqp_queues.setdefault(queue, PQ())
-			job_priority_queue.put((job.priority, handler))
+			# items are fetched by lowest priority value first, so we need to
+			# invert the priorities
+			job_priority_queue.put(((1000-job.priority), handler))
+
+			Master.instance().update_status(queues=self._get_queues())
 	
+	def _get_queues(self):
+		queues = {}
+		for qname,pq in self._job_amqp_queues.iteritems():
+			q = queues.setdefault(qname, [])
+
+			items = []
+			while pq.qsize() > 0:
+				# get them IN ORDER!!! pq.queue IS NOT in order!!!
+				priority,handler = pq.get()
+				items.append((priority, handler))
+				q.append({
+					"job": str(handler.job.id),
+					"job_name": handler.job.name,
+					"priority": handler.job.priority,
+				})
+
+			for item in items:
+				pq.put(item)
+
+		return queues
+
 	def stop_job(self, job):
 		"""This is intended to be called once a job has been completed
 		(not cancelled, but completed)
 		"""
 		self._log.info("stopping job: {}".format(job.id))
-		if str(job.id) not in self._job_handlers:
-			self._log.warn("error, job {} not in job handlers".format(job.id))
-			return
 
-		with self._job_queue_lock:
-			handler = self._job_handlers[str(job.id)]
-			queue = self._job_amqp_queues[handler.queue_name]
+		if str(job.id) in self._job_handlers:
+			with self._job_queue_lock:
+				handler = self._job_handlers[str(job.id)]
+				queue = self._job_amqp_queues[handler.queue_name]
 
-			new_queue = []
-			for priority,handler in queue.queue:
-				if handler.job.id == job.id:
-					continue
-				new_queue.append((priority, handler))
+				new_queue = []
+				for priority,handler in queue.queue:
+					if handler.job.id == job.id:
+						continue
+					new_queue.append((priority, handler))
 
-			queue.queue = new_queue
+				queue.queue = new_queue
+
+				Master.instance().update_status(queues=self._get_queues())
 
 		AmqpManager.instance().queue_msg(
 			json.dumps(dict(
@@ -204,6 +262,7 @@ class JobManager(threading.Thread):
 		job.status = {
 			"name": "finished"
 		}
+		job.timestamps["finished"] = time.time()
 		job.save()
 
 		self._log.info("stopped job: {}".format(job.id))
@@ -220,21 +279,26 @@ class JobManager(threading.Thread):
 		# TODO forcefully cancel the job (notify all slaves via amqp that
 		# this job.id needs to be forcefully cancelled
 		self._log.info("cancelling job: {}".format(job.id))
-		if str(job.id) not in self._job_handlers:
-			self._log.warn("error, job {} not in job handlers".format(job.id))
-			return
 
-		with self._job_queue_lock:
-			handler = self._job_handlers[str(job.id)]
-			queue = self._job_amqp_queues[handler.queue_name]
+		if str(job.id) in self._job_handlers:
+			with self._job_queue_lock:
+				handler = self._job_handlers[str(job.id)]
+				queue = self._job_amqp_queues[handler.queue_name]
 
-			new_queue = []
-			for priority,info in queue.queue:
-				if handler.job.id == job.id:
-					continue
-				new_queue.append((priority, handler))
+				new_queue = []
+				while queue.qsize() > 0:
+					priority,handler = queue.get()
+					# leave this one out (the one we're cancelling)
+					if handler.job.id == job.id:
+						continue
+					new_queue.append((priority, handler))
 
-			queue.queue = new_queue
+				for item in new_queue:
+					queue.put(item)
+
+				Master.instance().update_status(queues=self._get_queues())
+		else:
+			self._log.debug("job to cancel ({}) not in job handlers, sending cancel message to amqp anyways".format(job.id))
 
 		AmqpManager.instance().queue_msg(
 			json.dumps(dict(
@@ -249,6 +313,7 @@ class JobManager(threading.Thread):
 		job.status = {
 			"name": "cancelled"
 		}
+		job.timestamps["cancelled"] = time.time()
 		job.save()
 
 		self._log.info("cancelled job: {}".format(job.id))
@@ -256,18 +321,26 @@ class JobManager(threading.Thread):
 		self._cleanup_job(job)
 
 	# ---------------------------------------
-	
 	def _cleanup_job(self, job):
 		self._log.info("cleaning up job: {}".format(job.id))
 
-		handler = self._job_handlers[str(job.id)]
-		handler.cleanup()
-		del self._job_handlers[str(job.id)]
+		if str(job.id) in self._job_handlers:
+			handler = self._job_handlers[str(job.id)]
+			handler.cleanup()
+			del self._job_handlers[str(job.id)]
 
 	def _create_handlers_for_existing(self):
 		self._log.info("creating job handlers for existing running jobs in the database")
 		for job in Job.objects(status__name = "running"):
 			self.run_job(job)
+
+		self._log.info("cancelling jobs stuck in cancelling state")
+		for job in Job.objects(status__name = "cancelling"):
+			self.cancel_job(job)
+
+		self._log.info("stopping jobs stuck in stopping state")
+		for job in Job.objects(status__name = "stopping"):
+			self.stop_job(job)
 		
 	# ---------------------------------------
 	# job amqp related
@@ -311,8 +384,9 @@ class JobManager(threading.Thread):
 		"""
 		self._log.debug("handling job log: {}".format(data))
 
-		err_data = data["data"]
-		error = JobError(**err_data)
+		# holds the same info as an error, so just reuse that class
+		log_data = data["data"]
+		log = JobError(**log_data)
 		Job.objects(id=data["job"]).update_one(add_to_set__logs=log)
 
 	def _handle_job_progress(self, data):
@@ -330,7 +404,7 @@ class JobManager(threading.Thread):
 		job = handler.job
 		job.reload()
 
-		if job.progress >= job.limit:
+		if job.limit != -1 and job.progress >= job.limit:
 			self._log.debug("job {} finished ({}/{})".format(job.id, job.progress, job.limit))
 			self.stop_job(job)
 	
@@ -339,6 +413,7 @@ class JobManager(threading.Thread):
 		"""
 		self._log.debug("handling job result: {}".format(data))
 
+		# make sure the result data is always a dict
 		if not isinstance(data["data"], dict):
 			data["data"] = {"data": data["data"]}
 
@@ -349,9 +424,22 @@ class JobManager(threading.Thread):
 
 		result = Result()
 		result.job = job
-		result.type = data["type"]
+
+		# confusing, I know. Look at what the slave sends in
+		# _handle_job_result in talus/src/slave/__init__.py, should look like
+		# {
+		# 	"type": result,
+		# 	"data": {
+		# 		"type": "crash",
+		# 		"data": {<actual result data>},
+		# 	},
+		# 	"idx": JOB_IDX,
+		# 	"job": JOB_ID,
+		# 	"tool": TOOL_ID
+		# }
+		result.type = data["data"]["type"]
 		result.tool	= data["tool"]
-		result.data = data["data"]
+		result.data = data["data"]["data"]
 		result.save()
 	
 	def _monitor_queues(self):
@@ -361,11 +449,10 @@ class JobManager(threading.Thread):
 		with self._job_queue_lock:
 			for queue_name,job_queue in self._job_amqp_queues.iteritems():
 				if job_queue.qsize() == 0:
-					time.sleep(0.5)
 					continue
 				num_msgs = self._amqp_man.get_message_count(queue_name)
 				if num_msgs < self._drip_size:
-					self._log.debug("queue has {}/{} messages, dripping some more".format(num_msgs, self._drip_size))
+					#self._log.debug("queue has {}/{} messages, dripping some more".format(num_msgs, self._drip_size))
 					self._do_drip(queue_name, job_queue)
 	
 	def _safe_priority(self, priority):
@@ -373,8 +460,8 @@ class JobManager(threading.Thread):
 		if not isinstance(res, int):
 			res = 50
 
-		if res < 0:
-			res = 0
+		if res <= 0:
+			res = 1
 
 		elif res > 100:
 			res = 100
@@ -388,6 +475,12 @@ class JobManager(threading.Thread):
 		:job_queue: The job queue to work
 		:returns: None
 		"""
+		count = 0
 		for priority,job in job_queue.queue:
 			for drop in job.drip(self._drip_size):
+				count += 1
 				self._amqp_man.queue_msg(drop, queue_name)
+
+				# always cap this off at _drip_size
+				if count >= self._drip_size:
+					return

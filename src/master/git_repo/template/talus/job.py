@@ -13,6 +13,8 @@ import logging
 
 logging.basicConfig(level=logging.DEBUG)
 
+from talus.fileset import FileSet
+
 class TalusError(Exception): pass
 
 class PyFuncTypeComponent(object):
@@ -24,6 +26,11 @@ class PyFuncTypeComponent(object):
 		if match is None:
 			raise TalusError("Could not determine the component name from: {!r}".format(raw))
 		self.name = match.group(1)
+
+class PyFuncTypeFileSet(object):
+	def __init__(self):
+		self.type = "fileset"
+		self.name = "FileSet"
 
 class PyFuncTypeNative(object):
 	def __init__(self, native_type):
@@ -48,6 +55,8 @@ class PyFuncParam(object):
 
 		if type.startswith("Component"):
 			type = PyFuncTypeComponent(type)
+		elif type == "FileSet":
+			type = PyFuncTypeFileSet()
 		else:
 			type = PyFuncTypeNative(type)
 
@@ -156,22 +165,35 @@ class Job(object):
 
 	"""This is the class that will run a task."""
 
-	def __init__(self, id, idx, params, tool, progress_callback, results_callback):
+	def __init__(self, id, idx, params, tool, fileset_id, progress_callback, results_callback):
 		"""TODO: to be defined1.
 
 		:idx: TODO
 		:params: TODO
 		:tool: TODO
+		:fileset_id: The id of the default fileset that files should be added to
 
 		"""
 		self._id = id
 		self._idx = idx
 		self._params = params
 		self._tool = tool
+		self._fileset_id = fileset_id
+		self._fileset = FileSet(self._fileset_id)
 		self._progress_callback = progress_callback
 		self._results_callback = results_callback
 
 		self._log = logging.getLogger("JOB:{}".format(self._id))
+	
+	def add_file(self, contents, content_type="application/octet-stream", filename=None, **metadata):
+		"""Add a file to the default result fileset
+		"""
+		return self._fileset.add(
+			contents		= contents,
+			filename		= filename,
+			content_type	= content_type,
+			**metadata
+		)
 	
 	def run(self):
 		self._log.debug("preparing to run job")
@@ -179,7 +201,13 @@ class Job(object):
 		try:
 			tool_cls = self._get_tool_cls()
 			real_params = self._convert_params(self._params, tool_cls)
-			tool = tool_cls(self._idx, self._progress_callback, self._results_callback, self._log)
+			tool = tool_cls(
+				idx			= self._idx,
+				progress_cb	= self._progress_callback,
+				results_cb	= self._results_callback,
+				parent_log	= self._log,
+				job			= self
+			)
 
 			self._log.debug("RUNNING TOOL")
 
@@ -200,7 +228,7 @@ class Job(object):
 
 	def _get_component_cls(self, cls_name):
 		mod_name = self._camel_to_under(cls_name)
-		mod_base = __import__("talus.components", globals(), locals(), fromlist=[mod_name])
+		mod_base = __import__("talus.components", globals(), locals(), fromlist=[str(mod_name)])
 		mod = getattr(mod_base, mod_name)
 		return getattr(mod, cls_name)
 	
@@ -225,14 +253,25 @@ class Job(object):
 				"tuple"	: lambda x: tuple(x),
 				"dict"	: lambda x: dict(x),
 				"int"	: lambda x: int(x),
+				"float"	: lambda x: float(x),
 				"unicode"	: lambda x: unicode(x)
 			}
 			return switch[param_type["name"]](val)
 
+		elif param_type["type"] == "fileset":
+			val = FileSet(val)
+			return val
+
 		elif param_type["type"] == "component":
-			component_cls = self._get_component_cls(param_type["name"])
-			component_args = self._convert_params(val, component_cls)
-			val = component_cls(parent_log = self._log)
+			# val should be like this:
+			#	{ "class": "SpecificComponent", "params": {} }
+			#
+			# allow for inheritance by letting the json specify the
+			# specific class that will be used
+			component_cls = self._get_component_cls(val["class"])
+			component_args = self._convert_params(val["params"], component_cls)
+
+			val = component_cls(parent_log = self._log, job = self)
 			val.init(**component_args)
 			return val
 	

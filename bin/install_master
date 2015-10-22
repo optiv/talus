@@ -2,16 +2,23 @@
 
 DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 
+echo "installing docker"
+$DIR/install_docker
+echo "done installing docker"
+
 cd $DIR/..
 
 echo "installing db"
 src/db/bin/install
+sudo start talus_db
 
 echo "installing amqp"
 src/amqp/bin/install
+sudo start talus_amqp
 
 echo "installing web"
 src/web/bin/install
+sudo start talus_web
 
 echo "installing master"
 src/master/bin/install
@@ -27,9 +34,6 @@ echo "logs can either be found in /var/log/talus/, or /var/log/upstart/talus_*.l
 echo ""
 echo "starting upstart jobs now"
 
-sudo start talus_db
-sudo start talus_amqp
-sudo start talus_web
 sudo start talus_master
 
 echo "done installing, things should be running. The web API should be available at http://localhost/api"

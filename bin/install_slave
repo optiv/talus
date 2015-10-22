@@ -1,7 +1,7 @@
 #!/bin/bash
 
-if [[ "$#" -ne 2 ]] ; then
-	echo "USAGE: $0 <TALUS_MASTER_HOST> <MAX_VMS>"
+if [[ "$#" -ne 3 ]] ; then
+	echo "USAGE: $0 <TALUS_MASTER_HOST> <MAX_VMS> <INTF [e.g. eth0]>"
 	echo ""
 	echo "This should be run ON THE SLAVE machine. Pass in the"
 	echo "talus master host and the max vms for this slave"
@@ -16,7 +16,7 @@ DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 cd $DIR/..
 
 echo "installing slave"
-src/slave/bin/install "$1" "$2"
+src/slave/bin/install "$1" "$2" "$3"
 
 echo "The slave should be ready to go now"
 echo "Upstart scripts:"

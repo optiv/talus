@@ -25,7 +25,7 @@ base = os.path.dirname("__file__").split(os.path.sep)[0]
 
 if base == "/web":
 	print("DEBUG IS FALSE")
-	DEBUG = True
+	DEBUG = False
 else:
 	print("DEBUG IS TRUE")
 	# SECURITY WARNING: don't run with debug turned on in production!

@@ -10,7 +10,6 @@ import master.models
 from master.lib.jobs import JobManager
 from master.watchers import WatcherBase
 from master.lib.amqp_man import AmqpManager
-from master import Master
 
 class JobWatcher(WatcherBase):
 	collection = "talus.job"
@@ -22,7 +21,7 @@ class JobWatcher(WatcherBase):
 		# this needs to be continuously running
 		self._job_man.start()
 
-		for job in master.models.Job.objects(status__name__in=["run", "stop"]):
+		for job in master.models.Job.objects(status__name__in=["run", "stop", "cancel"]):
 			self._handle_status(job.id, job=job)
 	
 	def stop(self):
@@ -49,6 +48,7 @@ class JobWatcher(WatcherBase):
 	def _handle_status(self, id_, obj=None, job=None):
 		switch = {
 			"run"		: self._handle_run,
+			"stop"		: self._handle_stop,
 			"cancel"	: self._handle_cancel,
 		}
 
@@ -66,12 +66,31 @@ class JobWatcher(WatcherBase):
 		"""
 		self._log.info("handling job runnage")
 
+		if job.image.status["name"] != "ready":
+			self._log.warn("Image is not in a ready state! cannot run the job yet, cancelling")
+			job.status = {"name": "cancelled", "desc": "image not ready"}
+			job.save()
+			return
+
 		self._job_man.run_job(job)
 
 		job.status = {
 			"name": "running"
 		}
 		job.save()
+
+	def _handle_stop(self, id_, job):
+		"""Handle stopping a job - to be used only for internal purposes. Not
+		really intended for a user to be able to set this.
+		"""
+		self._log.info("handling job cancellation")
+
+		job.status = {
+			"name": "stopping"
+		}
+		job.save()
+
+		self._job_man.stop_job(job)
 	
 	def _handle_cancel(self, id_, job):
 		"""Handle cancelling a job

@@ -11,6 +11,8 @@ pika_logger = logging.getLogger('pika')
 pika_logger.setLevel(logging.CRITICAL)
 
 class AmqpQueueHandler(threading.Thread):
+	daemon = True
+
 	def __init__(self, callback, queue_name, channel, lock, no_ack, running):
 		super(AmqpQueueHandler, self).__init__()
 
@@ -28,11 +30,15 @@ class AmqpQueueHandler(threading.Thread):
 		self._log.debug("monitoring")
 
 		while self._running.is_set():
+			method = None
 			with self.lock:
-				method, props, body = self.channel.basic_get(
-					self.queue_name,
-					no_ack=self.no_ack
-				)
+				try:
+					method, props, body = self.channel.basic_get(
+						self.queue_name,
+						no_ack=self.no_ack
+					)
+				except:
+					pass
 			if method is None:
 				time.sleep(0.1)
 				continue
@@ -48,6 +54,7 @@ class AmqpQueueHandler(threading.Thread):
 class AmqpManager(threading.Thread):
 	"""A class to manage jobs (starting/stopping/cancelling/etc)"""
 
+	daemon = True
 	AMQP_JOB_QUEUE = "jobs"
 	AMQP_JOB_RESULT_QUEUE = "job_results"
 

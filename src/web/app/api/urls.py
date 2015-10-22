@@ -18,6 +18,9 @@ urlpatterns = [
 	url(r'^result/$', views.ResultList.as_view()),
 	url(r'^result/(?P<id>' + OBJ_ID + ")/$", views.ResultDetails.as_view()),
 
+	url(r'^master/$', views.MasterList.as_view()),
+	url(r'^master/(?P<id>' + OBJ_ID + ")/$", views.MasterDetails.as_view()),
+
 	url(r'^slave/$', views.SlaveList.as_view()),
 	url(r'^slave/(?P<id>' + OBJ_ID + ")/$", views.SlaveDetails.as_view()),
 
@@ -28,6 +31,7 @@ urlpatterns = [
 	url(r'^job/(?P<id>' + OBJ_ID + ")/$", views.JobDetails.as_view()),
 
 	url(r'^code/$', views.CodeList.as_view()),
+	url(r'^code/create/$', views.CodeCreate.as_view()),
 	url(r'^code/(?P<id>' + OBJ_ID + ")/$", views.CodeDetails.as_view()),
 
 	url(r'^os/$', views.OSList.as_view()),

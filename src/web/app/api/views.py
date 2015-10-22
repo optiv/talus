@@ -24,8 +24,8 @@ from rest_framework.parsers import MultiPartParser,FormParser,FileUploadParser
 
 from rest_framework_mongoengine.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
 
-from api.models import Image, OS, TmpFile, Code, Task, Job, Slave, Result, DB, FileSet
-from api.serializers import OSSerializer, ImageSerializer, ImageImportSerializer, CodeSerializer, TaskSerializer, JobSerializer, SlaveSerializer, ResultSerializer, FileSetSerializer
+from api.models import Image, OS, TmpFile, Code, Task, Job, Master, Slave, Result, DB, FileSet
+from api.serializers import OSSerializer, ImageSerializer, ImageImportSerializer, CodeSerializer, TaskSerializer, JobSerializer, MasterSerializer, SlaveSerializer, ResultSerializer, FileSetSerializer
 
 class TalusRenderer(JSONRenderer):
 	def render(self, data, accepted_media_type=None, renderer_context=None):
@@ -127,7 +127,11 @@ class CorpusFiles(APIView):
 				ext = ".txt"
 			else:
 				ext = mimetypes.guess_extension(grid_file.content_type)
-			filename = str(grid_file._id) + ext
+
+			if grid_file.filename is None:
+				filename = str(grid_file._id) + ext
+			else:
+				filename = grid_file.filename
 
 			response = HttpResponse(grid_file.read(), content_type=grid_file.content_type)
 			response["Content-Disposition"] = "attachment; filename={}".format(filename)
@@ -154,11 +158,94 @@ class TmpFileUpload(APIView):
 		response =  Response(str(tmp_file.id))
 		return response
 
+class CodeCreate(APIView):
+	parser_classes = (MultiPartParser,FormParser,)
+
+	def post(self, request, filename=None, format=None):
+		if "type" not in request.POST:
+			# TODO shouldn't these use better status codes and such?
+			return Response({"status": "error", "message": "You must provide the code type (tool/component)"})
+		code_type = request.POST["type"]
+		if code_type not in ["tool", "component"]:
+			# TODO shouldn't these use better status codes and such?
+			return Response({"status": "error", "message": "Code type must be one of ['tool', 'component']"})
+
+		if "name" not in request.POST:
+			# TODO shouldn't these use better status codes and such?
+			return Response({"status": "error", "message": "You must provide a pascal-cased name (e.g. SomeToolThatIMade)"})
+		code_name = request.POST["name"]
+		if re.match(r'^[a-zA-Z][a-zA-Z0-9]*$', code_name) is None:
+			# TODO shouldn't these use better status codes and such?
+			return Response({"status": "error", "message": "Invalid name format, must be PascalCase"})
+
+		tags = []
+		if "tags" in request.POST:
+			tags = json.loads(request.POST["tags"])
+
+		new_code = Code()
+		new_code.name = code_name
+		new_code.type = "new_" + code_type
+		new_code.bases = []
+		new_code.tags = tags
+		new_code.save()
+
+		return Response({"status": "success", "message": "git pull to see your new tool"})
+
 class FilterableListView(ListCreateAPIView):
+	def _to_bool(self, v):
+		if v.lower() not in ["true", "false"]:
+			raise Exception("not a valid boolean value")
+		return v.lower() == "true"
+	
+	def _to_none(self, v):
+		if v.lower() not in ["none", "null"]:
+			raise Exception("not a valid null/none value")
+
+		return None
+	
+	def _handle_query_param(self, k, v, res):
+		operator_regex = re.compile(r'(^.*)__(\$[a-z]+)$')
+		op_match = operator_regex.match(k)
+
+		target = res
+		if op_match is not None:
+			term = op_match.group(1)
+			op = op_match.group(2)
+
+			if "$" in term:
+				target = {}
+			else:
+				target = res.setdefault(term, {})
+			k = op
+
+		if isinstance(v, (list,tuple)):
+			if len(v) > 1:
+				# not an OR operation, make it an AND operation
+				target[k] = {"$all": v}
+			else:
+				# TODO check for lists?
+				v = v[0]
+				target[k] = v
+		else:
+			target[k] = v
+
+		if op_match is not None and "$" in term:
+			self._handle_query_param(term, target, res)
+
 	def get_queryset(self):
 		"""
 		Return a queryset, filtered by query parameters
 		"""
+		# TODO id fields within __raw__ queries need to be converted to _id and ObjectId
+		# if it looks like an ObjectId, make it one? with a special case to change
+		# _id to id? Need this to get __raw__={"$or":[{"id":<ID>},{"name":<ID>}]} to work
+		sort = [] # .order_by(*sort_fields)
+		num = None
+		skip = None
+
+		# automatically convert to int,float,bool,null
+		casts = [int,float,self._to_bool,self._to_none]
+
 		# the query params are in the form
 		#     {
 		#    	"name": ["value"]
@@ -166,16 +253,65 @@ class FilterableListView(ListCreateAPIView):
 		# so collapse the array value to the first value
 		query_params = {}
 		for k,v in dict(self.request.QUERY_PARAMS).iteritems():
-			# TODO check for lists?
-			v = v[0]
-
 			# this is the syntax for embedded documents, ie.
 			# status.tmpfile=/tmp/blah -> status__tmpfile="/tmp/blah"
 			k = k.replace(".", "__")
+			#k = k.replace("$", "")
+			v_ = []
+			for v_part in v:
+				for cast in casts:
+					try:
+						v_part = cast(v_part)
+						break
+					except:
+						pass
+				v_.append(v_part)
+			v = v_
 
-			query_params[k] = v
+			if k == "sort":
+				sort = v
+				continue
 
-		return self.model.objects(**query_params)
+			if k == "num":
+				num = int(v[0])
+				continue
+
+			if k == "skip":
+				skip = int(v[0])
+				continue
+
+			# this allows the user to use raw mongodb operators:
+			#	talus fileset list --files.\$size 10
+			#	talus job list --name.\$regex ".*win.*test.*"
+			if "$" in k:
+				raw = query_params.setdefault("__raw__", {})
+				self._handle_query_param(k, v, raw)
+
+			# otherwise the user can use mongoengine operator wrappers (that use
+			# double underscores
+			#	talus job list --files__size 10
+			else:
+				if len(v) > 1:
+					# not an OR operation, make it an AND operation
+					query_params[k] = {"$all": v}
+				else:
+					# TODO check for lists?
+					v = v[0]
+					query_params[k] = v
+
+		cursor = self.model.objects(**query_params)
+
+		if len(sort) > 0:
+			cursor = cursor.order_by(*sort)
+
+		if num is not None and skip is None:
+			cursor = cursor[:num]
+		elif skip is not None and num is None:
+			cursor = cursor[skip:]
+		elif skip is not None and num is not None:
+			cursor = cursor[skip:skip+num]
+
+		return cursor
 
 class ResultList(FilterableListView):
 	renderer_classes = (TalusRenderer,)
@@ -186,6 +322,16 @@ class ResultDetails(RetrieveUpdateDestroyAPIView):
 	renderer_classes = (TalusRenderer,)
 	queryset = Result.objects.all()
 	serializer_class = ResultSerializer
+
+class MasterList(FilterableListView):
+	renderer_classes = (TalusRenderer,)
+	serializer_class = MasterSerializer
+	model = Master
+
+class MasterDetails(RetrieveUpdateDestroyAPIView):
+	renderer_classes = (TalusRenderer,)
+	queryset = Master.objects.all()
+	serializer_class = MasterSerializer
 
 class SlaveList(FilterableListView):
 	renderer_classes = (TalusRenderer,)

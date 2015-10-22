@@ -1,0 +1,21 @@
+#!/bin/bash
+
+function log {
+        echo "[+] $*"
+}
+
+user="$1"
+log adding user \'$user\'
+
+sudo useradd -m -s /usr/bin/git-shell -G talus $user
+
+read -s -p "[+] enter password: " userpass
+echo
+
+echo "$user:$userpass" | sudo chpasswd
+
+sudo -u "$user" mkdir -p "/home/$user/git-shell-commands"
+sudo -u "$user" ln -s $(which passwd) /home/$user/git-shell-commands/passwd
+
+log "done"
+
