@@ -1,16 +1,60 @@
 .. _getting_started:
+.. _talus_client: https://github.com/optiv-labs/talus_client
+
+.. Getting Started
+..    Installing the client
+..    Creating images
+..        from scratch by import (or via iso??)
+..        from base image
+..    Setting up an image
+..    Creating a tool/component
+..    Creating a task
+..    Creating and running a job/task
+..    Job status/info
+..    Results
+..    Crashes
+..    Slave status/info
+..    Master status/info
 
 Getting Started
 ===============
 
-Overview
---------
+All interactions with Talus are performed through a REST API. Currently the
+only UI to talus that uses the REST API is a command line interface:
+talus_client_.
 
-Talus is a framework for running tools inside VMs and getting the results back
-out. Talus attempts to simplify the interactions needed between the user and the
-framework in order to accomplish this task.
+Creating Images
+---------------
 
-In most cases, a user would only need the Talus client, a text editor, and git
-in order to use Talus.
+From Scratch
+~~~~~~~~~~~~
 
+From a Base Image
+~~~~~~~~~~~~~~~~~
 
+Setting up an Image
+-------------------
+
+Creating a Tool/Component
+--------------------------
+
+Creating a Task
+---------------
+
+Creating and Running a Job
+--------------------------
+
+Job Status/Info
+---------------
+
+Results
+-------
+
+Crashes
+-------
+
+Slave Status/Info
+-----------------
+
+Master Status/Info
+------------------

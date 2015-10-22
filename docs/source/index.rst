@@ -14,11 +14,8 @@ the running of and result collection of tools in virtualized environments.
    :maxdepth: 2
 
    getting_started
-   install_and_setup
-   tasks_and_components
-   images
-   talus_composition
-   generated
+   debugging
+   workflow_lifecycle
 
 Indices and tables
 ==================
