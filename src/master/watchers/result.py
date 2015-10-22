@@ -2,9 +2,11 @@
 # encoding: utf-8
 
 import bson
+import datetime
 import glob
 import os
 import sys
+import time
 import uuid
 
 import master.models
@@ -51,7 +53,7 @@ class ResultWatcher(WatcherBase):
 		# propagate tags from the job object (user, etc)
 		result.tags = result.job.tags
 		# save the _real_ current time so it's not dependent on the VM's time
-		result.created = time.time()
+		result.created = datetime.datetime.utcnow()
 		result.save()
 
 		for processor in self._processors:
