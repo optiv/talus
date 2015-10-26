@@ -2,8 +2,6 @@
 
 DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 
-"$DIR"/stop
-
 mkdir -p /tmp/talus/tmp
 sudo chmod o+rwx /tmp/talus/tmp
 mkdir -p /var/log/talus/apache2
@@ -14,21 +12,24 @@ sudo chmod -R g+ws /talus/install
 
 if [ "$1" = "dev" ] ; then
 	shift
+	sudo docker kill talus_web_dev || true
+	sudo docker rm talus_web_dev || true
 	sudo docker run \
 		-it \
 		--rm \
 		--link talus_db:talus_db \
-		-p 80:80 \
-		-p 8001:8001 \
+		-p 8080:8080 \
 		-v /var/lib/libvirt/images:/images:ro \
 		-v $DIR/../app:/web \
 		-v /var/log/talus:/logs \
 		-v /tmp/talus/tmp:/tmp \
 		-v /talus/install:/talus_install \
 		-v /talus/talus_code_cache:/code_cache \
-		--name talus_web \
+		--name talus_web_dev \
 		$@ talus_web
 else
+	"$DIR"/stop
+
 	sudo docker run \
 		--rm \
 		--link talus_db:talus_db \

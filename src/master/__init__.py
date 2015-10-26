@@ -6,6 +6,7 @@
 
 from __future__ import absolute_import
 
+import datetime
 import glob
 import json
 import logging
@@ -16,6 +17,7 @@ import signal
 import socket
 import sys
 import threading
+import time
 
 import master.models
 from master.models import *
@@ -300,7 +302,7 @@ class Master(object):
 
 		slaves = Slave.objects(uuid=uuid)
 		if len(slaves) == 0:
-			self._log.warn("got a slave status message that does not specify its uuid!")
+			self._log.warn("got a slave status for a slave that isn't defined yet, making a new one")
 			return
 
 		slave = slaves[0]
@@ -313,6 +315,7 @@ class Master(object):
 		if "vms" in data:
 			slave.vms = data["vms"]
 
+		slave.timestamps["modified"] = time.time()
 		slave.save()
 	
 	def _handle_slave_new(self, data):
@@ -330,6 +333,7 @@ class Master(object):
 		slave.ip = data["ip"]
 		slave.hostname = data["hostname"]
 		slave.uuid = data["uuid"]
+		slave.timestamps["created"] = datetime.datetime.utcnow()
 		slave.save()
 
 		self._amqp_man.queue_msg(

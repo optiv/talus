@@ -108,3 +108,4 @@ class Slave(Document):
 	running_vms		= IntField(default=0)
 	total_jobs_run	= IntField(default=0)
 	vms				= ListField(DictField())
+	timestamps		= DictField()

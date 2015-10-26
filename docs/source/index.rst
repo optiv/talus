@@ -8,7 +8,7 @@ Talus
 =====
 
 Talus is a distributed virtualized tool framework that is intended to ease
-the running of and result collection of tools in virtualized environments.
+the running and result collection of tools in virtualized environments.
 
 .. toctree::
    :maxdepth: 2
