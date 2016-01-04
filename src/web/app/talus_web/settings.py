@@ -23,15 +23,17 @@ SECRET_KEY = '0tg-fe$rac1mqzp7l#@4!e!)g0zymr-u^4ii$#yo_35ph$gk!w'
 
 base = os.path.dirname("__file__").split(os.path.sep)[0]
 
+DEBUG = False
+
 if base == "/web":
 	print("DEBUG IS FALSE")
-	DEBUG = False
+	#DEBUG = False
 else:
 	print("DEBUG IS TRUE")
 	# SECURITY WARNING: don't run with debug turned on in production!
-	DEBUG = True
+	#DEBUG = True
 
-TEMPLATE_DEBUG = True
+TEMPLATE_DEBUG = False
 
 ALLOWED_HOSTS = ["*"]
 

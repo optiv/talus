@@ -145,6 +145,10 @@ class ImageManager(object):
 		"""
 		self._log.info("ensuring image {} exists and is valid".format(image_id))
 
+		# XXX DEBUG
+		# since we're running on the master, they're always up to date
+		return True
+
 		dest = os.path.join(LIBVIRT_BASE, image_id_to_volume(image_id))
 		if not os.path.exists(dest):
 			self.download_image(image_id)
@@ -178,7 +182,7 @@ class ImageManager(object):
 		return True
 
 class VMHandler(threading.Thread):
-	def __init__(self, job, idx, image, image_username, image_password, os_type, tool, params, code_loc, code_username, code_password, fileset, db_host, timeout=1800, network="whitelist", on_finished=None, on_vnc_available=None, startup_timeout=120, debug=False, cpus=1, ram=2048+512, libvirt_conn=None, mac=None, vnc_port=None):
+	def __init__(self, job, idx, image, image_username, image_password, os_type, tool, params, code_loc, code_username, code_password, fileset, db_host, timeout=1800, network="whitelist", on_finished=None, on_vnc_available=None, startup_timeout=120, debug=False, cpus=1, ram=int(1024*3), libvirt_conn=None, mac=None, vnc_port=None):
 		"""Start up the VM image ``image`` in libvirt, with a timeout of ``timeout``,
 		and params ``params, using network ``network``.
 
@@ -208,6 +212,8 @@ class VMHandler(threading.Thread):
 		self.mac = mac
 		self.vnc_port = vnc_port
 		self.vm_status = ""
+
+		self._released_boot_lock = False
 
 		self.libvirt_conn = libvirt_conn
 		self.libvirt_domain_obj = None
@@ -262,6 +268,8 @@ class VMHandler(threading.Thread):
 		try:
 			self.do_run()
 		finally:
+			#if not self._released_boot_lock:
+			#	self.boot_lock.release()
 			self._vm_cleanup()
 
 		self._log.debug("finished, calling on_finished")
@@ -306,17 +314,24 @@ class VMHandler(threading.Thread):
 		# just keeping the indentation here for testing - if we DO want to go
 		# back to injecting the bootstrap into a tmpdir on the device, remove
 		# if True, (keep indentation), and uncomment the lines above
-		if True:
-			self.run_time = time.time()
-			total_time = 0
-			#while self._running.is_set() and self._vm_is_running() and total_time < self.timeout:
-			while self._running.is_set() and total_time < self.timeout:
-				if not self._received_started_msg and total_time > self.startup_timeout:
-					self._log.warn("never received startup message in {}s, bailing".format(self.startup_timeout))
-					return
-					
-				time.sleep(5)
-				total_time = time.time() - self.run_time
+
+		self.run_time = time.time()
+		total_time = 0
+		#while self._running.is_set() and self._vm_is_running() and total_time < self.timeout:
+		while self._running.is_set() and total_time < self.timeout:
+			if not self._received_started_msg and total_time > self.startup_timeout:
+				self._log.warn("never received startup message in {}s, bailing".format(self.startup_timeout))
+				return
+
+#			elif self._received_started_msg and not self._released_boot_lock:
+#				self._released_boot_lock = True
+#				self.boot_lock.release()
+				
+			time.sleep(5)
+			total_time = time.time() - self.run_time
+
+#		if not self._released_boot_lock:
+#			self.boot_lock.release()
 	
 	def stop(self):
 		self._log.info("stopping")
@@ -357,7 +372,7 @@ class VMHandler(threading.Thread):
 			code_loc_host = self.code_loc.replace("http://", "").replace("https://", "").split("/", 1)[0]
 			code_loc_ip = socket.gethostbyname(code_loc_host)
 
-			this_ip = netifaces.ifaddresses('virbr1')[2][0]['addr']
+			this_ip = netifaces.ifaddresses('virbr2')[2][0]['addr']
 			bcast = this_ip.rsplit(".",1)[0] + ".255"
 
 			ips = [
@@ -547,6 +562,8 @@ class VMHandler(threading.Thread):
 		self.vm_status = "creating"
 		self._vm_create()
 
+		#self.boot_lock.acquire()
+		self._released_boot_lock = False
 		self.vm_status = "booting"
 		self._vm_run()
 
@@ -683,11 +700,23 @@ class VMHandler(threading.Thread):
 	def _vm_create(self):
 		self._vm_image_loc = "/tmp/{}_{}.img".format(self.job, self.idx)
 		self._domain = os.path.basename(self._vm_image_loc)
-		output = sh.qemu_img.create(
-			self._vm_image_loc,
-			b	= os.path.join(LIBVIRT_BASE, image_id_to_volume(self.image)),
-			f	= "qcow2",
-		)
+
+		errors = 0
+		max_errors = 3
+
+		while errors < max_errors:
+			try:
+				output = sh.qemu_img.create(
+					self._vm_image_loc,
+					b	= os.path.join(LIBVIRT_BASE, image_id_to_volume(self.image)),
+					f	= "qcow2",
+				)
+				return
+			except Exception as e:
+				os.remove(self._vm_image_loc)
+				errors += 1
+
+		raise e
 	
 	def _vm_run(self):
 		"""Creates the domain and runs it"""
@@ -793,7 +822,7 @@ class VMHandler(threading.Thread):
 			domain_name		= vm_name,
 			domain_uuid		= str(uuid.uuid4()),
 			mem_size		= self.ram * 1024, # ram is in MB
-			num_cpus		= 1,
+			num_cpus		= self.cpus,
 			image_path		= self._vm_image_loc,
 			filter_name		= "talus-" + self.network,
 			filter_params	= self._get_filter_params(),
@@ -816,7 +845,7 @@ class VMHandler(threading.Thread):
 			#n				= vm_name,
 			#disk			= "{},device=disk,bus=sata,format=qcow2".format(self._vm_image_loc),
 			#vnc				= True,
-			##w				= "bridge=virbr1,model=virtio",
+			##w				= "bridge=virbr2,model=virtio",
 			#w				= True,
 			#noautoconsole	= True,
 			## network		= "filter...."

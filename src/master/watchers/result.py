@@ -29,16 +29,19 @@ class ResultWatcher(WatcherBase):
 				continue
 			mod_name = filename_.replace(".py", "")
 			mod = __import__(
-				"master.watchers.result_processors.{}".format(mod_name),
+				"master.watchers.result_processors",
 				globals(),
-				locals()
+				locals(),
+				fromlist=[mod_name]
 			)
+			mod = getattr(mod, mod_name)
 			for item_name in dir(mod):
 				item = getattr(mod, item_name)
 				# we only care about classes
 				if type(item) is not type:
 					continue
 				if issubclass(item, ResultProcessorBase):
+					self._log.info("found result processor: {}".format(item.__name__))
 					self._processors.append(item())
 
 	def insert(self, id_, obj):
@@ -57,6 +60,7 @@ class ResultWatcher(WatcherBase):
 		result.save()
 
 		for processor in self._processors:
+			self._log.debug("seeing if processor can handle this: {}".format(processor))
 			try:
 				can_process = processor.can_process(result)
 			except NotImplemented as e:
@@ -69,7 +73,7 @@ class ResultWatcher(WatcherBase):
 				try:
 					result.reload()
 				except Exception as e:
-					self._log.info("error reloading result document, probably deleted?? TODO verify this is OK", exc_info=True)
+					#self._log.info("error reloading result document, probably deleted?? TODO verify this is OK", exc_info=True)
 					# if it's been deleted, then just return, as no other processors should be able to process it
 					return
 

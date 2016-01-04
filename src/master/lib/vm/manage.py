@@ -160,8 +160,6 @@ class KvmWorker(VMWorker):
 			image_path	= self._image_path,
 		)
 
-		import pdb; pdb.set_trace()
-
 		conn = self._libvirt()
 
 		domain = conn.createXML(domain_xml, 0)
@@ -466,6 +464,9 @@ class VagrantWorker(VMWorker):
 		"""
 		vm_name = os.path.basename(self._project_dir + "_default.img")
 		vm_path = os.path.join(self._image_store, vm_name)
+		vol_name = "{}_vagrant_box_image_0.img".format(self._dest_name)
+		vagrant_image = "/var/lib/libvirt/images/{}".format(vol_name)
+		info = utils.qemu_img_info(vm_path)
 
 		# merge the changes made with the image `box_name`
 		if self._dest_name is None:
@@ -475,18 +476,40 @@ class VagrantWorker(VMWorker):
 			self._log.info("committing changes from {!r} into base image".format(vm_path))
 			output = utils.run(args)
 
-			self._log.debug("copying base image back into vagrant box...")
 			# since it's symlinked now, we shouldn't have to copy anything around
-			info = utils.qemu_img_info(vm_path)
+			# self._log.debug("copying base image back into vagrant box...")
 
 			if "backing file" in info:
-				shutil.copyfile(info["backing file"], os.path.join(self._vagrant_base, "boxes", self._box_name, "0", "libvirt", "box.img"))
+				img_dest = os.path.join(self._vagrant_base, "boxes", self._box_name, "0", "libvirt", "box.img")
+
+				# this is no longer needed b/c we're symlinking everything now
+				#if img_dest != info["backing file"]:
+					#shutil.copyfile(info["backing file"], img_dest)
+
+				# TODO make sure the correct backing file is in place in the image! Do this if it needs one and
+				# it isn't set:
+				# qemu-img rebase -b <backingfile> <file>
 			else:
 				self._log.debug("ERROR saving image {!r}, could not determine backing file".format(vm_path))
+				return
 
 		# create a new vagrant box
 		else:
-			self._create_vagrant_box(vm_path, self._dest_name)
+			img_dest = self._create_vagrant_box(vm_path, self._dest_name)
+
+		if self._dest_name is not None:
+			if not os.path.exists(vagrant_image):
+				self._log.debug("uploading image to libvirt default storage pool")
+				args = ["virsh", "vol-create-as", "--pool", "default", "--name", vol_name, "--capacity", str(os.path.getsize(img_dest)), "--format", "qcow2"]
+				output = utils.run(args)
+				args = ["virsh", "vol-upload", "--pool", "default", "--vol", vol_name, "--file", img_dest]
+				output = utils.run(args)
+
+			# no need to save everything double!!!
+			if not os.path.islink(img_dest) and os.path.exists(vagrant_image):
+				self._log.debug("symlinking vagrant box.img to save space")
+				os.remove(img_dest)
+				os.symlink(vagrant_image, img_dest)
 	
 	def _cleanup(self):
 		"""Cleanup everything (remove tmp project files, etc.)
@@ -525,6 +548,7 @@ class VagrantWorker(VMWorker):
 					  libvirt.storage :file, :device => :cdrom, :path => "{iso_path}"
 					  libvirt.disk_bus = 'sata'
 					  libvirt.video_type = 'vga'
+					  libvirt.cpus = 2
 					end
 				end
 			""".format(
@@ -578,11 +602,15 @@ class VagrantWorker(VMWorker):
 					config.vm.synced_folder ".", "/vagrant", disabled: true
 					config.vm.guest = :{ostype}
 					config.vm.provider :libvirt do |libvirt|
+					  libvirt.management_network_name = 'talus-network'
+					  libvirt.management_network_address = '192.168.123.0/24'
 					  libvirt.storage :file, :device => :cdrom, :path => "{iso_path}"
 					  libvirt.disk_bus = 'sata'
 					  libvirt.input :type => 'tablet', :bus => 'usb'
 					  libvirt.video_type = 'vga'
 					  libvirt.graphics_ip = '0.0.0.0'
+					  libvirt.memory = 2048
+					  libvirt.cpus = 2
 					end
 				end
 			""".format(
@@ -618,6 +646,8 @@ class VagrantWorker(VMWorker):
 			shutil.copyfile(image_path, img_dest)
 		else:
 			shutil.move(image_path, img_dest)
+
+		return img_dest
 	
 	def _prepare_vagrantfile(self, vagrantfile, base_name, auto_shutdown=False):
 		vagrantfile = re.sub(r'(vm\.box\s*=\s*["\'])([^"\"]+)(["\'])', '\g<1>' + base_name + '\g<3>', vagrantfile)
@@ -730,8 +760,12 @@ class VMManager(object):
 			# update the machine index
 			with open(os.path.join(self._vagrant_base, "data", "machine-index", "index")) as f:
 				data = json.loads(f.read())
-			del data["machines"][image_name]
-			with open(ow.path.join(self._vagrant_base, "data", "machine-index", "index"), "wb") as f:
+			try:
+				del data["machines"][image_name]
+			except KeyError:
+				pass
+
+			with open(os.path.join(self._vagrant_base, "data", "machine-index", "index"), "wb") as f:
 				f.write(json.dumps(data))
 
 		# now also delete it from the libvirt pool

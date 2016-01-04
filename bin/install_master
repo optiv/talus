@@ -6,6 +6,10 @@ echo "installing docker"
 $DIR/install_docker
 echo "done installing docker"
 
+# THIS IS ABSOLUTELY NEEDED IN ORDER TO RUN talus_slave and talus_{db,amqp,web} on
+# the same host!!!!!
+echo -e "\n\nDOCKER_OPTS=\"\$DOCKER_OPTS --iptables=false\"" >> /etc/default/docker
+
 cd $DIR/..
 
 echo "installing db"

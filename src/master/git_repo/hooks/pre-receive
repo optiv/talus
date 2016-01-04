@@ -134,7 +134,7 @@ class PyFuncTypeFileSet(object):
 class PyFuncTypeNative(object):
 	def __init__(self, native_type):
 		self.type = "native"
-		if native_type not in ["str", "list", "tuple", "dict", "int", "unicode"]:
+		if native_type not in ["str", "list", "tuple", "dict", "int", "unicode", "float"]:
 			raise TalusError("Unsupported native type specified for parameter: {!r}".format(native_type))
 		self.name = native_type
 

@@ -2,7 +2,7 @@
 	<name>talus-network</name>
 	<uuid>6137498b-f067-4fd7-cf64-69d2714f297b</uuid>
 	<forward mode='nat' />
-	<bridge name='virbr1' stp='on' delay='0'/>
+	<bridge name='virbr2' stp='on' delay='0'/>
 	<ip address='192.168.123.1' netmask='255.255.255.0'>
 		<dhcp>
 			<range start='192.168.123.55' end='192.168.123.254'/>
