@@ -97,7 +97,7 @@ class TalusDBWatcher(OplogWatcher):
 
 		"""
 		self._log.info("watched insert in {}: {}".format(ns, id))
-		self._log.debug("received insert: {}".format(obj))
+		#self._log.debug("received insert: {}".format(obj))
 
 		if ns in self._watchers:
 			for watcher in self._watchers[ns]:
@@ -298,7 +298,7 @@ class Master(object):
 			return
 
 		uuid = data["uuid"]
-		self._log.info("got slave status update message")
+		#self._log.info("got slave status update message")
 
 		slaves = Slave.objects(uuid=uuid)
 		if len(slaves) == 0:

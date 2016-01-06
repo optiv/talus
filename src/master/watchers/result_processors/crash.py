@@ -14,6 +14,7 @@ class CrashProcessor(processors.ResultProcessorBase):
 	def can_process(self, result):
 		"""Return True/False if the result is a crash result
 		"""
+		self._log.info("result type: {!r}".format(result.type))
 		return result.type == "crash"
 	
 	def process(self, result):
@@ -24,3 +25,6 @@ class CrashProcessor(processors.ResultProcessorBase):
 		self._log.info("processing crash")
 
 		# fill this in later
+		if Result.objects(data__hash_major=result.data["hash_major"], data__hash_minor=result.data["hash_minor"]).count() > 50:
+			self._log.debug("removing unneeded crash result ({}:{} hash)".format(result.data["hash_major"], result.data["hash_minor"]))
+			result.delete()

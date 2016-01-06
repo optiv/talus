@@ -102,6 +102,12 @@ class Master(Document):
 	queues			= DictField()
 
 class Slave(Document):
+	meta = {
+		"indexes": [
+			{"fields": ["timestamps.modified"], "expireAfterSeconds": 60}
+		]
+	}
+
 	hostname		= StringField()
 	uuid			= StringField()
 	ip				= StringField()

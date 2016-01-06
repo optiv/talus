@@ -215,6 +215,9 @@ class Slave(threading.Thread):
 		self._libvirtd_can_be_used.set()
 		# restart every thousand vms
 		self._libvirtd_restart_vm_count = 1000
+
+		self._last_vm_started_evt = threading.Event()
+		self._last_vm_started_evt.set()
 	
 	def _gen_mac_addrs(self):
 		self._mac_addrs = Queue()
@@ -230,7 +233,7 @@ class Slave(threading.Thread):
 	def _gen_vnc_ports(self):
 		self._vnc_ports = Queue()
 		for x in xrange(50):
-			self._vnc_ports.put(5900 + x)
+			self._vnc_ports.put(5900 + 5 + x)
 
 	def run(self):
 		self._running.set()
@@ -351,6 +354,7 @@ class Slave(threading.Thread):
 
 		if found_handler is not None:
 			found_handler.on_received_started()
+			self._last_vm_started_evt.set()
 		else:
 			self._log.warn("cannot find the handler for data: {}".format(data))
 	
@@ -463,6 +467,12 @@ class Slave(threading.Thread):
 			self._max_vms_lock.release()
 			return
 
+		# wait until the last vm started to start the next vm
+		self._log.debug("waiting for last vm to start running tool")
+		self._last_vm_started_evt.wait(2**31)
+		self._log.debug("last vm started! running next vm")
+		self._last_vm_started_evt.clear()
+
 		try:
 			handler = VMHandler(
 				job					= data["job"],
@@ -519,13 +529,17 @@ class Slave(threading.Thread):
 
 		# it never reported progress for some reason, so let's report a progress of 1
 		# for just having run the VM (1 vm == 1 progress. ALWAYS!)
-		if handler.total_progress == 0:
+		if handler.total_progress == 0 and handler._received_started_msg:
 			self._log.info("job handler exited without reporting any progress, reporting 1 progress")
 			self._handle_job_progress({
 				"job"	: handler.job,
 				"idx"	: handler.idx,
 				"data"	: 1
 			})
+
+		# vm died, never received started message, so don't block anymore
+		if not handler._received_started_msg:
+			self._last_vm_started_evt.set()
 
 		with self._handlers_lock:
 			self._handlers.remove(handler)
@@ -649,7 +663,7 @@ class Slave(threading.Thread):
 def main(amqp_host, max_vms, intf):
 	#_install_sig_handlers()
 
-	virt_ip = netifaces.ifaddresses('virbr1')[2][0]['addr']
+	virt_ip = netifaces.ifaddresses('virbr2')[2][0]['addr']
 	endpoints.serverFromString(reactor, "tcp:55555:interface={}".format(virt_ip)).listen(GuestCommsFactory())
 
 	slave = Slave.instance(amqp_host, max_vms, intf)

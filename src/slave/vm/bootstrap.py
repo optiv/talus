@@ -218,9 +218,16 @@ class TalusCodeImporter(object):
 
 		self.cache = {}
 
+		dir_check = lambda x: x.endswith("/")
+
 		self.cache["git"] = {"__items__":set(["talus/"]), "talus/":{"__items__": set()}}
 
-		dir_check = lambda x: x.endswith("/")
+		# this will add lib to the cache
+		# these are python packages that are stored in git (and aren't cachable in our
+		# own pypi)
+		package_items = self._git_show("talus/packages")["items"]
+		self.cache["packages"] = dict(map(lambda x: (x.replace("/", ""), True), filter(dir_check, package_items)))
+
 		pypi_items = self._git_show("talus/pypi/simple")["items"]
 		self.cache["pypi"] = dict(map(lambda x: (x.replace("/", ""), True), filter(dir_check, pypi_items)))
 	
@@ -261,10 +268,15 @@ class TalusCodeImporter(object):
 			# see the comment in the docstring
 			return None
 
+		if package_name in self.cache["packages"] and package_name not in sys.modules:
+			self.install_package_from_talus(package_name)
+			return None
+
 		# we NEED to have the 2nd check here or else it will keep downloading
 		# the same package over and over
 		if package_name in self.cache["pypi"] and package_name not in sys.modules:
 			self.install_package(package_name)
+			return None
 			# just in case sys.argv got mucked with somehow/somewhere
 			#os.execvp("python", [__file__] + ORIG_ARGS)
 			#os.execvp("python", ORIG_ARGS)
@@ -332,15 +344,17 @@ class TalusCodeImporter(object):
 
 		return None
 	
-	def _download_folder(self, abs_name, info, dest):
+	def _download_folder(self, abs_name, info, dest, recurse=None):
 		"""Download the module (folder/__init__.py) from git. The module folder will
-		only be recursively downloaded if it is a subfolder of the tools/components/lib
+		only be recursively downloaded if it is a subfolder of the tools/components/lib/packages
 		folder.
 		"""
 		# if we're loading the root directory of a tool/component/library, recursively
 		# download everything in git in that folder
-		match = re.match(r'^talus\.(tools|components|lib)\.[a-zA-Z_0-9]+$', abs_name)
-		recurse = (match is not None)
+		match = re.match(r'^talus\.(tools|packages|components|lib)\.[a-zA-Z_0-9]+$', abs_name)
+		
+		if recurse is None:
+			recurse = (match is not None)
 
 		self._download(dest, info=info, recurse=recurse)
 	
@@ -389,6 +403,23 @@ class TalusCodeImporter(object):
 				self.pypi_loc,
 			package_name
 		])
+	
+	def install_package_from_talus(self, package_name):
+		"""Install the package found in git at talus/package/<package_name>
+		"""
+		info = self._git_show("talus/packages/{}".format(package_name))
+		self._download_folder("talus/packages/{}".format(package_name), info, self._code_dir, recurse=True)
+		full_path = os.path.join(self._code_dir, "talus", "packages", package_name)
+
+		try:
+			pip.main([
+				"install",
+				"--user",
+				"--upgrade",
+				full_path
+			])
+		except SystemExit as e:
+			self._log.error("Could not install package from talus git. You dun goofed up somewhere")
 	
 	def _download_file(self, abs_name, info, dest):
 		"""Download the single file from git

@@ -38,7 +38,7 @@ class AmqpQueueHandler(threading.Thread):
 			if method is None:
 				time.sleep(0.1)
 				continue
-			self._log.debug("recieved message")
+			#self._log.debug("recieved message")
 			self.callback(self.channel, method, props, body)
 
 		self._log.debug("finished")

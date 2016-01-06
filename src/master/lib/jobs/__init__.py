@@ -79,6 +79,8 @@ class JobHandler(object):
 			# job cancellation for debug jobs comes into play when progress >= limit
 			if num == 0:
 				return
+		
+		print("dripping {} times for job {}".format(num, self.job.id))
 
 		for x in range(num):
 			res = self.drop()
